@@ -1,0 +1,4 @@
+dist
+src/coguard_cli.egg-info/
+**/__pycache__/
+**/.coverage
