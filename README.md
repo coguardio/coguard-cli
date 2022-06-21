@@ -1,4 +1,4 @@
-![Coguard Logo](./logo.png)
+![Coguard Logo](https://github.com/coguardio/coguard-cli/raw/master/logo.png)
 
 # CoGuard
 
@@ -46,7 +46,7 @@ on this particular image.
 
 The currently supported auto-discovery of configuration files inside
 Docker containers is limited to the finders
-[in this folder](./src/image_check/config_file_finders/). This list
+[in this folder](https://github.com/coguardio/coguard-cli/tree/master/src/coguard_cli/image_check/config_file_finders). This list
 will expand in the future. In addition, we are scanning the
 Dockerfile used to create the images, and will add some Linux
 configuration files in the near future.
