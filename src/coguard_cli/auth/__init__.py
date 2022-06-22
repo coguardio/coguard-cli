@@ -65,7 +65,11 @@ def sign_in_or_sign_up(coguard_url: str, auth_url: str) -> Optional[str]:
     :returns: The authentication token if the sign in/sign up process was successful,
               or None.
     """
-    user_name = input("Please enter your email: ")
+    user_name = input("You need to sign up to use the CoGuard service. "
+                      "By providing your email, you confirm that you read, understood "
+                      "and agree with the CoGuard Terms of Service "
+                      "(https://www.coguard.io/terms-of-service) and Privacy Policy "
+                      "(https://www.coguard.io/privacy-policy). Please enter your email: ")
     email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     if not re.fullmatch(email_regex, user_name):
         print(f'{COLOR_RED}Provided email not valid.{COLOR_TERMINATION}')
