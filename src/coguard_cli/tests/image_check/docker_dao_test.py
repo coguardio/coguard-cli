@@ -320,6 +320,26 @@ class TestDockerDao(unittest.TestCase):
                     "baz"
                 ])
 
+    def test_extract_all_existing_docker_images_with_nones_in_between(self):
+        """
+        Tests the extraction of the dockerfile.
+        """
+        with unittest.mock.patch(
+                "subprocess.run",
+                new_callable=lambda: \
+                lambda cmd, check, shell, capture_output, timeout: \
+                unittest.mock.Mock(
+                    stdout=b"foo\nbar\n<none>\n<none>:<none>\nbaz"
+                )
+        ):
+            self.assertEqual(
+                docker_dao.extract_all_installed_docker_images(),
+                [
+                    "foo",
+                    "bar",
+                    "baz"
+                ])
+
     def test_extract_all_existing_docker_images_error(self):
         """
         Tests the extraction of the dockerfile.

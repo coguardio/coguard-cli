@@ -218,7 +218,7 @@ def extract_all_installed_docker_images() -> List[str]:
             timeout=DOCKER_CALL_TIMEOUT_S
         ).stdout
         lines = outp.decode().split('\n')
-        lines = [line.strip() for line in lines if line.strip() != "<none>"]
+        lines = [line.strip() for line in lines if "<none>" not in line]
         return lines
     except subprocess.CalledProcessError as exception:
         logging.error("Failed to list all images: %s", str(exception))
