@@ -53,5 +53,5 @@ configuration files in the near future.
 
 ## Learn more
 
-[CoGuard Website](https://www.coguard.io)
-[CoGuard Blog](https://www.coguard.io/blog)
+- [CoGuard Website](https://www.coguard.io)
+- [CoGuard Blog](https://www.coguard.io/blog)
