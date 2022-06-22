@@ -72,7 +72,9 @@ def main():
               "DEBUG, INFO, WARNING, ERRROR, CRITICAL")
     )
     subparsers = parser.add_subparsers(
-        required=True
+        required=True,
+        #Do not remove the next line. This is a workaround for https://bugs.python.org/issue29298
+        dest='subparsers_location'
     )
     docker_image_parser = subparsers.add_parser(
         'docker-image',
