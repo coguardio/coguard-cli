@@ -2,6 +2,34 @@
 
 # CoGuard
 
+## Why CoGuard
+
+Infrastructure as Code (IaC) is here to stay. The versioning and
+continuous scanning of every layer of your IT (on premise and cloud)
+infrastructure is crucial.
+
+CoGuard's team observed that there are a lot of policy checks on the layers
+communicating to the cloud, but the configurations inside specific
+compute devices such as physical servers, virtual machines or
+containers are mostly neglected, or have silo-ed solutions at best.
+
+In order to have static analysis practices for IaC that go as deep as
+the available tools for code, every layer needs to be equally addressed.
+
+In our practice, we observed that, at times, even an awareness of
+locations of configuration files is lacking. This is why we created a
+command line tool helping with discovering those configurations, and
+scanning them.
+
+As an initial starting point for the CLI, we chose Docker images. Modern
+container scanners check for versions of software and libraries
+installed on those containers, and establish if there are common known
+vulnerabilities and exposures (CVEs). The
+CoGuard CLI is trying to find known configuration files for e.g. web
+servers or databases, and scans these for security and best practice.
+Additionally, the last Docker file used to create an image is analyzed
+as well.
+
 ## Introduction to the CoGuard CLI
 
 CoGuard is a comprehensive static analysis tool for IT infrastructure
