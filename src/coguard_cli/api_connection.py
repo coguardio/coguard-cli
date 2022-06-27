@@ -84,7 +84,7 @@ def sign_up_for_coguard(
 def mention_referrer(
         user_name: str,
         referrer: str,
-        coguard_url) -> None:
+        coguard_url: str) -> None:
     """
     If the user was referred, we will capture this here.
 
