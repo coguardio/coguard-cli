@@ -80,3 +80,22 @@ def sign_up_for_coguard(
                       resp.reason)
         return None
     return resp.text.lower() == 'true'
+
+def mention_referrer(
+        user_name: str,
+        referrer: str,
+        coguard_url: str) -> None:
+    """
+    If the user was referred, we will capture this here.
+
+    :param user_name: The name of the user who just signed up
+    :param referrer: The name of the referrer
+    :param coguard_url: The url of coguard to send the request to.
+    """
+    resp = requests.post(
+        f"{coguard_url}/registration/referrer-capture",
+        headers={"content-type": "application/json"},
+        json={"userName": user_name, "referrer": referrer}
+    )
+    if resp.status_code != 204:
+        logging.error("Could not capture referrer. Please send this error to info@coguard.io")

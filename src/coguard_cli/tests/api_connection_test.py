@@ -125,3 +125,20 @@ class TestApiConnection(unittest.TestCase):
                     "baz"
                 )
             )
+
+    def test_mention_referrer_200_status(self):
+        """
+        Checks the sign up with successful api call.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 204,
+            text = "true"
+        )
+        with unittest.mock.patch(
+                'requests.post',
+                new_callable=lambda: lambda url, headers, json: mock_response):
+            api_connection.mention_referrer(
+                "foo",
+                "bar",
+                "baz"
+            )

@@ -16,7 +16,9 @@ from typing import Dict, Optional
 from pathlib import Path
 import requests
 from coguard_cli.auth.auth_config import CoGuardCliConfig
-from coguard_cli.api_connection import does_user_with_email_already_exist, sign_up_for_coguard
+from coguard_cli.api_connection import does_user_with_email_already_exist, \
+    sign_up_for_coguard, \
+    mention_referrer
 from coguard_cli.print_colors import COLOR_TERMINATION, COLOR_RED, COLOR_CYAN, COLOR_YELLOW
 
 DEFAULT_CONFIG_PATH = str(Path.home().joinpath(
@@ -112,6 +114,15 @@ def sign_in_or_sign_up(coguard_url: str, auth_url: str) -> Optional[str]:
             coguard_url,
             auth_url
         )
+        referrer = input(
+            "Did someone refer you? Please enter "
+            "their email or name here or leave this field blank: ")
+        if referrer:
+            mention_referrer(
+                user_name,
+                referrer,
+                coguard_url
+            )
     token = authenticate_to_server(new_config_object)
     if token is not None:
         store_config_object_in_auth_file(new_config_object)
