@@ -89,7 +89,8 @@ def mention_referrer(
     If the user was referred, we will capture this here.
 
     :param user_name: The name of the user who just signed up
-    :param referrer: the name of the referrer
+    :param referrer: The name of the referrer
+    :param coguard_url: The url of coguard to send the request to.
     """
     resp = requests.post(
         f"{coguard_url}/registration/referrer-capture",
