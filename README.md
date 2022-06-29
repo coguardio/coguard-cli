@@ -70,6 +70,10 @@ This step requires you to create a CoGuard account.
 After completion, this image check will return the findings of CoGuard
 on this particular image.
 
+Here is a screenshot of a sample scan:
+
+![](./screenshot.png)
+
 ## Current support and future plans
 
 The currently supported auto-discovery of configuration files inside
