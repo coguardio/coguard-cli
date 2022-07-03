@@ -3,6 +3,7 @@ The CoGuard CLI top level entrypoint where the entrypoint function is being defi
 """
 
 import os
+import sys
 import textwrap
 from typing import Dict
 
@@ -134,3 +135,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {image}"
               f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
         output_result_json_from_coguard(result)
+        min_fail_level = min(
+            entry["rule"]["severity"] for entry in result.get("failed", [])
+        )
+        if min_fail_level >= args.fail_level:
+            sys.exit(1)

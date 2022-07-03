@@ -6,6 +6,7 @@ interface
 import argparse
 import logging
 from coguard_cli import entrypoint
+from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL
 
 def set_logging_config(level):
     """
@@ -53,14 +54,14 @@ def main():
         '--coguard-api-url',
         type=str,
         dest='coguard_api_url',
-        default='https://portal.coguard.io/server',
+        default=DEFAULT_COGUARD_URL,
         help='The url of the coguard api to call',
     )
     parser.add_argument(
         '--coguard-auth-url',
         type=str,
         dest='coguard_auth_url',
-        default='https://portal.coguard.io',
+        default=DEFAULT_AUTH_URL,
         help='The url of the authentication server',
     )
     parser.add_argument(
@@ -70,6 +71,14 @@ def main():
         default='INFO',
         help=("The logging level of this call. Can be one of the following: "
               "DEBUG, INFO, WARNING, ERRROR, CRITICAL")
+    )
+    parser.add_argument(
+        '--minimum-fail-level',
+        type=int,
+        dest='fail_level',
+        default='1',
+        help=("The minimum severity level of failed checks for this program "
+              "to not give a non-zero exit code.")
     )
     subparsers = parser.add_subparsers(
         required=True,

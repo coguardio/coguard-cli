@@ -27,7 +27,7 @@ DEFAULT_CONFIG_PATH = str(Path.home().joinpath(
     'coguard_conf'
 ))
 
-COGUARD_REALM_TOKEN_URL = "/auth/realms/coguard/protocol/openid-connect/token"
+COGUARD_REALM_TOKEN_URL = "/realms/coguard/protocol/openid-connect/token"
 
 class DealEnum(Enum):
     """
@@ -181,12 +181,17 @@ def retrieve_configuration_object(path: Optional[str] = None) -> Optional[CoGuar
               the representation as a :class:`CoGuardCliConfig` instance. Otherwise,
               this function returns None.
     """
-    config_dict = get_auth_file(path)
-    username = config_dict.get("username", "")
-    password = config_dict.get("password", "")
-    coguard_url = config_dict.get("coguard-url", "") or None
-    auth_url = config_dict.get("coguard-auth-url", "") or None
-
+    if os.environ.get('COGUARD_USER_NAME') and os.environ.get('COGUARD_PASSWORD'):
+        username = os.environ.get('COGUARD_USER_NAME')
+        password = os.environ.get('COGUARD_PASSWORD')
+        coguard_url = None
+        auth_url = None
+    else:
+        config_dict = get_auth_file(path)
+        username = config_dict.get("username", "")
+        password = config_dict.get("password", "")
+        coguard_url = config_dict.get("coguard-url", "") or None
+        auth_url = config_dict.get("coguard-auth-url", "") or None
     if (not username) or (not password):
         return None
     if coguard_url:
@@ -205,8 +210,14 @@ def authenticate_to_server(config_object: Optional[CoGuardCliConfig]) -> Optiona
     """
     if config_object is None:
         return None
+    # The following check is just for the case if people use a different authentication
+    # server url and forget the auth in the subpath
+    if config_object.get_auth_url().endswith('/auth'):
+        complete_request_url = config_object.get_auth_url() + COGUARD_REALM_TOKEN_URL
+    else:
+        complete_request_url = f"{config_object.get_auth_url()}/auth{COGUARD_REALM_TOKEN_URL}"
     token_request = requests.post(
-        config_object.get_auth_url() + COGUARD_REALM_TOKEN_URL,
+        complete_request_url,
         data={
             'client_id': 'client-react-frontend',
             'username': config_object.get_username(),
