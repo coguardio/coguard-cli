@@ -5,7 +5,7 @@ for the coguard CLI
 
 import json
 
-DEFAULT_COGUARD_URL = "https://portal.coguard.io"
+DEFAULT_COGUARD_URL = "https://portal.coguard.io/server"
 DEFAULT_AUTH_URL = "https://portal.coguard.io/auth"
 
 class CoGuardCliConfig():
