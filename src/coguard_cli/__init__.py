@@ -28,9 +28,13 @@ def print_failed_check(color: str, entry: Dict):
         f'{entry["rule"]["name"]}{COLOR_TERMINATION}'
     )
     prefix = "Documentation: "
+    try:
+        terminal_size = os.get_terminal_size().columns
+    except OSError:
+        terminal_size = 80
     wrapper = textwrap.TextWrapper(
         initial_indent=prefix,
-        width=max(80, os.get_terminal_size().columns/2),
+        width=max(80, terminal_size/2),
         subsequent_indent=' '*len(prefix)
     )
     print(wrapper.fill(entry["rule"]["documentation"]))
