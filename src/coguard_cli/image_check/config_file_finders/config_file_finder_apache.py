@@ -31,11 +31,12 @@ class ConfigFileFinderApache(ConfigFileFinder):
             path_to_file_system,
             location_on_current_machine
         )
+        file_name = os.path.basename(location_on_current_machine)
         shutil.copy(
             to_copy,
             os.path.join(
                 temp_location,
-                os.path.basename(location_on_current_machine)
+                file_name
             )
         )
         manifest_entry = {
@@ -43,7 +44,7 @@ class ConfigFileFinderApache(ConfigFileFinder):
             "serviceName": "apache",
             "configFileList": [
                 {
-                    "fileName": "httpd.conf",
+                    "fileName": file_name,
                     "defaultFileName": "httpd.conf",
                     "subPath": ".",
                     "configFileType": "httpd"
@@ -87,11 +88,12 @@ class ConfigFileFinderApache(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_name = "httpd.conf"
+        standard_names = ["httpd.conf", "apache2.conf"]
         result_files = []
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
-            if standard_name in file_names:
-                result_files.append(os.path.join(dir_path, standard_name))
+            for standard_name in standard_names:
+                if standard_name in file_names:
+                    result_files.append(os.path.join(dir_path, standard_name))
         results = []
         for result_file in result_files:
             print(
