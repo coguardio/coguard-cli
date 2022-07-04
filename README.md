@@ -74,6 +74,13 @@ Here is a screenshot of a sample scan:
 
 ![](./screenshot.png)
 
+As you can see, CoGuard also analyzes the last Dockerfile used.
+
+The checks are gathered from different security benchmarks, such as CIS, but also
+directly from the user manuals of these software projects. At times, known issues for
+certain versions and security remediations specific to a certain version are being taken
+into account as well.
+
 ## Current support and future plans
 
 The currently supported auto-discovery of configuration files inside
