@@ -45,11 +45,59 @@ configurations for security and best practice.
 
 ## How to install it
 
-CoGuard CLI can either be pulled from this repository and used
-directly, or installed via pip:
+### Pre-Requisites
 
+You need to have `python3`, `pip3` and `docker` installed on your system.
+Here are the different operating systems and commands to be used for Python and Pip.
+
+<details>
+<summary>Ubuntu/Debian/Alpine</summary>
+
+```shell
+sudo apt install -y python3 python3-pip
 ```
-pip install coguard-cli
+</details>
+
+<details>
+<summary>CentOS/Fedora</summary>
+
+```shell
+sudo yum install -y python3 python3-pip
+```
+</details>
+
+<details>
+<summary>Arch Linux</summary>
+
+```shell
+sudo pacman -S python python-pip
+```
+</details>
+
+<details>
+<summary>Mac OS</summary>
+Assuming you are using [Homebrew](https://brew.sh), you have to run
+
+```shell
+brew install python3
+```
+</details>
+
+<details>
+<summary>Windows</summary>
+
+Download Python3 for Windows using [this link](https://www.python.org/downloads/windows/), and
+install it.
+
+</details>
+
+### Installation
+
+CoGuard CLI can either be pulled from this repository and used
+directly, or installed via `pip`:
+
+```shell
+pip3 install coguard-cli
 ```
 
 Keep in mind that it is a requirement to have Docker installed locally.
@@ -59,8 +107,15 @@ Keep in mind that it is a requirement to have Docker installed locally.
 After installing the CoGuard CLI, you can run a scan on your local images
 using
 
-```
+```shell
 coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
+```
+
+**Remark**: It may happen that the folder where `pip` is installing packages is not
+in included in `PATH`. We have observed it on some Ubuntu installations. In this case,
+you can find the binary usually under `$HOME/.local/bin/coguard`, i.e. you run
+```shell
+$HOME/.local/bin/coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
 ```
 
 If you omit the image ID parameter, CoGuard will scan all the images currently
