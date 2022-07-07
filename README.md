@@ -1,4 +1,7 @@
-![Coguard Logo](https://github.com/coguardio/coguard-cli/raw/master/logo.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://github.com/coguardio/coguard-cli/raw/master/logo.png">
+</picture>
 
 # CoGuard
 
@@ -51,10 +54,18 @@ You need to have `python3`, `pip3` and `docker` installed on your system.
 Here are the different operating systems and commands to be used for Python and Pip.
 
 <details>
-<summary>Ubuntu/Debian/Alpine</summary>
+<summary>Ubuntu/Debian</summary>
 
 ```shell
 sudo apt install -y python3 python3-pip
+```
+</details>
+
+<details>
+<summary>Alpine</summary>
+
+```shell
+apk add python3 py3-pip
 ```
 </details>
 
@@ -112,10 +123,15 @@ coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
 ```
 
 **Remark**: It may happen that the folder where `pip` is installing packages is not
-in included in `PATH`. We have observed it on some Ubuntu installations. In this case,
+in included in `PATH`. We have observed it on some Ubuntu installations, and on
+Homebrew Mac installs. For the Linux case, such as Ubuntu,
 you can find the binary usually under `$HOME/.local/bin/coguard`, i.e. you run
 ```shell
 $HOME/.local/bin/coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
+```
+For the Mac case, it is often installed under `~/Library/Python/<YOUR_PYTHON_VERSION>/bin/coguard`, i.e. you would run
+```shell
+~/Library/Python/<YOUR_PYTHON_VERSION>/bin/coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
 ```
 
 If you omit the image ID parameter, CoGuard will scan all the images currently
@@ -123,7 +139,8 @@ stored on your device.
 
 This step requires you to create a CoGuard account.
 After completion, this image check will return the findings of CoGuard
-on this particular image.
+on this particular image. You can view the latest historical scan results
+when logging in to [https://portal.coguard.io](https://portal.coguard.io).
 
 Here is a screenshot of a sample scan:
 
