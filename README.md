@@ -1,7 +1,5 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png">
-  <source media="(prefers-color-scheme: light)" srcset="https://github.com/coguardio/coguard-cli/raw/master/logo.png">
-</picture>
+![GitHub-Mark-Light](https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png#gh-dark-mode-only)
+![GitHub-Mark-Dark](https://github.com/coguardio/coguard-cli/raw/master/logo.png#gh-light-mode-only)
 
 # CoGuard
 
