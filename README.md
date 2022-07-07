@@ -1,5 +1,4 @@
-![CoGuard Logo Dark](https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png#gh-dark-mode-only)
-![CoGuard_Light_Logo](https://github.com/coguardio/coguard-cli/raw/master/logo.png#gh-light-mode-only)
+![CoGuard Logo Dark](https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png#gh-dark-mode-only)![CoGuard_Light_Logo](https://github.com/coguardio/coguard-cli/raw/master/logo.png#gh-light-mode-only)
 
 # CoGuard
 
