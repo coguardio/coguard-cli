@@ -159,7 +159,8 @@ def get_auth_file(path: Optional[str] = None) -> Dict:
     config_path = path if path is not None else DEFAULT_CONFIG_PATH
     if not os.path.exists(config_path):
         return {}
-    if not oct(os.stat(config_path).st_mode).endswith("0400"):
+    if not (oct(os.stat(config_path).st_mode).endswith("0400")
+            or oct(os.stat(config_path).st_mode).endswith("0444")):
         print(
             f"{COLOR_RED}The authentication file was supposed to be only readable "
             f"by the owner.{COLOR_TERMINATION}"
