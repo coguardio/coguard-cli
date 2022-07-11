@@ -6,7 +6,6 @@ interface
 import argparse
 import logging
 import pkg_resources
-import sys
 from coguard_cli import entrypoint
 from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL
 
@@ -105,12 +104,7 @@ def main():
         action='version',
         version=pkg_resources.get_distribution("coguard-cli").version
     )
-    # pylint: disable=bare-except
-    try:
-        args = parser.parse_args()
-    except:
-        parser.print_help()
-        sys.exit(1)
+    args = parser.parse_args()
     set_logging_config(args.logging_level)
     entrypoint(args)
 
