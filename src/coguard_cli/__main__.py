@@ -5,6 +5,8 @@ interface
 
 import argparse
 import logging
+import pkg_resources
+import sys
 from coguard_cli import entrypoint
 from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL
 
@@ -98,7 +100,17 @@ def main():
         help=("The name of the image. Defaults to empty string, "
               "which means all images are being scanned.")
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        '-v', '--version',
+        action='version',
+        version=pkg_resources.get_distribution("coguard-cli").version
+    )
+    # pylint: disable=bare-except
+    try:
+        args = parser.parse_args()
+    except:
+        parser.print_help()
+        sys.exit(1)
     set_logging_config(args.logging_level)
     entrypoint(args)
 
