@@ -105,6 +105,7 @@ def main():
         action='version',
         version=pkg_resources.get_distribution("coguard-cli").version
     )
+    # pylint: disable=bare-except
     try:
         args = parser.parse_args()
     except:
