@@ -137,7 +137,8 @@ def create_zip_to_upload_from_docker_image(
     )
     if collected_location is None:
         return None
-    (_, temp_zip) = tempfile.mkstemp(prefix="coguard_cli_zip_to_upload", suffix=".zip")
+    (file_handle, temp_zip) = tempfile.mkstemp(prefix="coguard_cli_zip_to_upload", suffix=".zip")
+    os.close(file_handle)
     with zipfile.ZipFile(temp_zip, "w") as upload_zip:
         for (dir_path, _, file_names) in os.walk(collected_location):
             for file_name in file_names:
