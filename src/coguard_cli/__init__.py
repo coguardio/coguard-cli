@@ -2,6 +2,7 @@
 The CoGuard CLI top level entrypoint where the entrypoint function is being defined
 """
 
+import json
 import os
 import sys
 import textwrap
@@ -138,7 +139,10 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         os.remove(zip_file)
         print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {image}"
               f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
-        output_result_json_from_coguard(result)
+        if args.output_format == 'formatted':
+            output_result_json_from_coguard(result)
+        else:
+            print(json.dumps(result))
         min_fail_level = min(
             entry["rule"]["severity"] for entry in result.get("failed", [])
         )

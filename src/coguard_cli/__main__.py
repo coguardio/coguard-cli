@@ -81,6 +81,14 @@ def main():
         help=("The minimum severity level of failed checks for this program "
               "to not give a non-zero exit code.")
     )
+    parser.add_argument(
+        '--output-format',
+        type=str,
+        dest='output_format',
+        default='formatted',
+        help=("The format of the output. It is either `formatted` (default), "
+              "i.e. human readable, or `json`.")
+    )
     subparsers = parser.add_subparsers(
         required=True,
         #Do not remove the next line. This is a workaround for https://bugs.python.org/issue29298
