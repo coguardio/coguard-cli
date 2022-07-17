@@ -6,6 +6,7 @@ repo will get here.
 import json
 import os
 import shutil
+import stat
 import tempfile
 from typing import Optional, Dict, Tuple
 import zipfile
@@ -146,6 +147,10 @@ def create_zip_to_upload_from_docker_image(
                 upload_zip.write(file_path, arcname=file_path[len(collected_location):])
     #cleanup
     shutil.rmtree(collected_location, ignore_errors=True)
+    for (dir_loc, _, _) in os.walk(file_system_store_location):
+        # This is to ensure that all folders can be written. We noticed some issues there
+        # before.
+        os.chmod(dir_loc, os.stat(dir_loc).st_mode | stat.S_IWRITE)
     shutil.rmtree(file_system_store_location, ignore_errors=True)
     docker_dao.rm_temporary_container_name(temp_image_name)
     return temp_zip
