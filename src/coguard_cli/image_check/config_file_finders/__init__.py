@@ -71,7 +71,14 @@ def adapt_match_to_actual_finds(
                                        included. This parameter accounts
                                        for that.
     """
-    truncated_match = re.search(f"[\\.{os.path.sep}]+(.*)", match).group(1)
+    logging.debug(
+        "Trying to adapt match %s, which is %s a directory in current path %s with ending %s",
+        match,
+        "not" if not is_dir else "",
+        current_path,
+        optional_file_ending_regex
+    )
+    truncated_match = re.search(f"[\\.{os.path.sep}]*(.*)", match).group(1)
     prefix = match.replace(truncated_match, "")
     to_search = \
         f".*({truncated_match.strip().replace('*', '.*')}.*{optional_file_ending_regex})$" \
