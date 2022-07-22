@@ -123,6 +123,15 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                  "os.walk",
                  new_callable=lambda: lambda x: [("/etc/foo/bar", [], ['foo.conf'])]), \
              unittest.mock.patch(
+                 "os.chmod",
+                 new_callable=lambda: lambda x, y: x), \
+             unittest.mock.patch(
+                 "os.stat",
+                 new_callable=lambda: lambda x: unittest.mock.Mock(st_mode=256)), \
+             unittest.mock.patch(
+                 "os.close",
+                 new_callable=lambda: lambda x: x), \
+             unittest.mock.patch(
                  "shutil.rmtree"
              ), \
              unittest.mock.patch(
