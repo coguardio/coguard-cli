@@ -136,7 +136,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             token,
             args.coguard_api_url
         )
-        os.remove(zip_file)
+        #os.remove(zip_file)
         print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {image}"
               f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
         if args.output_format == 'formatted':

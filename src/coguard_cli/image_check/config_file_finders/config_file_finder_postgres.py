@@ -1,5 +1,5 @@
 """
-This module contains the class to find Mysql configurations
+This module contains the class to find Postgres configurations
 inside a folder structure.
 """
 
