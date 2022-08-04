@@ -35,7 +35,7 @@ def print_failed_check(color: str, entry: Dict):
         terminal_size = 80
     wrapper = textwrap.TextWrapper(
         initial_indent=prefix,
-        width=max(80, terminal_size/2),
+        width=max(80, terminal_size//2),
         subsequent_indent=' '*len(prefix)
     )
     print(wrapper.fill(entry["rule"]["documentation"]))
