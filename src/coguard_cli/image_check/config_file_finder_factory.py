@@ -22,6 +22,8 @@ from coguard_cli.image_check.config_file_finders.config_file_finder_postgres \
     import ConfigFileFinderPostgres
 from coguard_cli.image_check.config_file_finders.config_file_finder_elasticsearch \
     import ConfigFileFinderElasticsearch
+from coguard_cli.image_check.config_file_finders.config_file_finder_tomcat \
+    import ConfigFileFinderTomcat
 from coguard_cli.image_check.config_file_finder_abc import ConfigFileFinder
 
 def config_file_finder_factory() -> Generator[ConfigFileFinder, None, None]:

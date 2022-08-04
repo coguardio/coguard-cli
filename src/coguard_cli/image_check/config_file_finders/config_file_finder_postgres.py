@@ -1,5 +1,5 @@
 """
-This module contains the class to find Mysql configurations
+This module contains the class to find Postgres configurations
 inside a folder structure.
 """
 
@@ -30,7 +30,15 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
         temporary location.
         """
         temp_location = tempfile.mkdtemp(prefix="coguard-cli-postgres")
-        shutil.copy(location_on_current_machine, temp_location)
+        to_copy = cff_util.get_path_behind_symlinks(
+            path_to_file_system,
+            location_on_current_machine
+        )
+        shutil.copy(to_copy,
+                    os.path.join(
+                        temp_location,
+                        os.path.basename(location_on_current_machine)
+                    ))
         manifest_entry = {
             "version": "1.0",
             "serviceName": "postgres",
@@ -82,7 +90,15 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
             pg_hba_on_current_machine = os.path.join(path_to_file_system, pg_hba_location[1:])
             if os.path.lexists(pg_hba_on_current_machine):
                 print(f"{COLOR_CYAN} Found configuration file {pg_hba_location}{COLOR_TERMINATION}")
-                shutil.copy(pg_hba_on_current_machine, temp_location_tuple[1])
+                to_copy = cff_util.get_path_behind_symlinks(
+                    path_to_file_system,
+                    pg_hba_on_current_machine
+                )
+                shutil.copy(to_copy,
+                            os.path.join(
+                                temp_location_tuple[1],
+                                os.path.basename(pg_hba_on_current_machine)
+                            ))
                 temp_location_tuple[0]["configFileList"].append(
                     {
                         "fileName": "pg_hba.conf",
