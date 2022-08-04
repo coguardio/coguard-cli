@@ -62,7 +62,7 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
             temp_location
         )
 
-    def _extract_web_xmls(
+    def _extract_web_xmls_and_context_xmls(
             self,
             path_to_file_system: str,
             path_to_potential_location: str,
@@ -71,21 +71,27 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
         Helper function to extract the multiple potential web xml files
         in the filesystem and include them into the temp_location.
         """
-        web_xml_paths = []
+        web_context_xml_paths = []
         for (dir_name, _, file_names) in os.walk(path_to_potential_location):
             if "web.xml" in file_names:
-                web_xml_paths.append(os.path.join(
+                web_context_xml_paths.append(os.path.join(
                     dir_name,
                     "web.xml"
                 ))
-        for web_xml_path in web_xml_paths:
-            path_within_temp_location = web_xml_path.replace(path_to_potential_location, '')
+            if "context.xml" in file_names:
+                web_context_xml_paths.append(os.path.join(
+                    dir_name,
+                    "context.xml"
+                ))
+        for web_context_xml_path in web_context_xml_paths:
+            path_within_temp_location = web_context_xml_path.replace(path_to_potential_location, '')
             subdir = os.path.dirname(path_within_temp_location)
+            file_name = os.path.basename(path_within_temp_location)
             if subdir.startswith(os.path.sep):
                 subdir = subdir[1:]
             to_copy = cff_util.get_path_behind_symlinks(
                 path_to_file_system,
-                web_xml_path
+                web_context_xml_path
             )
             new_location = os.path.join(temp_location_tuple[1], subdir)
             os.makedirs(new_location, exist_ok=True)
@@ -94,8 +100,8 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
                 new_location
             )
             temp_location_tuple[0]["configFileList"].append({
-                "fileName": "web.xml",
-                "defaultFileName": "web.xml",
+                "fileName": file_name,
+                "defaultFileName": file_name,
                 "subPath": subdir,
                 "configFileType": "xml"
             })
@@ -156,7 +162,7 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
             )
         if temp_location_tuple is None:
             return temp_location_tuple
-        self._extract_web_xmls(
+        self._extract_web_xmls_and_context_xmls(
             path_to_file_system,
             os.path.join(path_to_file_system, web_xml_root_path[1:]),
             temp_location_tuple
@@ -236,7 +242,7 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
                 )
             if temp_location_tuple is None:
                 return results
-            self._extract_web_xmls(
+            self._extract_web_xmls_and_context_xmls(
                 path_to_file_system,
                 os.path.join(path_to_file_system, web_xml_root_path[1:]),
                 temp_location_tuple

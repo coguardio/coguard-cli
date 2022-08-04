@@ -187,7 +187,7 @@ class TestConfigFileFinderTomcat(unittest.TestCase):
                 "configFileList": []
             }, "/tmp/foo")
             config_file_finder_tomcat = ConfigFileFinderTomcat()
-            config_file_finder_tomcat._extract_web_xmls(
+            config_file_finder_tomcat._extract_web_xmls_and_context_xmls(
                 "/",
                 "/foo",
                 temp_location_tuple
@@ -215,7 +215,7 @@ class TestConfigFileFinderTomcat(unittest.TestCase):
                 "configFileList": []
             }, "/tmp/foo")
             config_file_finder_tomcat = ConfigFileFinderTomcat()
-            config_file_finder_tomcat._extract_web_xmls(
+            config_file_finder_tomcat._extract_web_xmls_and_context_xmls(
                 "/",
                 "/foo",
                 temp_location_tuple
