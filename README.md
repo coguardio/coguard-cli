@@ -119,7 +119,19 @@ using
 coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
 ```
 
-**Remark**: It may happen that the folder where `pip` is installing packages is not
+**Remark 1**: Windows users need to be allowed to create and read symbolic links.
+This can be achieved using three options:
+1. Run Windows in Developer Mode (instructions on how to run Windows as a developer can
+   be found [here](https://docs.microsoft.com/en-us/gaming/game-bar/guide/developer-mode)).
+2. Run the CoGuard execution as admin temporarily. This can be achieved by executing the
+   PowerShell as administrative user. This Can be done as
+   ```shell
+   Start-Process powershell -Verb runAs
+   ```
+3. Run CoGuard on a Linux virtual machine, e.g. using the Windows subsystem for Linux.
+   Installation instructions can be found [here](https://docs.microsoft.com/en-us/windows/wsl/install).
+
+**Remark 2**: It may happen that the folder where `pip` is installing packages is not
 in included in `PATH`. We have observed it on some Ubuntu installations, and on
 Homebrew Mac installs. For the Linux case, such as Ubuntu,
 you can find the binary usually under `$HOME/.local/bin/coguard`, i.e. you run
