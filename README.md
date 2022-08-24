@@ -119,7 +119,19 @@ using
 coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
 ```
 
-**Remark 1**: Windows users need to be allowed to create and read symbolic links.
+**Remark 1**: It may happen that the folder where `pip` is installing packages is not
+in included in `PATH`. We have observed it on some Ubuntu installations, and on
+Homebrew Mac installs. For the Linux case, such as Ubuntu,
+you can find the binary usually under `$HOME/.local/bin/coguard`, i.e. you run
+```shell
+$HOME/.local/bin/coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
+```
+For the Mac case, it is often installed under `~/Library/Python/<YOUR_PYTHON_VERSION>/bin/coguard`, i.e. you would run
+```shell
+~/Library/Python/<YOUR_PYTHON_VERSION>/bin/coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
+```
+
+**Remark 2**: Windows users need to be allowed to create and read symbolic links.
 This can be achieved using three options:
 <details>
 <summary>Option 1</summary>
@@ -146,17 +158,6 @@ This can be achieved using three options:
    and installation steps described for Linux (dependent on the distribution you choose).
 </details>
 
-**Remark 2**: It may happen that the folder where `pip` is installing packages is not
-in included in `PATH`. We have observed it on some Ubuntu installations, and on
-Homebrew Mac installs. For the Linux case, such as Ubuntu,
-you can find the binary usually under `$HOME/.local/bin/coguard`, i.e. you run
-```shell
-$HOME/.local/bin/coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
-```
-For the Mac case, it is often installed under `~/Library/Python/<YOUR_PYTHON_VERSION>/bin/coguard`, i.e. you would run
-```shell
-~/Library/Python/<YOUR_PYTHON_VERSION>/bin/coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
-```
 
 If you omit the image ID parameter, CoGuard will scan all the images currently
 stored on your device.
