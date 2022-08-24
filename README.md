@@ -121,6 +121,8 @@ coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
 
 **Remark 1**: Windows users need to be allowed to create and read symbolic links.
 This can be achieved using three options:
+<details>
+<summary>Option 1</summary>
 1. Run the CoGuard execution as admin temporarily. This can be achieved by opening the
    PowerShell or command prompt as administrative user (right click on the icon),
    or by issuing the command
@@ -128,15 +130,21 @@ This can be achieved using three options:
    Start-Process powershell -Verb runAs
    ```
    inside an already open command/Powershell window.
+</details>
+<details>
+<summary>Option 2</summary>
 2. Run Windows in Developer Mode (instructions on how to run Windows as a developer can
    be found [here](https://docs.microsoft.com/en-us/gaming/game-bar/guide/developer-mode)).
+</details>
+<details>
+<summary>Option 3</summary>
 3. Run CoGuard on a Linux virtual machine, e.g. using the Windows subsystem for Linux.
    This is commonly installed with Docker Desktop for Windows. If you do not have it installed,
    then installation instructions can be found
    [here](https://docs.microsoft.com/en-us/windows/wsl/install).
    The installation steps for CoGuard using WSL are equivalent to the pre-requisites
    and installation steps described for Linux (dependent on the distribution you choose).
-
+</details>
 
 **Remark 2**: It may happen that the folder where `pip` is installing packages is not
 in included in `PATH`. We have observed it on some Ubuntu installations, and on
