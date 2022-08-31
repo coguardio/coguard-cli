@@ -27,7 +27,7 @@ class TestCommonFunctions(unittest.TestCase):
                     "severity": 5,
                     "documentation": "Let's not even talk about it"
                 }
-            })
+            }, {})
             self.assertIn("not even talk", new_stdout.getvalue())
 
     def print_output_result_json_from_coguard_test(self):
@@ -96,7 +96,7 @@ class TestCommonFunctions(unittest.TestCase):
         with unittest.mock.patch(
                 'sys.stdout',
                 new_callable=lambda: new_stdout):
-            output_result_json_from_coguard(result_json)
+            output_result_json_from_coguard(result_json, {})
             self.assertIn("1 High", new_stdout.getvalue())
             self.assertIn("1 Medium", new_stdout.getvalue())
             self.assertIn("4 Low", new_stdout.getvalue())

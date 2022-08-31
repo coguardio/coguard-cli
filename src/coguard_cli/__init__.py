@@ -17,16 +17,29 @@ from coguard_cli.api_connection import send_zip_file_for_scanning
 from coguard_cli.print_colors import COLOR_TERMINATION, \
     COLOR_RED, COLOR_GRAY, COLOR_CYAN, COLOR_YELLOW
 
-def print_failed_check(color: str, entry: Dict):
+def print_failed_check(color: str, entry: Dict, manifest_dict: Dict):
     """
     This is the function to print a failed check entry, given a color.
 
     :param color: The color to use. see e.g. :const:`COLOR_RED`
     :param entry: The entry as returned by the CoGuard API.
+    :param manifest_dict: The manifest dictionary containing information about the included
+                          configuration files
     """
+    services_dict = manifest_dict.get("machines", {}).get("container", {}).get("services", {})
+    reference = ""
+    if entry.get("service") in services_dict:
+        config_file_list_of_container = \
+            [
+                entry["fileName"]
+                for entry in services_dict.get(entry.get("service")).get("configFileList", [])
+            ]
+        if config_file_list_of_container:
+            reference = f" (affected files: {', '.join(config_file_list_of_container)})"
     print(
         f'{color} X Severity {entry["rule"]["severity"]}: '
         f'{entry["rule"]["name"]}{COLOR_TERMINATION}'
+        f'{reference}'
     )
     prefix = "Documentation: "
     try:
@@ -40,11 +53,13 @@ def print_failed_check(color: str, entry: Dict):
     )
     print(wrapper.fill(entry["rule"]["documentation"]))
 
-def output_result_json_from_coguard(result_json: Dict):
+def output_result_json_from_coguard(result_json: Dict, manifest_dict: Dict):
     """
     The function which outputs the result json in a pretty format to the screen.
 
     :param result_json: The output from the API call to CoGuard.
+    :param manifest_dict: The manifest dictionary containing information about the included
+                          configuration files
     """
     high_checks = [entry for entry in result_json.get("failed", []) \
                    if entry["rule"]["severity"] > 3]
@@ -59,11 +74,11 @@ def output_result_json_from_coguard(result_json: Dict):
           f"{COLOR_YELLOW}{len(medium_checks)} Medium{COLOR_TERMINATION}/"
           f"{COLOR_GRAY}{len(low_checks)} Low{COLOR_TERMINATION}")
     for entry in high_checks:
-        print_failed_check(COLOR_RED, entry)
+        print_failed_check(COLOR_RED, entry, manifest_dict)
     for entry in medium_checks:
-        print_failed_check(COLOR_YELLOW, entry)
+        print_failed_check(COLOR_YELLOW, entry, manifest_dict)
     for entry in low_checks:
-        print_failed_check(COLOR_GRAY, entry)
+        print_failed_check(COLOR_GRAY, entry, manifest_dict)
 
 def entrypoint(args):
     """
@@ -117,12 +132,12 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         images = docker_dao.extract_all_installed_docker_images()
     for image in images:
         print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
-        zip_file = create_zip_to_upload_from_docker_image(
+        zip_candidate = create_zip_to_upload_from_docker_image(
             auth_config.get_username(),
             image,
             DealEnum.ENTERPRISE
         )
-        if zip_file is None:
+        if zip_candidate is None:
             print(
                 f"{COLOR_YELLOW}We were unable to extract any known "
                 "configuration files from the given "
@@ -130,6 +145,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
                 f"to info@coguard.io{COLOR_TERMINATION}"
             )
             return
+        zip_file, manifest_dict = zip_candidate
         result = send_zip_file_for_scanning(
             zip_file,
             auth_config.get_username(),
@@ -140,7 +156,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {image}"
               f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
         if args.output_format == 'formatted':
-            output_result_json_from_coguard(result)
+            output_result_json_from_coguard(result, manifest_dict)
         else:
             print(json.dumps(result))
         min_fail_level = min(
