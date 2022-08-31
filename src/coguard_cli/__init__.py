@@ -58,6 +58,8 @@ def output_result_json_from_coguard(result_json: Dict):
           f"{COLOR_RED}{len(high_checks)} High{COLOR_TERMINATION}/"
           f"{COLOR_YELLOW}{len(medium_checks)} Medium{COLOR_TERMINATION}/"
           f"{COLOR_GRAY}{len(low_checks)} Low{COLOR_TERMINATION}")
+    print(f"{COLOR_CYAN}REMARK: DUPLICATE ENTRIES MAY APPEAR WHEN"
+          f" MULTIPLE FILES ARE FOUND {COLOR_TERMINATION}")
     for entry in high_checks:
         print_failed_check(COLOR_RED, entry)
     for entry in medium_checks:
