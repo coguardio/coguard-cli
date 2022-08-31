@@ -110,7 +110,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                  new_callable = lambda: lambda x: "/foo/bar"), \
              unittest.mock.patch(
                 "coguard_cli.image_check.find_configuration_files_and_collect",
-                 new_callable = lambda: lambda x, y, z, a: "/foo/bar/baz"), \
+                 new_callable = lambda: lambda x, y, z, a: ("/foo/bar/baz", {})), \
              unittest.mock.patch(
                 "tempfile.mkstemp",
                  new_callable = lambda: new_tempfile), \
@@ -137,7 +137,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              unittest.mock.patch(
                  "coguard_cli.image_check.docker_dao.rm_temporary_container_name"
              ):
-            result = image_check.create_zip_to_upload_from_docker_image(
+            result, _ = image_check.create_zip_to_upload_from_docker_image(
                 "foo",
                 "foo",
                 DealEnum.ENTERPRISE
@@ -199,7 +199,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              unittest.mock.patch(
                 ('coguard_cli.image_check.extract_docker_file_and_store'),
                  new_callable=lambda: lambda x: None):
-            result = image_check.find_configuration_files_and_collect(
+            result, _ = image_check.find_configuration_files_and_collect(
                 "image-name",
                 "foo",
                 "/tmp/foo",

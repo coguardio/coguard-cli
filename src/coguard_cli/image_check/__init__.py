@@ -51,7 +51,7 @@ def find_configuration_files_and_collect(
         image_name: str,
         customer_id: str,
         file_system_store_location: str,
-        docker_config: Dict) -> Optional[str]:
+        docker_config: Dict) -> Optional[Tuple[str, Dict]]:
     """
     This function consumes a file_system store location and the docker_config,
     and extracts services and files from that, and stores it at a common location
@@ -102,12 +102,12 @@ def find_configuration_files_and_collect(
     for _, tuple_list in collected_service_results_dicts.items():
         for (_, directory_to_delete) in tuple_list:
             shutil.rmtree(directory_to_delete, ignore_errors=True)
-    return final_location
+    return (final_location, manifest_blueprint)
 
 def create_zip_to_upload_from_docker_image(
         customer_id,
         image_name: str,
-        deal_identifier: DealEnum) -> Optional[str]:
+        deal_identifier: DealEnum) -> Optional[Tuple[str, Dict]]:
     """
     This function creates a zip file from a given image name which is
     ready to be uploaded to the CoGuard back-end. If something goes wrong,
@@ -130,14 +130,15 @@ def create_zip_to_upload_from_docker_image(
     file_system_store_location = docker_dao.store_image_file_system(temp_image_name)
     if file_system_store_location is None:
         return None
-    collected_location = find_configuration_files_and_collect(
+    collected_location_manifest_tuple = find_configuration_files_and_collect(
         image_name,
         customer_id,
         file_system_store_location,
         inspect_result
     )
-    if collected_location is None:
+    if collected_location_manifest_tuple is None:
         return None
+    collected_location, manifest_dict = collected_location_manifest_tuple
     (file_handle, temp_zip) = tempfile.mkstemp(prefix="coguard_cli_zip_to_upload", suffix=".zip")
     os.close(file_handle)
     with zipfile.ZipFile(temp_zip, "w") as upload_zip:
@@ -153,4 +154,4 @@ def create_zip_to_upload_from_docker_image(
         os.chmod(dir_loc, os.stat(dir_loc).st_mode | stat.S_IWRITE)
     shutil.rmtree(file_system_store_location, ignore_errors=True)
     docker_dao.rm_temporary_container_name(temp_image_name)
-    return temp_zip
+    return (temp_zip, manifest_dict)
