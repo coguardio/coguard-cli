@@ -132,12 +132,12 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         images = docker_dao.extract_all_installed_docker_images()
     for image in images:
         print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
-        zip_file, manifest_dict = create_zip_to_upload_from_docker_image(
+        zip_candidate = create_zip_to_upload_from_docker_image(
             auth_config.get_username(),
             image,
             DealEnum.ENTERPRISE
         )
-        if zip_file is None:
+        if zip_candidate is None:
             print(
                 f"{COLOR_YELLOW}We were unable to extract any known "
                 "configuration files from the given "
@@ -145,6 +145,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
                 f"to info@coguard.io{COLOR_TERMINATION}"
             )
             return
+        zip_file, manifest_dict = zip_candidate
         result = send_zip_file_for_scanning(
             zip_file,
             auth_config.get_username(),
