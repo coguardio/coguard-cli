@@ -137,7 +137,6 @@ class ConfigFileFinderOpenTelemetryCollector(ConfigFileFinder):
             "receivers",
             "processors",
             "exporters",
-            "extensions",
             "service"
         ]
         results = []
