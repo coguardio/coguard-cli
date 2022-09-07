@@ -182,7 +182,20 @@ into account as well.
 
 The currently supported auto-discovery of configuration files inside
 Docker containers is limited to the finders
-[in this folder](https://github.com/coguardio/coguard-cli/tree/master/src/coguard_cli/image_check/config_file_finders). This list
+[in this folder](https://github.com/coguardio/coguard-cli/tree/master/src/coguard_cli/image_check/config_file_finders).
+The list includes, among others,
+
+- Apache Kafka
+- ElasticSearch
+- Apache Tomcat
+- Kerberos
+- NGINX
+- Apache WebServer
+- MongoDB
+- PostgreSQL
+- MySQL
+
+This list
 will expand in the future. In addition, we are scanning the
 Dockerfile used to create the images, and will add some Linux
 configuration files in the near future.
