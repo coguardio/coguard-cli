@@ -135,7 +135,6 @@ class ConfigFileFinderOpenTelemetryCollector(ConfigFileFinder):
         result_files = []
         keys_to_look_for = [
             "receivers",
-            "processors",
             "exporters",
             "service"
         ]
