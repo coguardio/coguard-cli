@@ -186,14 +186,15 @@ Docker containers is limited to the finders
 The list includes, among others,
 
 - Apache Kafka
-- ElasticSearch
 - Apache Tomcat
-- Kerberos
-- NGINX
 - Apache WebServer
+- ElasticSearch
+- Kerberos
 - MongoDB
-- PostgreSQL
 - MySQL
+- NGINX
+- OpenTelemetry Collector
+- PostgreSQL
 
 This list
 will expand in the future. In addition, we are scanning the
