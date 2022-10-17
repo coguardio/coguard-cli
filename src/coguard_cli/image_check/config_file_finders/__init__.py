@@ -161,7 +161,7 @@ def copy_and_populate(
                         for elem in entry.get("aliasList", [])
                 ]:
                     continue
-                print(f"{COLOR_CYAN}Found included file {alias_entry}.")
+                print(f"{COLOR_CYAN}Found included file {alias_entry}.{COLOR_TERMINATION}")
                 logging.debug("match %s against %s",
                               realpath_match,
                               abs_path_file)
