@@ -145,7 +145,10 @@ def copy_and_populate(
         for file_name in file_names:
             abs_path_file = os.path.abspath(os.path.join(dir_path, file_name))
             match_regex = realpath_match.strip().replace("*", ".*") + "$" if not is_dir \
-                else realpath_match.strip() + f"{optional_file_ending_regex}$"
+                else realpath_match.strip() + f".*{optional_file_ending_regex}$"
+            logging.debug("Checking if %s matches %s.",
+                          abs_path_file,
+                          match_regex)
             if re.match(match_regex, abs_path_file):
                 alias_entry = adapt_match_to_actual_finds(
                     match,
