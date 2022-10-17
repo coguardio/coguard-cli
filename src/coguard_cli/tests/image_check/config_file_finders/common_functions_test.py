@@ -43,6 +43,45 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
             )
             self.assertEqual(len(current_manifest["complimentaryFileList"]), 1)
 
+    def test_copy_and_populate_with_includedir(self):
+        """
+        Testing the private function for correct functionality.
+        """
+        with unittest.mock.patch(
+                "os.walk",
+                new_callable=lambda: lambda location: [
+                    ("/include_foo",
+                     [],
+                     [
+                         "nginx.conf",
+                         "foo.conf"
+                     ])]), \
+             unittest.mock.patch(
+                 'shutil.copy'
+             ), \
+             unittest.mock.patch(
+                 ("coguard_cli.image_check.config_file_finders."
+                  "extract_include_directives")
+             ), \
+             unittest.mock.patch(
+                 "tempfile.mkstemp",
+                 new_callable=lambda: lambda dir: ("foo", "bar")
+             ):
+            current_manifest = {'complimentaryFileList': []}
+            cff_util.copy_and_populate(
+                "/",
+                "/",
+                "include_foo",
+                True,
+                "/tmp",
+                current_manifest,
+                "nginx",
+                "include_foo",
+                "include_foo",
+                "\\.conf"
+            )
+            self.assertEqual(len(current_manifest["complimentaryFileList"]), 2)
+
     def test_extract_include_directives(self):
         """
         Testing the extraction of include directives.
