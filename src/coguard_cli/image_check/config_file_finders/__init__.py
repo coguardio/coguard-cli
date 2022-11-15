@@ -106,7 +106,8 @@ def copy_and_populate(
         config_file_type,
         include_match_single_re,
         include_match_dir_re,
-        optional_file_ending_regex: str = "") -> None:
+        optional_file_ending_regex: str = "",
+        default_file_name: str = "") -> None:
     """
     Helper function for :_extract_include_directives:
     It consumes a starting_point, i.e. the path the match
@@ -156,8 +157,9 @@ def copy_and_populate(
                     abs_path_file,
                     optional_file_ending_regex
                 )
+                list_to_add = "complimentaryFileList" if default_file_name else "configFileList"
                 if alias_entry in [
-                        elem for entry in current_manifest.get("complimentaryFileList", [])
+                        elem for entry in current_manifest.get(list_to_add, [])
                         for elem in entry.get("aliasList", [])
                 ]:
                     continue
@@ -174,12 +176,15 @@ def copy_and_populate(
                     to_copy,
                     tmp_file_location
                 )
-                current_manifest['complimentaryFileList'].append({
+                to_append = {
                     "fileName": os.path.basename(tmp_file_location),
                     "subPath": ".",
                     "configFileType": config_file_type,
                     "aliasList": [alias_entry]
-                })
+                }
+                if default_file_name:
+                    to_append["defaultFileName"] = default_file_name
+                current_manifest[list_to_add].append(to_append)
                 extract_include_directives(
                     path_to_file_system,
                     abs_path_file,
@@ -199,7 +204,8 @@ def extract_include_directives(
         config_file_type: str,
         include_match_single_re: str,
         include_match_dir_re: str = "",
-        optional_file_ending_regex: str = ""
+        optional_file_ending_regex: str = "",
+        default_file_name: str = ""
 ) -> None:
     """
     The helper function for :check_for_config_files_in_standard_location:.
@@ -258,7 +264,8 @@ def extract_include_directives(
                     config_file_type,
                     include_match_single_re,
                     include_match_dir_re,
-                    optional_file_ending_regex
+                    optional_file_ending_regex,
+                    default_file_name
                 )
         if include_match_dir:
             logging.debug("Found match: %s", include_match_dir)
@@ -275,7 +282,8 @@ def extract_include_directives(
                     config_file_type,
                     include_match_single_re,
                     include_match_dir_re,
-                    optional_file_ending_regex
+                    optional_file_ending_regex,
+                    default_file_name
                 )
 
 def common_call_command_in_container(

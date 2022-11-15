@@ -110,7 +110,10 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
               f'Please install Docker to proceed{COLOR_TERMINATION}')
         return
     print(f'{docker_version} detected.')
-    auth_config = retrieve_configuration_object()
+    auth_config = retrieve_configuration_object(
+        arg_coguard_url = args.coguard_api_url,
+        arg_auth_url = args.coguard_auth_url
+    )
     if auth_config is None:
         print(f'{COLOR_YELLOW}Could not find authentication file. You can sign up right now '
               f'for your free account and continue with the requested scan.{COLOR_TERMINATION}')

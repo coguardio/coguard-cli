@@ -79,41 +79,50 @@ class TestAuthClass(unittest.TestCase):
         Tests that the return value of retrieve_configuration_object is the empty dictionary
         if the path does not exist.
         """
-        res = coguard_cli.auth.retrieve_configuration_object(
-            os.path.join(
-                self.path_to_resources, "I_WILL_NEVER_EXIST.json"
+        with unittest.mock.patch(
+                'os.environ.get',
+                new_callable=lambda: lambda x: None):
+            res = coguard_cli.auth.retrieve_configuration_object(
+                os.path.join(
+                    self.path_to_resources, "I_WILL_NEVER_EXIST.json"
+                )
             )
-        )
-        self.assertIsNone(res)
+            self.assertIsNone(res)
 
     def test_retrieve_configuration_object_existing_path(self):
         """
         Tests that the return value of retrieve_configuration_object represents the contents
         of the file if the path does exist.
         """
-        res = coguard_cli.auth.retrieve_configuration_object(
-            os.path.join(
-                self.path_to_resources,
-                "sample_config"
+        with unittest.mock.patch(
+                'os.environ.get',
+                new_callable=lambda: lambda x: None):
+            res = coguard_cli.auth.retrieve_configuration_object(
+                os.path.join(
+                    self.path_to_resources,
+                    "sample_config"
+                )
             )
-        )
-        self.assertIsNotNone(res)
-        self.assertEqual(res.get_username(), "email@email.com")
-        self.assertEqual(res.get_password(), "df28fd0e-58b0-416a-b659-cfeafdbef74a")
-        self.assertEqual(res.get_coguard_url(), "https://portal.coguard.io")
+            self.assertIsNotNone(res)
+            self.assertEqual(res.get_username(), "email@email.com")
+            self.assertEqual(res.get_password(), "df28fd0e-58b0-416a-b659-cfeafdbef74a")
+            self.assertEqual(res.get_coguard_url(), "https://portal.coguard.io")
 
     def test_get_config_object_without_json(self):
         """
         Tests that the return value of retrieve_configuration_object is the empty dictionary
         if the contents of the file are not json
         """
-        res = coguard_cli.auth.retrieve_configuration_object(
-            os.path.join(
-                self.path_to_resources,
-                "sample_config_not_json"
+        with unittest.mock.patch(
+                'os.environ.get',
+                new_callable=lambda: lambda x: None):
+            res = coguard_cli.auth.retrieve_configuration_object(
+                os.path.join(
+                    self.path_to_resources,
+                    "sample_config_not_json"
+                )
             )
-        )
-        self.assertIsNone(res)
+            self.assertIsNone(res)
 
     def test_authenticate_to_server_empty_config_object(self):
         """

@@ -26,6 +26,8 @@ from coguard_cli.image_check.config_file_finders.config_file_finder_tomcat \
     import ConfigFileFinderTomcat
 from coguard_cli.image_check.config_file_finders.config_file_finder_open_telemetry_collector \
     import ConfigFileFinderOpenTelemetryCollector
+from coguard_cli.image_check.config_file_finders.config_file_finder_redis \
+    import ConfigFileFinderRedis
 from coguard_cli.image_check.config_file_finder_abc import ConfigFileFinder
 
 def config_file_finder_factory() -> Generator[ConfigFileFinder, None, None]:
