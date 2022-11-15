@@ -157,7 +157,7 @@ def copy_and_populate(
                     abs_path_file,
                     optional_file_ending_regex
                 )
-                list_to_add = "complimentaryFileList" if default_file_name else "configFileList"
+                list_to_add = "complimentaryFileList" if not default_file_name else "configFileList"
                 if alias_entry in [
                         elem for entry in current_manifest.get(list_to_add, [])
                         for elem in entry.get("aliasList", [])
