@@ -56,6 +56,37 @@ class ConfigFileFinderMongodb(ConfigFileFinder):
             temp_location
         )
 
+    def create_empty_file_for_default(self) -> Tuple[Dict, str]:
+        """
+        Helper function to create an empty file to check for default values.
+        """
+        temp_location = tempfile.mkdtemp(prefix="coguard-cli-mongodb")
+        with open(
+                os.path.join(
+                    temp_location,
+                    "mongod.conf"
+                ),
+                'w',
+                encoding='utf-8') as empty_file:
+            empty_file.write("# Empty config file to represent defaults")
+        manifest_entry = {
+            "version": "1.0",
+            "serviceName": "mongodb",
+            "configFileList": [
+                {
+                    "fileName": "mongod.conf",
+                    "defaultFileName": "mongod.conf",
+                    "subPath": ".",
+                    "configFileType": "yaml"
+                }
+            ],
+            "complimentaryFileList": []
+        }
+        return (
+            manifest_entry,
+            temp_location
+        )
+
     def check_for_config_files_in_standard_location(
             self, path_to_file_system: str
     ) -> Optional[Tuple[Dict, str]]:
@@ -120,6 +151,16 @@ class ConfigFileFinderMongodb(ConfigFileFinder):
                 path_to_file_system,
                 os.path.join(path_to_file_system, result_file)
             ))
+        empty_call_result = cff_util.common_call_command_in_container(
+            docker_config,
+            r"(mongod)"
+        )
+        if empty_call_result:
+            print(
+                f"{COLOR_CYAN}Found empty mongod call with no config parameter."
+                f" Assuming default values. {COLOR_TERMINATION}"
+            )
+            results.append(self.create_empty_file_for_default())
         return results
 
     def get_service_name(self) -> str:

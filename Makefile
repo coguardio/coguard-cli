@@ -5,6 +5,8 @@ test:
 # And now to the actual tests
 	cd src && nosetests --exe --with-coverage --cover-inclusive --cover-package=coguard_cli -v
 	cd src && coverage html -i --directory=coverage_output
+# Consistency test with older versions
+	./tests/test_reports_remain_the_same.sh
 
 lint:
 	find src -type f -name "*.py" -not -path "*/tests/*" | xargs pylint --rcfile="./.pylint.rc"

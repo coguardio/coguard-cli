@@ -177,7 +177,11 @@ def get_auth_file(path: Optional[str] = None) -> Dict:
         )
     return config_json if isinstance(config_json, dict) else {}
 
-def retrieve_configuration_object(path: Optional[str] = None) -> Optional[CoGuardCliConfig]:
+def retrieve_configuration_object(
+        path: Optional[str] = None,
+        arg_coguard_url: Optional[str] = None,
+        arg_auth_url: Optional[str] = None
+) -> Optional[CoGuardCliConfig]:
     """
     This function returns a configuration object, if it can be
     retrieved, or None.
@@ -190,14 +194,14 @@ def retrieve_configuration_object(path: Optional[str] = None) -> Optional[CoGuar
     if os.environ.get('COGUARD_USER_NAME') and os.environ.get('COGUARD_PASSWORD'):
         username = os.environ.get('COGUARD_USER_NAME')
         password = os.environ.get('COGUARD_PASSWORD')
-        coguard_url = None
-        auth_url = None
+        coguard_url = arg_coguard_url
+        auth_url = arg_auth_url
     else:
         config_dict = get_auth_file(path)
         username = config_dict.get("username", "")
         password = config_dict.get("password", "")
-        coguard_url = config_dict.get("coguard-url", "") or None
-        auth_url = config_dict.get("coguard-auth-url", "") or None
+        coguard_url = config_dict.get("coguard-url", "") or arg_coguard_url
+        auth_url = config_dict.get("coguard-auth-url", "") or arg_auth_url
     if (not username) or (not password):
         return None
     if coguard_url:
