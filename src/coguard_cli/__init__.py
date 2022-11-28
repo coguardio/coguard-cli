@@ -162,8 +162,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             output_result_json_from_coguard(result, manifest_dict)
         else:
             print(json.dumps(result))
-        min_fail_level = min(
+        max_fail_severity = max(
             entry["rule"]["severity"] for entry in result.get("failed", [])
         )
-        if min_fail_level >= args.fail_level:
+        if max_fail_severity >= args.fail_level:
             sys.exit(1)
