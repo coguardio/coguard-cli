@@ -7,13 +7,13 @@ import os
 import shutil
 import tempfile
 from typing import Dict, List, Optional, Tuple
-from coguard_cli.image_check.config_file_finder_abc import ConfigFileFinder
-import coguard_cli.image_check.config_file_finders as cff_util
+from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
+import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
-class ConfigFileFinderElasticsearch(ConfigFileFinder):
+class ConfigFileFinderKafka(ConfigFileFinder):
     """
-    The class to find elasticsearch configuration files within a file system.
+    The class to find kafka configuration files within a file system.
     """
 
     def _create_temp_location_and_mainfest_entry(
@@ -23,10 +23,10 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
         """
         Common helper function which creates a temporary folder location for the
         configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for an elasticsearch service and the path to the
+        a tuple containing a manifest for an kafka service and the path to the
         temporary location.
         """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-elasticsearch")
+        temp_location = tempfile.mkdtemp(prefix="coguard-cli-kafka")
         to_copy = cff_util.get_path_behind_symlinks(
             path_to_file_system,
             location_on_current_machine
@@ -40,13 +40,13 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
         )
         manifest_entry = {
             "version": "1.0",
-            "serviceName": "elasticsearch",
+            "serviceName": "kafka",
             "configFileList": [
                 {
-                    "fileName": "elasticsearch.yml",
-                    "defaultFileName": "elasticsearch.yml",
+                    "fileName": "server.properties",
+                    "defaultFileName": "server.properties",
                     "subPath": ".",
-                    "configFileType": "yaml"
+                    "configFileType": "properties"
                 }
             ],
             "complimentaryFileList": []
@@ -62,7 +62,7 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_location ='/etc/elasticsearch/elasticsearch.yml'
+        standard_location ='/etc/kafka/server.properties'
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
@@ -79,7 +79,7 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_name = "elasticsearch.yml"
+        standard_name = "server.properties"
         result_files = []
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
             if standard_name in file_names:
@@ -107,7 +107,7 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
         """
         result_files = cff_util.common_call_command_in_container(
             docker_config,
-            r"elasticsearch-server-start.sh\s+([^\s]+)"
+            r"kafka-server-start.sh\s+([^\s]+)"
         )
         results = []
         for result_file in result_files:
@@ -126,6 +126,6 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        return 'elasticsearch'
+        return 'kafka'
 
-ConfigFileFinder.register(ConfigFileFinderElasticsearch)
+ConfigFileFinder.register(ConfigFileFinderKafka)

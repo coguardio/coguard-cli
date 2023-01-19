@@ -4,7 +4,7 @@ Tests for the functions in the ConfigFileFinderOpenTelemetryCollector class
 
 import unittest
 import unittest.mock
-from coguard_cli.image_check.config_file_finders.config_file_finder_open_telemetry_collector \
+from coguard_cli.discovery.config_file_finders.config_file_finder_open_telemetry_collector \
     import ConfigFileFinderOpenTelemetryCollector
 
 class TestConfigFileFinderOpenTelemetryCollector(unittest.TestCase):
@@ -47,7 +47,7 @@ class TestConfigFileFinderOpenTelemetryCollector(unittest.TestCase):
             unittest.mock.patch(
                 "shutil.copy"
             ), unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders.config_file_"
+                 ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_open_telemetry_collector.ConfigFileFinderOpenTelemetryCollector."
                   "_create_temp_location_and_mainfest_entry"),
                  new_callable=lambda: lambda a, b, c, d=None, e=None: ({
@@ -94,7 +94,7 @@ class TestConfigFileFinderOpenTelemetryCollector(unittest.TestCase):
                     read_data="receiversprocessorsexportersextensionsservice")
                 ), \
                 unittest.mock.patch(
-                    ("coguard_cli.image_check.config_file_finders.config_file_"
+                    ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_open_telemetry_collector.ConfigFileFinderOpenTelemetryCollector."
                      "_create_temp_location_and_mainfest_entry"),
                     new_callable=lambda: lambda a, b, c, d=None, e=None: (
@@ -123,7 +123,7 @@ class TestConfigFileFinderOpenTelemetryCollector(unittest.TestCase):
                  'shutil.copy'
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
              ):
             config_file_finder_otel = ConfigFileFinderOpenTelemetryCollector()

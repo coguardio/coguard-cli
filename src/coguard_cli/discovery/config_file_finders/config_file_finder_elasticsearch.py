@@ -1,5 +1,5 @@
 """
-This module contains the class to find KERBEROS configurations
+This module contains the class to find KAFKA configurations
 inside a folder structure.
 """
 
@@ -7,13 +7,13 @@ import os
 import shutil
 import tempfile
 from typing import Dict, List, Optional, Tuple
-from coguard_cli.image_check.config_file_finder_abc import ConfigFileFinder
-import coguard_cli.image_check.config_file_finders as cff_util
+from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
+import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
-class ConfigFileFinderKerberos(ConfigFileFinder):
+class ConfigFileFinderElasticsearch(ConfigFileFinder):
     """
-    The class to find kerberos configuration files within a file system.
+    The class to find elasticsearch configuration files within a file system.
     """
 
     def _create_temp_location_and_mainfest_entry(
@@ -23,10 +23,10 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
         """
         Common helper function which creates a temporary folder location for the
         configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for an kerberos service and the path to the
+        a tuple containing a manifest for an elasticsearch service and the path to the
         temporary location.
         """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-kerberos")
+        temp_location = tempfile.mkdtemp(prefix="coguard-cli-elasticsearch")
         to_copy = cff_util.get_path_behind_symlinks(
             path_to_file_system,
             location_on_current_machine
@@ -40,26 +40,17 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
         )
         manifest_entry = {
             "version": "1.0",
-            "serviceName": "kerberos",
+            "serviceName": "elasticsearch",
             "configFileList": [
                 {
-                    "fileName": "krb5.conf",
-                    "defaultFileName": "krb5.conf",
+                    "fileName": "elasticsearch.yml",
+                    "defaultFileName": "elasticsearch.yml",
                     "subPath": ".",
-                    "configFileType": "krb"
+                    "configFileType": "yaml"
                 }
             ],
             "complimentaryFileList": []
         }
-        cff_util.extract_include_directives(
-            path_to_file_system,
-            location_on_current_machine,
-            temp_location,
-            manifest_entry,
-            "krb5",
-            r'include\s+"?(.*?)"?\s*;',
-            r'includedir\s+"?(.*?)"?\s*;'
-        )
         return (
             manifest_entry,
             temp_location
@@ -71,7 +62,7 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_location = '/etc/krb5.conf'
+        standard_location ='/etc/elasticsearch/elasticsearch.yml'
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
@@ -88,7 +79,7 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_name = "krb5.conf"
+        standard_name = "elasticsearch.yml"
         result_files = []
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
             if standard_name in file_names:
@@ -116,7 +107,7 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
         """
         result_files = cff_util.common_call_command_in_container(
             docker_config,
-            r"kadmin.*\s+([^\s]+)"
+            r"elasticsearch-server-start.sh\s+([^\s]+)"
         )
         results = []
         for result_file in result_files:
@@ -135,6 +126,6 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        return 'kerberos'
+        return 'elasticsearch'
 
-ConfigFileFinder.register(ConfigFileFinderKerberos)
+ConfigFileFinder.register(ConfigFileFinderElasticsearch)

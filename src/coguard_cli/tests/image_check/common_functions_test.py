@@ -7,7 +7,7 @@ import unittest
 import unittest.mock
 from coguard_cli import image_check
 from coguard_cli.auth import DealEnum
-from coguard_cli.image_check.config_file_finders.config_file_finder_nginx \
+from coguard_cli.discovery.config_file_finders.config_file_finder_nginx \
     import ConfigFileFinderNginx
 
 class TestCommonImageCheckingFunc(unittest.TestCase):
@@ -151,10 +151,10 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         available finder classes. Tests the case where none was found
         """
         with unittest.mock.patch(
-                'coguard_cli.image_check.config_file_finder_factory.config_file_finder_factory',
+                'coguard_cli.discovery.config_file_finder_factory.config_file_finder_factory',
                 new_callable=lambda: lambda: [ConfigFileFinderNginx()]), \
              unittest.mock.patch(
-                ('coguard_cli.image_check.config_file_finders.config_file_finder_nginx.'
+                ('coguard_cli.discovery.config_file_finders.config_file_finder_nginx.'
                  'ConfigFileFinderNginx.find_configuration_files'),
                  new_callable=lambda: lambda x, y, z: []), \
              unittest.mock.patch(
@@ -173,10 +173,10 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         available finder classes.
         """
         with unittest.mock.patch(
-                'coguard_cli.image_check.config_file_finder_factory.config_file_finder_factory',
+                'coguard_cli.discovery.config_file_finder_factory.config_file_finder_factory',
                 new_callable=lambda: lambda: [ConfigFileFinderNginx()]), \
              unittest.mock.patch(
-                ('coguard_cli.image_check.config_file_finders.config_file_finder_nginx.'
+                ('coguard_cli.discovery.config_file_finders.config_file_finder_nginx.'
                  'ConfigFileFinderNginx.find_configuration_files'),
                  new_callable=lambda: lambda x, y, z: [({"foo": "bar"}, "/etc/foo/bar")]), \
              unittest.mock.patch(

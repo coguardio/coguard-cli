@@ -13,7 +13,7 @@ import zipfile
 import urllib.parse
 from coguard_cli.auth import DealEnum
 from coguard_cli.image_check import docker_dao
-import coguard_cli.image_check.config_file_finder_factory as factory
+import coguard_cli.discovery.config_file_finder_factory as factory
 from coguard_cli.print_colors import COLOR_RED, COLOR_TERMINATION
 
 def extract_docker_file_and_store(image_name: str) -> Optional[Tuple[Dict, str]]:

@@ -4,7 +4,7 @@ Tests for the functions in the ConfigFileFinderElasticsearch class
 
 import unittest
 import unittest.mock
-from coguard_cli.image_check.config_file_finders.config_file_finder_elasticsearch \
+from coguard_cli.discovery.config_file_finders.config_file_finder_elasticsearch \
     import ConfigFileFinderElasticsearch
 
 class TestConfigFileFinderElasticsearch(unittest.TestCase):
@@ -42,7 +42,7 @@ class TestConfigFileFinderElasticsearch(unittest.TestCase):
                 "os.path.lexists",
                 new_callable=lambda: lambda location: True), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders.config_file_"
+                 ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_elasticsearch.ConfigFileFinderElasticsearch._create_temp_"
                   "location_and_mainfest_entry"),
                  new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
@@ -78,7 +78,7 @@ class TestConfigFileFinderElasticsearch(unittest.TestCase):
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["elasticsearch.yml"])]), \
                 unittest.mock.patch(
-                    ("coguard_cli.image_check.config_file_finders.config_file_"
+                    ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_elasticsearch.ConfigFileFinderElasticsearch._create_temp_"
                      "location_and_mainfest_entry"),
                     new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
@@ -104,7 +104,7 @@ class TestConfigFileFinderElasticsearch(unittest.TestCase):
                  'shutil.copy'
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
              ):
             config_file_finder_elasticsearch = ConfigFileFinderElasticsearch()
@@ -145,7 +145,7 @@ class TestConfigFileFinderElasticsearch(unittest.TestCase):
                  new_callable = lambda: lambda x: True
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders.config_file_"
+                 ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_elasticsearch.ConfigFileFinderElasticsearch._create_temp_"
                   "location_and_mainfest_entry"),
                  new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")

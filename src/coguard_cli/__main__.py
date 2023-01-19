@@ -6,7 +6,7 @@ interface
 import argparse
 import logging
 import pkg_resources
-from coguard_cli import entrypoint
+from coguard_cli import entrypoint, SubParserNames
 from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL
 
 def set_logging_config(level):
@@ -95,8 +95,8 @@ def main():
         dest='subparsers_location'
     )
     docker_image_parser = subparsers.add_parser(
-        'docker-image',
-        help="The sub-command, which is currently limited to `docker-image`"
+        SubParserNames.DOCKER_IMAGE.value,
+        help="The sub-command to scan a Docker image"
     )
     docker_image_parser.add_argument(
         'image_name',
@@ -106,6 +106,18 @@ def main():
         nargs='?',
         help=("The name of the image. Defaults to empty string, "
               "which means all images are being scanned.")
+    )
+    folder_scanning_parser = subparsers.add_parser(
+        SubParserNames.FOLDER_SCAN.value,
+        help="The sub-command to find configuration files within a folder and scan them."
+    )
+    folder_scanning_parser.add_argument(
+        'folder_name',
+        metavar="folder_name",
+        type=str,
+        default=".",
+        nargs='?',
+        help=("The path to the folder. Defaults to the current working directory.")
     )
     parser.add_argument(
         '-v', '--version',

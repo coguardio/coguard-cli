@@ -4,7 +4,7 @@ Tests for the functions in the ConfigFileFinderMongodb class
 
 import unittest
 import unittest.mock
-from coguard_cli.image_check.config_file_finders.config_file_finder_mongodb \
+from coguard_cli.discovery.config_file_finders.config_file_finder_mongodb \
     import ConfigFileFinderMongodb
 
 class TestConfigFileFinderMongodb(unittest.TestCase):
@@ -42,7 +42,7 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
                 "os.path.lexists",
                 new_callable=lambda: lambda location: True), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders.config_file_"
+                 ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_mongodb.ConfigFileFinderMongodb._create_temp_"
                   "location_and_mainfest_entry"),
                  new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
@@ -78,7 +78,7 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["mongod.conf"])]), \
                 unittest.mock.patch(
-                    ("coguard_cli.image_check.config_file_finders.config_file_"
+                    ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_mongodb.ConfigFileFinderMongodb._create_temp_"
                      "location_and_mainfest_entry"),
                     new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
@@ -104,7 +104,7 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
                  'shutil.copy'
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
              ):
             config_file_finder_mongodb = ConfigFileFinderMongodb()
@@ -144,7 +144,7 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
                  new_callable = lambda: lambda x: True
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders.config_file_"
+                 ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_mongodb.ConfigFileFinderMongodb._create_temp_"
                   "location_and_mainfest_entry"),
                  new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")

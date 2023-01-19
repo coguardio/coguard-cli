@@ -2,18 +2,18 @@
 The CoGuard CLI top level entrypoint where the entrypoint function is being defined
 """
 
+from enum import Enum
 import json
 import os
 import sys
 import textwrap
-from typing import Dict
+import logging
+from typing import Dict, Optional, Tuple
 
 from coguard_cli.image_check import create_zip_to_upload_from_docker_image, docker_dao
-from coguard_cli.auth import DealEnum, \
-    authenticate_to_server, \
-    retrieve_configuration_object, \
-    sign_in_or_sign_up
-from coguard_cli.api_connection import send_zip_file_for_scanning
+from coguard_cli.folder_scan import create_zip_to_upload_from_file_system
+from coguard_cli import auth
+from coguard_cli import api_connection
 from coguard_cli.print_colors import COLOR_TERMINATION, \
     COLOR_RED, COLOR_GRAY, COLOR_CYAN, COLOR_YELLOW
 
@@ -80,6 +80,79 @@ def output_result_json_from_coguard(result_json: Dict, manifest_dict: Dict):
     for entry in low_checks:
         print_failed_check(COLOR_GRAY, entry, manifest_dict)
 
+class SubParserNames(Enum):
+    """
+    The enumeration capturing the different supported sub-parsers.
+    """
+    DOCKER_IMAGE = "docker-image"
+    FOLDER_SCAN = "folder-scan"
+
+def auth_token_retrieval(
+        coguard_api_url: Optional[str],
+        coguard_auth_url: Optional[str]
+) -> Optional[str]:
+    """
+    The helper function to get the authentication token.
+    This may make the user sign up. If the process succeeds,
+    it returns the token as string. If the process fails,
+    None is being returned.
+    """
+    auth_config = auth.retrieve_configuration_object(
+        arg_coguard_url = coguard_api_url,
+        arg_auth_url = coguard_auth_url
+    )
+    if auth_config is None:
+        print(f'{COLOR_YELLOW}Could not find authentication file. You can sign up right now '
+              f'for your free account and continue with the requested scan.{COLOR_TERMINATION}')
+        token = auth.sign_in_or_sign_up(coguard_api_url, coguard_auth_url)
+        # Here is where we insert the authentication logic.
+        auth_config = auth.retrieve_configuration_object()
+    else:
+        logging.debug("Retrieving config with auth_config %s", str(auth_config))
+        token = auth.authenticate_to_server(auth_config)
+    return token
+
+def upload_and_evaluate_zip_candidate(
+        zip_candidate: Optional[Tuple[str, Dict]],
+        auth_config: Optional[auth.auth_config.CoGuardCliConfig],
+        token: str,
+        coguard_api_url: str,
+        scan_identifier: str,
+        output_format: str,
+        fail_level: int,
+        organization: Optional[str]
+):
+    if zip_candidate is None:
+        print(
+            f"{COLOR_YELLOW}We were unable to extract any known "
+            "configuration files from the given "
+            "image name. If you believe that this is due to a bug, please report it "
+            f"to info@coguard.io{COLOR_TERMINATION}"
+        )
+        return
+    zip_file, manifest_dict = zip_candidate
+    result = api_connection.send_zip_file_for_scanning(
+        zip_file,
+        auth_config.get_username(),
+        token,
+        coguard_api_url,
+        scan_identifier,
+        organization
+    )
+    logging.debug("The result from the api is: %s",
+                  str(result))
+    print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {scan_identifier}"
+          f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
+    if output_format == 'formatted':
+        output_result_json_from_coguard(result, manifest_dict)
+    else:
+        print(json.dumps(result))
+    max_fail_severity = max(
+        entry["rule"]["severity"] for entry in result.get("failed", [])
+    ) if (result and result.get("failed", [])) else 0
+    if max_fail_severity >= fail_level:
+        sys.exit(1)
+
 def entrypoint(args):
     """
     The main entrypoint for the CLI. Takes the :mod:`argparse` parsing
@@ -104,66 +177,70 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
       oXXXXXXXXXXXXXXXXXX:
           OXXXXXXXXXXd
     """)
-    docker_version = docker_dao.check_docker_version()
-    if docker_version is None:
-        print(f'{COLOR_RED}Docker is not installed on your system. '
-              f'Please install Docker to proceed{COLOR_TERMINATION}')
-        return
-    print(f'{docker_version} detected.')
-    auth_config = retrieve_configuration_object(
-        arg_coguard_url = args.coguard_api_url,
-        arg_auth_url = args.coguard_auth_url
-    )
-    if auth_config is None:
-        print(f'{COLOR_YELLOW}Could not find authentication file. You can sign up right now '
-              f'for your free account and continue with the requested scan.{COLOR_TERMINATION}')
-        token = sign_in_or_sign_up(args.coguard_api_url, args.coguard_auth_url)
-        # Here is where we insert the authentication logic.
-        auth_config = retrieve_configuration_object()
-    else:
-        token = authenticate_to_server(auth_config)
+    token = auth_token_retrieval(args.coguard_api_url, args.coguard_auth_url)
     if token is None:
         print(f"{COLOR_RED}Failed to authenticate.{COLOR_TERMINATION}")
         return
-    if args.image_name:
-        images = [args.image_name]
-    else:
-        print(
-            f"{COLOR_CYAN}No image name provided, scanning all images "
-            f"installed on this machine.{COLOR_TERMINATION}"
-        )
-        images = docker_dao.extract_all_installed_docker_images()
-    for image in images:
-        print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
-        zip_candidate = create_zip_to_upload_from_docker_image(
-            auth_config.get_username(),
-            image,
-            DealEnum.ENTERPRISE
-        )
-        if zip_candidate is None:
-            print(
-                f"{COLOR_YELLOW}We were unable to extract any known "
-                "configuration files from the given "
-                "image name. If you believe that this is due to a bug, please report it "
-                f"to info@coguard.io{COLOR_TERMINATION}"
-            )
+    auth_config = auth.retrieve_configuration_object(
+        arg_coguard_url = args.coguard_api_url,
+        arg_auth_url = args.coguard_auth_url
+    )
+    deal_type = auth.extract_deal_type_from_token(token, auth_config)
+    organization = auth.extract_organization_from_token(token, auth_config)
+    logging.debug("Extracted deal type: %s", deal_type)
+    logging.debug("Extracted organization: %s", organization)
+    if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:
+        docker_version = docker_dao.check_docker_version()
+        if docker_version is None:
+            print(f'{COLOR_RED}Docker is not installed on your system. '
+                  f'Please install Docker to proceed{COLOR_TERMINATION}')
             return
-        zip_file, manifest_dict = zip_candidate
-        result = send_zip_file_for_scanning(
-            zip_file,
-            auth_config.get_username(),
-            token,
-            args.coguard_api_url
-        )
-        os.remove(zip_file)
-        print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {image}"
-              f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
-        if args.output_format == 'formatted':
-            output_result_json_from_coguard(result, manifest_dict)
+        print(f'{docker_version} detected.')
+        if args.image_name:
+            images = [args.image_name]
         else:
-            print(json.dumps(result))
-        max_fail_severity = max(
-            entry["rule"]["severity"] for entry in result.get("failed", [])
-        )
-        if max_fail_severity >= args.fail_level:
+            print(
+                f"{COLOR_CYAN}No image name provided, scanning all images "
+                f"installed on this machine.{COLOR_TERMINATION}"
+            )
+            images = docker_dao.extract_all_installed_docker_images()
+        for image in images:
+            print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
+            zip_candidate = create_zip_to_upload_from_docker_image(
+                auth_config.get_username(),
+                image,
+                auth.DealEnum.ENTERPRISE
+            )
+            upload_and_evaluate_zip_candidate(
+                zip_candidate,
+                auth_config,
+                token,
+                args.coguard_api_url,
+                "image",
+                args.output_format,
+                args.fail_level,
+                organization
+            )
+            os.remove(zip_candidate[0])
+    elif args.subparsers_location == SubParserNames.FOLDER_SCAN.value:
+        if deal_type != auth.DealEnum.ENTERPRISE:
+            print("Folder scanning is only available for non-free accounts")
             sys.exit(1)
+        folder_name = args.folder_name or "."
+        printed_folder_name = os.path.basename(os.path.dirname(folder_name))
+        print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
+        zip_candidate = create_zip_to_upload_from_file_system(
+            folder_name,
+            organization
+        )
+        upload_and_evaluate_zip_candidate(
+            zip_candidate,
+            auth_config,
+            token,
+            args.coguard_api_url,
+            printed_folder_name,
+            args.output_format,
+            args.fail_level,
+            organization
+        )
+        os.remove(zip_candidate[0])
