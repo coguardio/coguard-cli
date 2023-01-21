@@ -85,7 +85,8 @@ class SubParserNames(Enum):
     The enumeration capturing the different supported sub-parsers.
     """
     DOCKER_IMAGE = "docker-image"
-    FOLDER_SCAN = "folder-scan"
+    FOLDER_SCAN = "folder"
+    SCAN = "scan"
 
 def auth_token_retrieval(
         coguard_api_url: Optional[str],
@@ -153,6 +154,87 @@ def upload_and_evaluate_zip_candidate(
     if max_fail_severity >= fail_level:
         sys.exit(1)
 
+def perform_docker_image_scan(
+        docker_image: Optional[str],
+        auth_config: auth.CoGuardCliConfig,
+        token: str,
+        organization: str,
+        coguard_api_url: Optional[str],
+        output_format: str,
+        fail_level: int):
+    """
+    The helper function to run a Docker image scan. It takes in all necessary parameters.
+    If the docker-image is None, then all Docker images found on the host system are being
+    scanned.
+    """
+    docker_version = docker_dao.check_docker_version()
+    if docker_version is None:
+        print(f'{COLOR_RED}Docker is not installed on your system. '
+              f'Please install Docker to proceed{COLOR_TERMINATION}')
+        return
+    print(f'{docker_version} detected.')
+    if docker_image:
+        images = [docker_image]
+    else:
+        print(
+            f"{COLOR_CYAN}No image name provided, scanning all images "
+            f"installed on this machine.{COLOR_TERMINATION}"
+        )
+        images = docker_dao.extract_all_installed_docker_images()
+    for image in images:
+        print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
+        zip_candidate = create_zip_to_upload_from_docker_image(
+            auth_config.get_username(),
+            image,
+            auth.DealEnum.ENTERPRISE
+        )
+        upload_and_evaluate_zip_candidate(
+            zip_candidate,
+            auth_config,
+            token,
+            coguard_api_url,
+            "image",
+            output_format,
+            fail_level,
+            organization
+        )
+        os.remove(zip_candidate[0])
+
+def perform_folder_scan(
+        folder_name: Optional[str],
+        deal_type: auth.DealEnum,
+        auth_config: auth.CoGuardCliConfig,
+        token: str,
+        organization: str,
+        coguard_api_url: Optional[str],
+        output_format: str,
+        fail_level: int):
+    """
+    Helper function to run a scan on a folder. If the folder_name parameter is None,
+    the current working directory is being used.
+    """
+    if deal_type != auth.DealEnum.ENTERPRISE:
+        print("Folder scanning is only available for non-free accounts")
+        sys.exit(1)
+    folder_name = folder_name or "."
+    printed_folder_name = os.path.basename(os.path.dirname(folder_name))
+    print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
+    zip_candidate = create_zip_to_upload_from_file_system(
+        folder_name,
+        organization
+    )
+    upload_and_evaluate_zip_candidate(
+        zip_candidate,
+        auth_config,
+        token,
+        coguard_api_url,
+        printed_folder_name,
+        output_format,
+        fail_level,
+        organization
+    )
+    os.remove(zip_candidate[0])
+
 def entrypoint(args):
     """
     The main entrypoint for the CLI. Takes the :mod:`argparse` parsing
@@ -190,57 +272,52 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
     logging.debug("Extracted deal type: %s", deal_type)
     logging.debug("Extracted organization: %s", organization)
     if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:
-        docker_version = docker_dao.check_docker_version()
-        if docker_version is None:
-            print(f'{COLOR_RED}Docker is not installed on your system. '
-                  f'Please install Docker to proceed{COLOR_TERMINATION}')
-            return
-        print(f'{docker_version} detected.')
         if args.image_name:
-            images = [args.image_name]
+            docker_image = args.image_name
+        elif args.scan:
+            # A small hack to keep scan an optional argument.
+            docker_image = args.scan
         else:
-            print(
-                f"{COLOR_CYAN}No image name provided, scanning all images "
-                f"installed on this machine.{COLOR_TERMINATION}"
-            )
-            images = docker_dao.extract_all_installed_docker_images()
-        for image in images:
-            print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
-            zip_candidate = create_zip_to_upload_from_docker_image(
-                auth_config.get_username(),
-                image,
-                auth.DealEnum.ENTERPRISE
-            )
-            upload_and_evaluate_zip_candidate(
-                zip_candidate,
-                auth_config,
-                token,
-                args.coguard_api_url,
-                "image",
-                args.output_format,
-                args.fail_level,
-                organization
-            )
-            os.remove(zip_candidate[0])
-    elif args.subparsers_location == SubParserNames.FOLDER_SCAN.value:
-        if deal_type != auth.DealEnum.ENTERPRISE:
-            print("Folder scanning is only available for non-free accounts")
-            sys.exit(1)
-        folder_name = args.folder_name or "."
-        printed_folder_name = os.path.basename(os.path.dirname(folder_name))
-        print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
-        zip_candidate = create_zip_to_upload_from_file_system(
-            folder_name,
-            organization
-        )
-        upload_and_evaluate_zip_candidate(
-            zip_candidate,
+            docker_image = None
+        perform_docker_image_scan(
+            docker_image,
             auth_config,
             token,
+            organization,
             args.coguard_api_url,
-            printed_folder_name,
             args.output_format,
-            args.fail_level,
-            organization
+            args.fail_level
         )
-        os.remove(zip_candidate[0])
+    elif args.subparsers_location == SubParserNames.FOLDER_SCAN.value:
+        folder_name = args.folder_name or args.scan or None # args.scan is a trick to
+                                                            # think there is a positional argument
+        perform_folder_scan(
+            folder_name,
+            deal_type,
+            auth_config,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.output_format,
+            args.fail_level
+        )
+    elif args.subparsers_location == SubParserNames.SCAN.value:
+        perform_docker_image_scan(
+            None,
+            auth_config,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.output_format,
+            args.fail_level
+        )
+        perform_folder_scan(
+            None,
+            deal_type,
+            auth_config,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.output_format,
+            args.fail_level
+        )

@@ -96,7 +96,14 @@ def main():
     )
     docker_image_parser = subparsers.add_parser(
         SubParserNames.DOCKER_IMAGE.value,
-        help="The sub-command to scan a Docker image"
+        help="The sub-command to scan a Docker image",
+    )
+    docker_image_parser.add_argument(
+        'scan',
+        type=str,
+        default="",
+        nargs='?',
+        help=("The indicator that we are aiming to do a scan.")
     )
     docker_image_parser.add_argument(
         'image_name',
@@ -112,12 +119,23 @@ def main():
         help="The sub-command to find configuration files within a folder and scan them."
     )
     folder_scanning_parser.add_argument(
+        'scan',
+        type=str,
+        default="",
+        nargs='?',
+        help=("The indicator that we are aiming to do a scan.")
+    )
+    folder_scanning_parser.add_argument(
         'folder_name',
         metavar="folder_name",
         type=str,
-        default=".",
+        default="",
         nargs='?',
         help=("The path to the folder. Defaults to the current working directory.")
+    )
+    docker_image_parser = subparsers.add_parser(
+        SubParserNames.SCAN.value,
+        help="The sub-command to scan everything, using default parameters.",
     )
     parser.add_argument(
         '-v', '--version',
@@ -126,6 +144,7 @@ def main():
     )
     args = parser.parse_args()
     set_logging_config(args.logging_level)
+    print(dir(args))
     entrypoint(args)
 
 if __name__ == '__main__':
