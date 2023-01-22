@@ -197,7 +197,7 @@ def perform_docker_image_scan(
             auth_config,
             token,
             coguard_api_url,
-            "image",
+            docker_image,
             output_format,
             fail_level,
             organization
