@@ -4,7 +4,7 @@ Tests for the functions in the ConfigFileFinderRedis class
 
 import unittest
 import unittest.mock
-from coguard_cli.image_check.config_file_finders.config_file_finder_redis \
+from coguard_cli.discovery.config_file_finders.config_file_finder_redis \
     import ConfigFileFinderRedis
 
 class TestConfigFileFinderRedis(unittest.TestCase):
@@ -40,7 +40,7 @@ class TestConfigFileFinderRedis(unittest.TestCase):
                 "os.path.lexists",
                 new_callable=lambda: lambda location: True), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders.config_file_"
+                 ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_redis.ConfigFileFinderRedis._create_temp_"
                   "location_and_mainfest_entry"),
                  new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
@@ -76,7 +76,7 @@ class TestConfigFileFinderRedis(unittest.TestCase):
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["redis.conf"])]), \
                 unittest.mock.patch(
-                    ("coguard_cli.image_check.config_file_finders.config_file_"
+                    ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_redis.ConfigFileFinderRedis._create_temp_"
                      "location_and_mainfest_entry"),
                     new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
@@ -102,7 +102,7 @@ class TestConfigFileFinderRedis(unittest.TestCase):
                  'shutil.copy'
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
              ):
             config_file_finder_redis = ConfigFileFinderRedis()
@@ -143,7 +143,7 @@ class TestConfigFileFinderRedis(unittest.TestCase):
                  new_callable = lambda: lambda x: True
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders.config_file_"
+                 ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_redis.ConfigFileFinderRedis._create_temp_"
                   "location_and_mainfest_entry"),
                  new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")

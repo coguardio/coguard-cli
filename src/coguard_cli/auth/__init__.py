@@ -14,6 +14,7 @@ import stat
 import zlib
 from typing import Dict, Optional
 from pathlib import Path
+import jwt
 import requests
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 from coguard_cli.api_connection import does_user_with_email_already_exist, \
@@ -233,7 +234,8 @@ def authenticate_to_server(config_object: Optional[CoGuardCliConfig]) -> Optiona
             'username': config_object.get_username(),
             'password': config_object.get_password(),
             'grant_type': 'password'
-        }
+        },
+        timeout=300
     )
     if token_request.status_code != 200:
         logging.error("There was an error requesting the authentication token: %s",
@@ -241,3 +243,72 @@ def authenticate_to_server(config_object: Optional[CoGuardCliConfig]) -> Optiona
         return None
     response_json = token_request.json()
     return response_json.get("access_token", None)
+
+
+def get_public_key(config_object: CoGuardCliConfig) -> Optional[str]:
+    """
+    A helper function to retrieve the public key from the authentication server.
+    Returns None if there is no public key.
+    """
+    if config_object.get_auth_url().endswith('/auth'):
+        complete_request_url = config_object.get_auth_url() + "/realms/coguard"
+    else:
+        complete_request_url = f"{config_object.get_auth_url()}/auth/realms/coguard"
+    public_key_request = requests.get(complete_request_url, timeout=5)
+    if public_key_request.status_code != 200:
+        logging.error("Could not retrieve public key from coguard url: %s",
+                      str(public_key_request))
+        logging.error("Assuming free account")
+        return None
+    response_json = public_key_request.json()
+    public_key = response_json.get("public_key", "")
+    if not public_key:
+        logging.error("Could not extract public key.")
+        return None
+    logging.debug("The public key is %s", str(public_key))
+    return public_key
+
+def get_decoded_jwt_token(token: str, public_key: str) -> jwt.jwk.AbstractJWKBase:
+    """
+    Helper function to get a decoded JWT token.
+    """
+    expanded_pkey = f"""-----BEGIN PUBLIC KEY-----
+    {public_key}
+    -----END PUBLIC KEY-----""".replace("    ", "")
+    jwt_obj = jwt.JWT()
+    return jwt_obj.decode(token, jwt.jwk_from_pem(expanded_pkey.encode()))
+
+def extract_organization_from_token(token: str, config_object: CoGuardCliConfig) -> Optional[str]:
+    """
+    This is the helper function to extract the organization from the token.
+    Returning None if there is no organization.
+    """
+    public_key = get_public_key(config_object)
+    if not public_key:
+        return None
+    jwt_decoded = get_decoded_jwt_token(token, public_key)
+    return jwt_decoded.get("organization", None)
+
+def extract_deal_type_from_token(token: str, config_object: CoGuardCliConfig) -> DealEnum:
+    """
+    This function uses a token, and a configuruation object, and extracts the deal
+    type of the account stored in the JWT token.
+
+    :param token: The JWT token string
+    :param config_object: The CoGuard CLI config
+    """
+    # Getting the public key
+    public_key = get_public_key(config_object)
+    if not public_key:
+        logging.error(
+            "Assuming free account, as we could not find the public key of the auth server."
+        )
+        return DealEnum.FREE
+    jwt_decoded = get_decoded_jwt_token(token, public_key)
+    deal_identifiers = jwt_decoded.get('realm_access', {}).get('roles', [])
+    for deal_enum in list(DealEnum):
+        if deal_enum.value.upper() in deal_identifiers:
+            return deal_enum
+    logging.error("No valid deal enum in decoded JWT token. Assuming free: %s",
+                  str(jwt_decoded))
+    return DealEnum.FREE

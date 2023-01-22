@@ -5,7 +5,7 @@ Tests for the functions in the ConfigFileFinder class
 import unittest
 import unittest.mock
 from typing import Dict
-from coguard_cli.image_check.config_file_finder_abc import ConfigFileFinder
+from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 
 class TestDockerDao(unittest.TestCase):
     """

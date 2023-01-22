@@ -3,7 +3,7 @@ This module tests the configuration file finder factory.
 """
 
 import unittest
-from coguard_cli.image_check.config_file_finder_factory import config_file_finder_factory
+from coguard_cli.discovery.config_file_finder_factory import config_file_finder_factory
 
 class TestConfigFileFinderFactory(unittest.TestCase):
     """

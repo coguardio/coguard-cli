@@ -1,5 +1,5 @@
 """
-This module contains the class to find NGINX configurations
+This module contains the class to find KERBEROS configurations
 inside a folder structure.
 """
 
@@ -7,13 +7,13 @@ import os
 import shutil
 import tempfile
 from typing import Dict, List, Optional, Tuple
-from coguard_cli.image_check.config_file_finder_abc import ConfigFileFinder
-import coguard_cli.image_check.config_file_finders as cff_util
+from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
+import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
-class ConfigFileFinderNginx(ConfigFileFinder):
+class ConfigFileFinderKerberos(ConfigFileFinder):
     """
-    The class to find nginx configuration files within a file system.
+    The class to find kerberos configuration files within a file system.
     """
 
     def _create_temp_location_and_mainfest_entry(
@@ -23,10 +23,10 @@ class ConfigFileFinderNginx(ConfigFileFinder):
         """
         Common helper function which creates a temporary folder location for the
         configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for an nginx service and the path to the
+        a tuple containing a manifest for an kerberos service and the path to the
         temporary location.
         """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-nginx")
+        temp_location = tempfile.mkdtemp(prefix="coguard-cli-kerberos")
         to_copy = cff_util.get_path_behind_symlinks(
             path_to_file_system,
             location_on_current_machine
@@ -40,13 +40,13 @@ class ConfigFileFinderNginx(ConfigFileFinder):
         )
         manifest_entry = {
             "version": "1.0",
-            "serviceName": "nginx",
+            "serviceName": "kerberos",
             "configFileList": [
                 {
-                    "fileName": "nginx.conf",
-                    "defaultFileName": "nginx.conf",
+                    "fileName": "krb5.conf",
+                    "defaultFileName": "krb5.conf",
                     "subPath": ".",
-                    "configFileType": "nginx"
+                    "configFileType": "krb"
                 }
             ],
             "complimentaryFileList": []
@@ -56,8 +56,9 @@ class ConfigFileFinderNginx(ConfigFileFinder):
             location_on_current_machine,
             temp_location,
             manifest_entry,
-            "nginx",
-            r'include\s+"?(.*?)"?\s*;'
+            "krb5",
+            r'include\s+"?(.*?)"?\s*;',
+            r'includedir\s+"?(.*?)"?\s*;'
         )
         return (
             manifest_entry,
@@ -70,7 +71,7 @@ class ConfigFileFinderNginx(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_location ='/etc/nginx/nginx.conf'
+        standard_location = '/etc/krb5.conf'
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
@@ -87,7 +88,7 @@ class ConfigFileFinderNginx(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_name = "nginx.conf"
+        standard_name = "krb5.conf"
         result_files = []
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
             if standard_name in file_names:
@@ -115,7 +116,7 @@ class ConfigFileFinderNginx(ConfigFileFinder):
         """
         result_files = cff_util.common_call_command_in_container(
             docker_config,
-            r"nginx.*-c\s+([^\s]+)"
+            r"kadmin.*\s+([^\s]+)"
         )
         results = []
         for result_file in result_files:
@@ -134,6 +135,6 @@ class ConfigFileFinderNginx(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        return 'nginx'
+        return 'kerberos'
 
-ConfigFileFinder.register(ConfigFileFinderNginx)
+ConfigFileFinder.register(ConfigFileFinderKerberos)

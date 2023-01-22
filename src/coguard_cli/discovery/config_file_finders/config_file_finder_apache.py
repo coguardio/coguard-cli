@@ -1,5 +1,5 @@
 """
-This module contains the class to find KAFKA configurations
+This module contains the class to find APACHE configurations
 inside a folder structure.
 """
 
@@ -7,13 +7,13 @@ import os
 import shutil
 import tempfile
 from typing import Dict, List, Optional, Tuple
-from coguard_cli.image_check.config_file_finder_abc import ConfigFileFinder
-import coguard_cli.image_check.config_file_finders as cff_util
+from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
+import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
-class ConfigFileFinderKafka(ConfigFileFinder):
+class ConfigFileFinderApache(ConfigFileFinder):
     """
-    The class to find kafka configuration files within a file system.
+    The class to find apache configuration files within a file system.
     """
 
     def _create_temp_location_and_mainfest_entry(
@@ -23,34 +23,43 @@ class ConfigFileFinderKafka(ConfigFileFinder):
         """
         Common helper function which creates a temporary folder location for the
         configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for an kafka service and the path to the
+        a tuple containing a manifest for an apache service and the path to the
         temporary location.
         """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-kafka")
+        temp_location = tempfile.mkdtemp(prefix="coguard-cli-apache")
         to_copy = cff_util.get_path_behind_symlinks(
             path_to_file_system,
             location_on_current_machine
         )
+        file_name = os.path.basename(location_on_current_machine)
         shutil.copy(
             to_copy,
             os.path.join(
                 temp_location,
-                os.path.basename(location_on_current_machine)
+                file_name
             )
         )
         manifest_entry = {
             "version": "1.0",
-            "serviceName": "kafka",
+            "serviceName": "apache",
             "configFileList": [
                 {
-                    "fileName": "server.properties",
-                    "defaultFileName": "server.properties",
+                    "fileName": file_name,
+                    "defaultFileName": "httpd.conf",
                     "subPath": ".",
-                    "configFileType": "properties"
+                    "configFileType": "httpd"
                 }
             ],
             "complimentaryFileList": []
         }
+        cff_util.extract_include_directives(
+            path_to_file_system,
+            location_on_current_machine,
+            temp_location,
+            manifest_entry,
+            "httpd",
+            r'Include\s+"?(.*?)"?\s*;'
+        )
         return (
             manifest_entry,
             temp_location
@@ -62,7 +71,7 @@ class ConfigFileFinderKafka(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_location ='/etc/kafka/server.properties'
+        standard_location ='/etc/httpd/conf/httpd.conf'
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
@@ -79,11 +88,12 @@ class ConfigFileFinderKafka(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_name = "server.properties"
+        standard_names = ["httpd.conf", "apache2.conf"]
         result_files = []
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
-            if standard_name in file_names:
-                result_files.append(os.path.join(dir_path, standard_name))
+            for standard_name in standard_names:
+                if standard_name in file_names:
+                    result_files.append(os.path.join(dir_path, standard_name))
         results = []
         for result_file in result_files:
             print(
@@ -107,7 +117,7 @@ class ConfigFileFinderKafka(ConfigFileFinder):
         """
         result_files = cff_util.common_call_command_in_container(
             docker_config,
-            r"kafka-server-start.sh\s+([^\s]+)"
+            r"httpd.*-f\s+([^\s]+)"
         )
         results = []
         for result_file in result_files:
@@ -126,6 +136,6 @@ class ConfigFileFinderKafka(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        return 'kafka'
+        return 'apache'
 
-ConfigFileFinder.register(ConfigFileFinderKafka)
+ConfigFileFinder.register(ConfigFileFinderApache)

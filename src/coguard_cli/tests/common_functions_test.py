@@ -6,7 +6,8 @@ CoGuard CLI module.
 import unittest
 import unittest.mock
 from io import StringIO
-from coguard_cli import print_failed_check, COLOR_RED, output_result_json_from_coguard
+import coguard_cli
+from coguard_cli import auth
 
 class TestCommonFunctions(unittest.TestCase):
     """
@@ -21,7 +22,7 @@ class TestCommonFunctions(unittest.TestCase):
         with unittest.mock.patch(
                 'sys.stdout',
                 new_callable=lambda: new_stdout):
-            print_failed_check(COLOR_RED, {
+            coguard_cli.print_failed_check(coguard_cli.COLOR_RED, {
                 "rule": {
                     "name": "foo_bar_baz",
                     "severity": 5,
@@ -96,7 +97,111 @@ class TestCommonFunctions(unittest.TestCase):
         with unittest.mock.patch(
                 'sys.stdout',
                 new_callable=lambda: new_stdout):
-            output_result_json_from_coguard(result_json, {})
+            coguard_cli.output_result_json_from_coguard(result_json, {})
             self.assertIn("1 High", new_stdout.getvalue())
             self.assertIn("1 Medium", new_stdout.getvalue())
             self.assertIn("4 Low", new_stdout.getvalue())
+
+    def auth_token_retrieval_auth_config_not_none_test(self):
+        """
+        tests for the auth_token_retrieval.
+        """
+        with unittest.mock.patch(
+                'coguard_cli.auth.retrieve_configuration_object',
+                new_callable=lambda: lambda arg_coguard_url, arg_auth_url: {}
+        ), \
+        unittest.mock.patch(
+            'coguard_cli.auth.authenticate_to_server',
+            new_callable=lambda: lambda auth_config: "foo"
+        ):
+            token = coguard_cli.auth_token_retrieval("foo", "bar")
+            self.assertEqual(token, "foo")
+
+    def auth_token_retrieval_auth_config_none_test(self):
+        """
+        tests for the auth_token_retrieval.
+        """
+        with unittest.mock.patch(
+                'coguard_cli.auth.retrieve_configuration_object',
+                new_callable=lambda: lambda arg_coguard_url, arg_auth_url: "None"
+        ), \
+        unittest.mock.patch(
+            'coguard_cli.auth.authenticate_to_server',
+            new_callable=lambda: lambda auth_config: "foo"
+        ), \
+        unittest.mock.patch(
+            'coguard_cli.auth.sign_in_or_sign_up',
+            new_callable=lambda: lambda coguard_api_url, coguard_auth_url: "foo"
+        ):
+            token = coguard_cli.auth_token_retrieval("foo", "bar")
+            self.assertEqual(token, "foo")
+
+    def upload_and_evaluate_zip_candidate_zip_candidate_none_test(self):
+        """
+        Testing zip candidate None
+        """
+        new_stdout = StringIO()
+        with unittest.mock.patch(
+                'sys.stdout',
+                new_callable=lambda: new_stdout):
+            coguard_cli.upload_and_evaluate_zip_candidate(
+                None,
+                {},
+                "token",
+                "https://portal.coguard.io/server",
+                "foo",
+                None,
+                1,
+                "foo"
+            )
+            self.assertIn("We were unable to extract", new_stdout.getvalue())
+
+    def upload_and_evaluate_zip_candidate_test(self):
+        """
+        Testing zip candidate None
+        """
+        new_stdout = StringIO()
+        with unittest.mock.patch(
+                'coguard_cli.api_connection.send_zip_file_for_scanning',
+                new_callable=lambda: lambda a, b, c, d, e, f: {"failed": []}), \
+                unittest.mock.patch(
+                    'sys.stdout',
+                    new_callable=lambda: new_stdout):
+            auth_config = unittest.mock.MagicMock()
+            auth_config.get_username = unittest.mock.Mock(return_value = "foo")
+            coguard_cli.upload_and_evaluate_zip_candidate(
+                ("foo.zip", {}),
+                auth_config,
+                "token",
+                "https://portal.coguard.io/server",
+                "foo",
+                "formatted",
+                1,
+                "foo"
+            )
+            self.assertIn("Scan result_jsons", new_stdout.getvalue())
+
+    def upload_and_evaluate_zip_candidate_json_formatted_test(self):
+        """
+        Testing zip candidate None
+        """
+        new_stdout = StringIO()
+        with unittest.mock.patch(
+                'coguard_cli.api_connection.send_zip_file_for_scanning',
+                new_callable=lambda: lambda a, b, c, d, e, f: {"failed": []}), \
+                unittest.mock.patch(
+                    'sys.stdout',
+                    new_callable=lambda: new_stdout):
+            auth_config = unittest.mock.MagicMock()
+            auth_config.get_username = unittest.mock.Mock(return_value = "foo")
+            coguard_cli.upload_and_evaluate_zip_candidate(
+                ("foo.zip", {}),
+                auth_config,
+                "token",
+                "https://portal.coguard.io/server",
+                "foo",
+                "json",
+                1,
+                "foo"
+            )
+            self.assertIn('{"failed": []}', new_stdout.getvalue())

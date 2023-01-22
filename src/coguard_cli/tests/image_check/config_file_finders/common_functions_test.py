@@ -4,7 +4,7 @@ The tests for the functions in __init__ of the config_file_finders module.
 
 import unittest
 import unittest.mock
-import coguard_cli.image_check.config_file_finders as cff_util
+import coguard_cli.discovery.config_file_finders as cff_util
 
 class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
     """
@@ -22,7 +22,7 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
                  'shutil.copy'
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
              ), \
              unittest.mock.patch(
@@ -60,7 +60,7 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
                  'shutil.copy'
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
              ), \
              unittest.mock.patch(
@@ -90,7 +90,7 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
                 'builtins.open',
                 unittest.mock.mock_open(read_data="include /etc/*.conf;")), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "copy_and_populate")
              ) as rec_call:
             current_manifest = {'complimentaryFileList': []}
@@ -112,7 +112,7 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
                 'builtins.open',
                 unittest.mock.mock_open(read_data='include "/etc/*.conf;"')), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "copy_and_populate")
              ) as rec_call:
             current_manifest = {'complimentaryFileList': []}
@@ -134,7 +134,7 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
                 'builtins.open',
                 unittest.mock.mock_open(read_data='includedir "/etc/*.conf;"')), \
              unittest.mock.patch(
-                 ("coguard_cli.image_check.config_file_finders."
+                 ("coguard_cli.discovery.config_file_finders."
                   "copy_and_populate")
              ) as rec_call:
             current_manifest = {'complimentaryFileList': []}

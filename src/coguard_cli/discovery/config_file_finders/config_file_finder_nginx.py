@@ -1,5 +1,5 @@
 """
-This module contains the class to find APACHE configurations
+This module contains the class to find NGINX configurations
 inside a folder structure.
 """
 
@@ -7,13 +7,13 @@ import os
 import shutil
 import tempfile
 from typing import Dict, List, Optional, Tuple
-from coguard_cli.image_check.config_file_finder_abc import ConfigFileFinder
-import coguard_cli.image_check.config_file_finders as cff_util
+from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
+import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
-class ConfigFileFinderApache(ConfigFileFinder):
+class ConfigFileFinderNginx(ConfigFileFinder):
     """
-    The class to find apache configuration files within a file system.
+    The class to find nginx configuration files within a file system.
     """
 
     def _create_temp_location_and_mainfest_entry(
@@ -23,31 +23,30 @@ class ConfigFileFinderApache(ConfigFileFinder):
         """
         Common helper function which creates a temporary folder location for the
         configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for an apache service and the path to the
+        a tuple containing a manifest for an nginx service and the path to the
         temporary location.
         """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-apache")
+        temp_location = tempfile.mkdtemp(prefix="coguard-cli-nginx")
         to_copy = cff_util.get_path_behind_symlinks(
             path_to_file_system,
             location_on_current_machine
         )
-        file_name = os.path.basename(location_on_current_machine)
         shutil.copy(
             to_copy,
             os.path.join(
                 temp_location,
-                file_name
+                os.path.basename(location_on_current_machine)
             )
         )
         manifest_entry = {
             "version": "1.0",
-            "serviceName": "apache",
+            "serviceName": "nginx",
             "configFileList": [
                 {
-                    "fileName": file_name,
-                    "defaultFileName": "httpd.conf",
+                    "fileName": "nginx.conf",
+                    "defaultFileName": "nginx.conf",
                     "subPath": ".",
-                    "configFileType": "httpd"
+                    "configFileType": "nginx"
                 }
             ],
             "complimentaryFileList": []
@@ -57,8 +56,8 @@ class ConfigFileFinderApache(ConfigFileFinder):
             location_on_current_machine,
             temp_location,
             manifest_entry,
-            "httpd",
-            r'Include\s+"?(.*?)"?\s*;'
+            "nginx",
+            r'include\s+"?(.*?)"?\s*;'
         )
         return (
             manifest_entry,
@@ -71,7 +70,7 @@ class ConfigFileFinderApache(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_location ='/etc/httpd/conf/httpd.conf'
+        standard_location ='/etc/nginx/nginx.conf'
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
@@ -88,12 +87,11 @@ class ConfigFileFinderApache(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = ["httpd.conf", "apache2.conf"]
+        standard_name = "nginx.conf"
         result_files = []
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
-            for standard_name in standard_names:
-                if standard_name in file_names:
-                    result_files.append(os.path.join(dir_path, standard_name))
+            if standard_name in file_names:
+                result_files.append(os.path.join(dir_path, standard_name))
         results = []
         for result_file in result_files:
             print(
@@ -117,7 +115,7 @@ class ConfigFileFinderApache(ConfigFileFinder):
         """
         result_files = cff_util.common_call_command_in_container(
             docker_config,
-            r"httpd.*-f\s+([^\s]+)"
+            r"nginx.*-c\s+([^\s]+)"
         )
         results = []
         for result_file in result_files:
@@ -136,6 +134,6 @@ class ConfigFileFinderApache(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        return 'apache'
+        return 'nginx'
 
-ConfigFileFinder.register(ConfigFileFinderApache)
+ConfigFileFinder.register(ConfigFileFinderNginx)
