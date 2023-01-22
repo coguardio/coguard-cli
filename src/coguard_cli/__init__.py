@@ -152,6 +152,7 @@ def upload_and_evaluate_zip_candidate(
         output_result_json_from_coguard(result, manifest_dict)
     else:
         print(json.dumps(result))
+    os.remove(zip_file)
     max_fail_severity = max(
         entry["rule"]["severity"] for entry in result.get("failed", [])
     ) if (result and result.get("failed", [])) else 0
@@ -202,7 +203,6 @@ def perform_docker_image_scan(
             fail_level,
             organization
         )
-        os.remove(zip_candidate[0])
 
 def perform_folder_scan(
         folder_name: Optional[str],
@@ -237,7 +237,6 @@ def perform_folder_scan(
         fail_level,
         organization
     )
-    os.remove(zip_candidate[0])
 
 def entrypoint(args):
     """
