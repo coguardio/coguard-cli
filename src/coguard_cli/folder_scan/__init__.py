@@ -4,13 +4,13 @@ This is the area where common functionality for scanning folders is collected.
 
 import json
 import os
-import urllib.parse
 import tempfile
 import shutil
 import zipfile
 from typing import Optional, Tuple, Dict
 
 import coguard_cli.discovery.config_file_finder_factory as factory
+from coguard_cli.util import replace_special_chars_with_underscore
 
 # pylint: disable=too-many-locals
 
@@ -34,7 +34,13 @@ def find_configuration_files_and_collect(
             collected_service_results_dicts[finder_instance.get_service_name()] = \
                 discovered_config_files
     manifest_blueprint = {
-        "name": urllib.parse.quote_plus(os.path.basename(os.path.dirname(folder_path))),
+        "name": replace_special_chars_with_underscore(
+            os.path.basename(
+                os.path.dirname(
+                    folder_path
+                )
+            )
+        ),
         "customerId": customer_id,
         "machines": {
             "folder": {

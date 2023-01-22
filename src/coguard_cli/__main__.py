@@ -144,7 +144,6 @@ def main():
     )
     args = parser.parse_args()
     set_logging_config(args.logging_level)
-    print(dir(args))
     entrypoint(args)
 
 if __name__ == '__main__':

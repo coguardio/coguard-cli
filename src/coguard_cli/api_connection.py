@@ -4,9 +4,10 @@ logic, so that it is modularized.
 """
 
 import logging
-import urllib.parse
 from typing import Dict, Optional
 import requests
+
+from coguard_cli.util import replace_special_chars_with_underscore
 
 def run_report(
         auth_token: str,
@@ -19,7 +20,7 @@ def run_report(
     """
     resp = requests.put(
         (f"{coguard_api_url}/cluster/run-report/"
-         f"{urllib.parse.quote_plus(scan_identifier)}?"
+         f"{replace_special_chars_with_underscore(scan_identifier)}?"
          f"organizationName={organization}"),
         headers={
             "Authorization": f'Bearer {auth_token}',
@@ -43,7 +44,7 @@ def get_latest_report(
     """
     resp = requests.get(
         (f"{coguard_api_url}/cluster/reports/list?"
-         f"clusterName={urllib.parse.quote_plus(scan_identifier)}&"
+         f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
          f"organizationName={organization}"),
          headers={
             "Authorization": f'Bearer {auth_token}',
@@ -117,7 +118,7 @@ def send_zip_file_for_scanning(
                 return None
             resp = requests.get(
                 (f"{coguard_api_url}/cluster/report?"
-                 f"clusterName={urllib.parse.quote_plus(scan_identifier)}&"
+                 f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
                  f"organizationName={organization}&"
                  f"reportName={latest_report}"),
                 headers={
