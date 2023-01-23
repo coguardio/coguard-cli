@@ -32,7 +32,9 @@ def find_configuration_files_and_collect(
         )
         if len(discovered_config_files) > 0:
             collected_service_results_dicts[finder_instance.get_service_name()] = \
-                discovered_config_files
+                (finder_instance.is_cluster_service(), discovered_config_files)
+    if not collected_service_results_dicts:
+        return None
     manifest_blueprint = {
         "name": replace_special_chars_with_underscore(
             os.path.basename(
@@ -44,29 +46,47 @@ def find_configuration_files_and_collect(
         "customerId": customer_id,
         "machines": {
             "folder": {
-                "id": "folder",
-                "services": {}
+                "id": "folder"
             }
+        },
+        "clusterServices": {
         }
     }
     final_location = tempfile.mkdtemp(prefix="coguard-cli-folder")
     machine_location = os.path.join(final_location, "folder")
     os.mkdir(machine_location)
-    for (service_id, tuple_list) in collected_service_results_dicts.items():
+    for (service_id, (is_cluster_service, tuple_list)) in collected_service_results_dicts.items():
         for idx, (tuple_instance, tuple_dir) in enumerate(tuple_list):
             new_service_custom_identifier = f"{service_id}_{idx}"
-            manifest_blueprint["machines"]\
-                ["folder"]\
-                ["services"]\
-                [new_service_custom_identifier] = tuple_instance
-            service_folder = os.path.join(machine_location, new_service_custom_identifier)
-            os.mkdir(service_folder)
-            shutil.copytree(tuple_dir, service_folder, dirs_exist_ok=True)
+            if is_cluster_service:
+                manifest_blueprint["clusterServices"]\
+                    [new_service_custom_identifier] = tuple_instance
+                service_folder = os.path.join(
+                    final_location,
+                    "clusterServices",
+                    new_service_custom_identifier)
+                os.makedirs(service_folder, exist_ok=True)
+                shutil.copytree(tuple_dir, service_folder, dirs_exist_ok=True)
+            else:
+                if "services" not in manifest_blueprint["machines"]["folder"]:
+                    manifest_blueprint["machines"]["folder"]["services"] = {}
+                manifest_blueprint["machines"]\
+                    ["folder"]\
+                    ["services"]\
+                    [new_service_custom_identifier] = tuple_instance
+                service_folder = os.path.join(machine_location, new_service_custom_identifier)
+                os.mkdir(service_folder)
+                shutil.copytree(tuple_dir, service_folder, dirs_exist_ok=True)
+    if not manifest_blueprint["clusterServices"]:
+        # Just to match the existing blueprint
+        del manifest_blueprint["clusterServices"]
+    if "services" not in manifest_blueprint["machines"]["folder"]:
+        del manifest_blueprint["machines"]
     with open(os.path.join(final_location, "manifest.json"), "w", encoding='utf-8') \
          as manifest_file:
         json.dump(manifest_blueprint, manifest_file)
     # cleanup
-    for tuple_list in collected_service_results_dicts.values():
+    for (_, tuple_list) in collected_service_results_dicts.values():
         for (_, directory_to_delete) in tuple_list:
             shutil.rmtree(directory_to_delete, ignore_errors=True)
     return (final_location, manifest_blueprint)

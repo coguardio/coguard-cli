@@ -175,3 +175,9 @@ class ConfigFileFinder(ABC):
         if len(configuration_using_executables) > 0:
             print(heuristic_message)
         return configuration_using_executables
+
+    def is_cluster_service(self):
+        """
+        Indicator if this is a cluster_service or not.
+        """
+        return False
