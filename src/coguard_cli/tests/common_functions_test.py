@@ -166,7 +166,10 @@ class TestCommonFunctions(unittest.TestCase):
                 new_callable=lambda: lambda a, b, c, d, e, f: {"failed": []}), \
                 unittest.mock.patch(
                     'sys.stdout',
-                    new_callable=lambda: new_stdout):
+                    new_callable=lambda: new_stdout), \
+                unittest.mock.patch(
+                'os.remove',
+                new_callable=lambda: lambda a: None):
             auth_config = unittest.mock.MagicMock()
             auth_config.get_username = unittest.mock.Mock(return_value = "foo")
             coguard_cli.upload_and_evaluate_zip_candidate(
@@ -191,7 +194,10 @@ class TestCommonFunctions(unittest.TestCase):
                 new_callable=lambda: lambda a, b, c, d, e, f: {"failed": []}), \
                 unittest.mock.patch(
                     'sys.stdout',
-                    new_callable=lambda: new_stdout):
+                    new_callable=lambda: new_stdout), \
+                unittest.mock.patch(
+                'os.remove',
+                new_callable=lambda: lambda a: None):
             auth_config = unittest.mock.MagicMock()
             auth_config.get_username = unittest.mock.Mock(return_value = "foo")
             coguard_cli.upload_and_evaluate_zip_candidate(

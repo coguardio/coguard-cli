@@ -9,6 +9,8 @@ from coguard_cli import image_check
 from coguard_cli.auth import DealEnum
 from coguard_cli.discovery.config_file_finders.config_file_finder_nginx \
     import ConfigFileFinderNginx
+from coguard_cli.discovery.config_file_finders.config_file_finder_netlify \
+    import ConfigFileFinderNetlify
 
 class TestCommonImageCheckingFunc(unittest.TestCase):
     """
@@ -178,6 +180,47 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              unittest.mock.patch(
                 ('coguard_cli.discovery.config_file_finders.config_file_finder_nginx.'
                  'ConfigFileFinderNginx.find_configuration_files'),
+                 new_callable=lambda: lambda x, y, z: [({"foo": "bar"}, "/etc/foo/bar")]), \
+             unittest.mock.patch(
+                 'tempfile.mkdtemp',
+                 new_callable = lambda: lambda prefix: "/foo"
+             ), \
+             unittest.mock.patch(
+                 'os.mkdir'
+             ), \
+             unittest.mock.patch(
+                 'shutil.copytree'
+             ), \
+             unittest.mock.patch(
+                 'shutil.rmtree'
+             ), \
+             unittest.mock.patch(
+                 'builtins.open',
+                 unittest.mock.mock_open()
+             ), \
+             unittest.mock.patch(
+                ('coguard_cli.image_check.extract_docker_file_and_store'),
+                 new_callable=lambda: lambda x: None):
+            result, _ = image_check.find_configuration_files_and_collect(
+                "image-name",
+                "foo",
+                "/tmp/foo",
+                {"bla": "bla"}
+            )
+            self.assertIsNotNone(result)
+            self.assertEqual(result, "/foo")
+
+    def test_find_configuration_files_and_collect_cluster_service(self):
+        """
+        The test function to find configuration files using the
+        available finder classes.
+        """
+        with unittest.mock.patch(
+                'coguard_cli.discovery.config_file_finder_factory.config_file_finder_factory',
+                new_callable=lambda: lambda: [ConfigFileFinderNetlify()]), \
+             unittest.mock.patch(
+                ('coguard_cli.discovery.config_file_finders.config_file_finder_netlify.'
+                 'ConfigFileFinderNetlify.find_configuration_files'),
                  new_callable=lambda: lambda x, y, z: [({"foo": "bar"}, "/etc/foo/bar")]), \
              unittest.mock.patch(
                  'tempfile.mkdtemp',
