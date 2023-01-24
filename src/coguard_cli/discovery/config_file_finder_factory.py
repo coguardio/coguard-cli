@@ -32,6 +32,8 @@ from coguard_cli.discovery.config_file_finders.config_file_finder_netlify \
     import ConfigFileFinderNetlify
 from coguard_cli.discovery.config_file_finders.config_file_finder_dockerfile \
     import ConfigFileFinderDockerfile
+from coguard_cli.discovery.config_file_finders.config_file_finder_docker_compose \
+    import ConfigFileFinderDockerCompose
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 
 def config_file_finder_factory() -> Generator[ConfigFileFinder, None, None]:
