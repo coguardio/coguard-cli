@@ -51,9 +51,11 @@ class ConfigFileFinderKubernetes(ConfigFileFinder):
                 file_path
             )
             return False
-        return all(required_field in config_instance
-                   for config_instance in config
-                   for required_field in required_fields)
+        logging.debug("The config object looks like: %s",
+                      str(config))
+        return config and all(config_instance and required_field in config_instance
+                              for config_instance in config
+                              for required_field in required_fields)
 
 
     def check_for_config_files_filesystem_search(
