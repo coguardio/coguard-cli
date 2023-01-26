@@ -42,10 +42,9 @@ class TestConfigFileFinderElasticsearch(unittest.TestCase):
                 "os.path.lexists",
                 new_callable=lambda: lambda location: True), \
              unittest.mock.patch(
-                 ("coguard_cli.discovery.config_file_finders.config_file_"
-                  "finder_elasticsearch.ConfigFileFinderElasticsearch._create_temp_"
+                 ("coguard_cli.discovery.config_file_finders.create_temp_"
                   "location_and_mainfest_entry"),
-                 new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
+                 new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_elasticsearch = ConfigFileFinderElasticsearch()
             result = config_file_finder_elasticsearch.check_for_config_files_in_standard_location(
@@ -78,10 +77,9 @@ class TestConfigFileFinderElasticsearch(unittest.TestCase):
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["elasticsearch.yml"])]), \
                 unittest.mock.patch(
-                    ("coguard_cli.discovery.config_file_finders.config_file_"
-                     "finder_elasticsearch.ConfigFileFinderElasticsearch._create_temp_"
+                    ("coguard_cli.discovery.config_file_finders.create_temp_"
                      "location_and_mainfest_entry"),
-                    new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
+                    new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_elasticsearch = ConfigFileFinderElasticsearch()
             result = config_file_finder_elasticsearch.check_for_config_files_filesystem_search(
@@ -90,30 +88,6 @@ class TestConfigFileFinderElasticsearch(unittest.TestCase):
             self.assertEqual(len(result), 1)
             self.assertEqual(result[0][0], {"foo": "bar"})
             self.assertEqual(result[0][1], "/etc/bar")
-
-    def test_create_temp_location_and_manifest_entry(self):
-        """
-        Testing the creation of temporary locations and manifest entries.
-        """
-        def new_callable(prefix="/tmp"):
-            return "/tmp/foo"
-        with unittest.mock.patch(
-                'tempfile.mkdtemp',
-                new_callable=lambda: new_callable), \
-             unittest.mock.patch(
-                 'shutil.copy'
-             ), \
-             unittest.mock.patch(
-                 ("coguard_cli.discovery.config_file_finders."
-                  "extract_include_directives")
-             ):
-            config_file_finder_elasticsearch = ConfigFileFinderElasticsearch()
-            result = config_file_finder_elasticsearch._create_temp_location_and_mainfest_entry(
-                '/',
-                'foo'
-            )
-            self.assertEqual(result[1], "/tmp/foo")
-            self.assertEqual(result[0]["serviceName"], "elasticsearch")
 
     def test_check_call_command_in_container_no_entrypoint_or_cmd(self):
         """
@@ -145,10 +119,9 @@ class TestConfigFileFinderElasticsearch(unittest.TestCase):
                  new_callable = lambda: lambda x: True
              ), \
              unittest.mock.patch(
-                 ("coguard_cli.discovery.config_file_finders.config_file_"
-                  "finder_elasticsearch.ConfigFileFinderElasticsearch._create_temp_"
+                 ("coguard_cli.discovery.config_file_finders.create_temp_"
                   "location_and_mainfest_entry"),
-                 new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
+                 new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_elasticsearch = ConfigFileFinderElasticsearch()
             result = config_file_finder_elasticsearch.check_call_command_in_container(

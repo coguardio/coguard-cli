@@ -1,5 +1,5 @@
 """
-This module contains the class to find docker-compose configurations
+This module contains the class to find Kubernetes configurations
 inside a folder structure.
 """
 
@@ -7,49 +7,56 @@ import os
 import re
 import logging
 from typing import Dict, List, Optional, Tuple
+import yaml
+from flatten_dict import unflatten
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
-class ConfigFileFinderDockerCompose(ConfigFileFinder):
+class ConfigFileFinderKubernetes(ConfigFileFinder):
     """
-    The class to find docker_compose configuration files within a file system.
+    The class to find kubernetes configuration files within a file system.
     """
 
     def check_for_config_files_in_standard_location(
             self, path_to_file_system: str
     ) -> Optional[Tuple[Dict, str]]:
         """
-        See the documentation of ConfigFileFinder for reference.
+        There is no standard location for Kubernetes files. Returning nothing.
         """
-        standard_locations = [
-            'docker-compose.yml',
-            'docker-compose.yaml'
-        ]
-        locations_on_current_machine = [
-            os.path.join(path_to_file_system, entry[1:])
-            for entry in standard_locations
-        ]
-        for location_on_current_machine in locations_on_current_machine:
-            if os.path.lexists(location_on_current_machine):
-                logging.debug("Found a file in the standard location: %s",
-                              location_on_current_machine)
-                print(
-                    f"{COLOR_CYAN} Found configuration file "
-                    f"{location_on_current_machine.replace(path_to_file_system, '')}"
-                    f"{COLOR_TERMINATION}"
-                )
-                file_name = os.path.basename(location_on_current_machine)
-                return cff_util.create_temp_location_and_mainfest_entry(
-                    path_to_file_system,
-                    file_name,
-                    location_on_current_machine,
-                    self.get_service_name(),
-                    "docker-compose.yml",
-                    "yaml"
-                )
-        logging.debug("Could not find the file in the standard location.")
         return None
+
+    def _is_file_kubernetes_yaml(self, file_path: str) -> bool:
+        """
+        The helper function to determine if a given file can be heuristically
+        determined to be a Kubernetes file.
+        """
+        required_fields = [
+            "apiVersion",
+            "kind",
+            "metadata",
+            "spec"
+        ]
+        config = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file_stream:
+                config_res = yaml.safe_load_all(file_stream)
+                config = [] if config_res is None else [
+                    unflatten(config_part, splitter='dot') for config_part in config_res
+                ]
+        #pylint: disable=bare-except
+        except:
+            logging.debug(
+                "Failed to load %s",
+                file_path
+            )
+            return False
+        logging.debug("The config object looks like: %s",
+                      str(config))
+        return config and all(config_instance and required_field in config_instance
+                              for config_instance in config
+                              for required_field in required_fields)
+
 
     def check_for_config_files_filesystem_search(
             self,
@@ -58,7 +65,7 @@ class ConfigFileFinderDockerCompose(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = ["docker-compose.ya?ml", "docker-compose\\..*\\.ya?ml"]
+        standard_names = [".*\\.ya?ml"]
         result_files = []
         logging.debug("Trying to find the file by searching"
                       " for the standard name in the filesystem.")
@@ -67,10 +74,14 @@ class ConfigFileFinderDockerCompose(ConfigFileFinder):
                 #if standard_name in file_names:
                 matching_file_names = [file_name for file_name in file_names
                                        if re.match(standard_name, file_name)]
-                if matching_file_names:
+                kubernetes_filter = [file_name for file_name in matching_file_names
+                                     if self._is_file_kubernetes_yaml(
+                                             os.path.join(dir_path, file_name)
+                                     )]
+                if kubernetes_filter:
                     mapped_file_names = [
                         os.path.join(dir_path, file_name)
-                        for file_name in matching_file_names
+                        for file_name in kubernetes_filter
                     ]
                     logging.debug("Found entries: %s",
                                   mapped_file_names)
@@ -87,7 +98,7 @@ class ConfigFileFinderDockerCompose(ConfigFileFinder):
                 os.path.basename(result_file),
                 result_file,
                 self.get_service_name(),
-                "docker-compose.yml",
+                "kube-deployment.yaml",
                 "yaml"
             ))
         return results
@@ -106,6 +117,6 @@ class ConfigFileFinderDockerCompose(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        return 'docker_compose'
+        return 'kubernetes'
 
-ConfigFileFinder.register(ConfigFileFinderDockerCompose)
+ConfigFileFinder.register(ConfigFileFinderKubernetes)

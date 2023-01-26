@@ -4,8 +4,6 @@ inside a folder structure.
 """
 
 import os
-import shutil
-import tempfile
 from typing import Dict, List, Optional, Tuple
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 import coguard_cli.discovery.config_file_finders as cff_util
@@ -15,46 +13,6 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
     """
     The class to find elasticsearch configuration files within a file system.
     """
-
-    def _create_temp_location_and_mainfest_entry(
-            self,
-            path_to_file_system: str,
-            location_on_current_machine: str) -> Tuple[Dict, str]:
-        """
-        Common helper function which creates a temporary folder location for the
-        configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for an elasticsearch service and the path to the
-        temporary location.
-        """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-elasticsearch")
-        to_copy = cff_util.get_path_behind_symlinks(
-            path_to_file_system,
-            location_on_current_machine
-        )
-        shutil.copy(
-            to_copy,
-            os.path.join(
-                temp_location,
-                os.path.basename(location_on_current_machine)
-            )
-        )
-        manifest_entry = {
-            "version": "1.0",
-            "serviceName": "elasticsearch",
-            "configFileList": [
-                {
-                    "fileName": "elasticsearch.yml",
-                    "defaultFileName": "elasticsearch.yml",
-                    "subPath": ".",
-                    "configFileType": "yaml"
-                }
-            ],
-            "complimentaryFileList": []
-        }
-        return (
-            manifest_entry,
-            temp_location
-        )
 
     def check_for_config_files_in_standard_location(
             self, path_to_file_system: str
@@ -66,9 +24,13 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
-            return self._create_temp_location_and_mainfest_entry(
+            return cff_util.create_temp_location_and_mainfest_entry(
                 path_to_file_system,
-                location_on_current_machine
+                os.path.basename(standard_location),
+                self.get_service_name,
+                standard_location,
+                "elasticsearch.yml",
+                "yaml"
             )
         return None
 
@@ -91,9 +53,13 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(cff_util.create_temp_location_and_mainfest_entry(
                 path_to_file_system,
-                result_file
+                os.path.basename(result_file),
+                result_file,
+                self.get_service_name(),
+                "elasticsearch.yml",
+                "yaml"
             ))
         return results
 
@@ -116,9 +82,13 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(cff_util.create_temp_location_and_mainfest_entry(
                 path_to_file_system,
-                os.path.join(path_to_file_system, result_file)
+                os.path.basename(result_file),
+                os.path.join(path_to_file_system, result_file),
+                self.get_service_name(),
+                "elasticsearch.yml",
+                "yaml"
             ))
         return results
 

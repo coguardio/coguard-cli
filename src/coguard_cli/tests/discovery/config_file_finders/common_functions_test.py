@@ -215,3 +215,26 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
                 "foo",
                 "bar"
             ), "foo/baz")
+
+    def test_create_temp_location_and_manifest_entry(self):
+        """
+        Testing the creation of temporary locations and manifest entries.
+        """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
+        with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+             unittest.mock.patch(
+                 'shutil.copy'
+             ):
+            result = cff_util.create_temp_location_and_mainfest_entry(
+                '/',
+                'Kubernetes',
+                '/foo/Kubernetes',
+                "kubernetes",
+                "kubernetes",
+                "yaml"
+            )
+            self.assertEqual(result[1], "/tmp/foo")
+            self.assertEqual(result[0]["serviceName"], "kubernetes")
