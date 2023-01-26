@@ -71,7 +71,6 @@ class ConfigFileFinderKubernetes(ConfigFileFinder):
                       " for the standard name in the filesystem.")
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
             for standard_name in standard_names:
-                #if standard_name in file_names:
                 matching_file_names = [file_name for file_name in file_names
                                        if re.match(standard_name, file_name)]
                 kubernetes_filter = [file_name for file_name in matching_file_names

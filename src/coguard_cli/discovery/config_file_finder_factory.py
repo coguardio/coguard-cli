@@ -36,6 +36,8 @@ from coguard_cli.discovery.config_file_finders.config_file_finder_docker_compose
     import ConfigFileFinderDockerCompose
 from coguard_cli.discovery.config_file_finders.config_file_finder_kubernetes \
     import ConfigFileFinderKubernetes
+from coguard_cli.discovery.config_file_finders.config_file_finder_helm \
+    import ConfigFileFinderHelm
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 
 def config_file_finder_factory() -> Generator[ConfigFileFinder, None, None]:
