@@ -5,8 +5,6 @@ inside a folder structure.
 
 import os
 import re
-import shutil
-import tempfile
 import logging
 from typing import Dict, List, Optional, Tuple
 import yaml
@@ -19,47 +17,6 @@ class ConfigFileFinderKubernetes(ConfigFileFinder):
     """
     The class to find kubernetes configuration files within a file system.
     """
-
-    def _create_temp_location_and_mainfest_entry(
-            self,
-            path_to_file_system: str,
-            file_name: str,
-            location_on_current_machine: str) -> Tuple[Dict, str]:
-        """
-        Common helper function which creates a temporary folder location for the
-        configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for a kubernetes service and the path to the
-        temporary location.
-        """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-kubernetes")
-        to_copy = cff_util.get_path_behind_symlinks(
-            path_to_file_system,
-            location_on_current_machine
-        )
-        shutil.copy(
-            to_copy,
-            os.path.join(
-                temp_location,
-                os.path.basename(location_on_current_machine)
-            )
-        )
-        manifest_entry = {
-            "version": "1.0",
-            "serviceName": "kubernetes",
-            "configFileList": [
-                {
-                    "fileName": file_name,
-                    "defaultFileName": "kube-deployment.yaml",
-                    "subPath": ".",
-                    "configFileType": "yaml"
-                }
-            ],
-            "complimentaryFileList": []
-        }
-        return (
-            manifest_entry,
-            temp_location
-        )
 
     def check_for_config_files_in_standard_location(
             self, path_to_file_system: str
@@ -89,7 +46,7 @@ class ConfigFileFinderKubernetes(ConfigFileFinder):
                 ]
         #pylint: disable=bare-except
         except:
-            logging.error(
+            logging.debug(
                 "Failed to load %s",
                 file_path
             )
@@ -134,10 +91,13 @@ class ConfigFileFinderKubernetes(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(cff_util.create_temp_location_and_mainfest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
-                result_file
+                result_file,
+                self.get_service_name(),
+                "kube-deployment.yaml",
+                "yaml"
             ))
         return results
 

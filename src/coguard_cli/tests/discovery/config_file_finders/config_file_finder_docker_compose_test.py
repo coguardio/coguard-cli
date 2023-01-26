@@ -41,10 +41,9 @@ class TestConfigFileFinderDockerCompose(unittest.TestCase):
                 "os.path.lexists",
                 new_callable=lambda: lambda location: True), \
              unittest.mock.patch(
-                 ("coguard_cli.discovery.config_file_finders.config_file_"
-                  "finder_docker_compose.ConfigFileFinderDockerCompose._create_temp_"
+                 ("coguard_cli.discovery.config_file_finders.create_temp_"
                   "location_and_mainfest_entry"),
-                 new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
+                 new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_docker_compose = ConfigFileFinderDockerCompose()
             result = config_file_finder_docker_compose.check_for_config_files_in_standard_location(
@@ -77,10 +76,9 @@ class TestConfigFileFinderDockerCompose(unittest.TestCase):
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["docker-compose.yaml"])]), \
                 unittest.mock.patch(
-                    ("coguard_cli.discovery.config_file_finders.config_file_"
-                     "finder_docker_compose.ConfigFileFinderDockerCompose._create_temp_"
+                    ("coguard_cli.discovery.config_file_finders.create_temp_"
                      "location_and_mainfest_entry"),
-                    new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
+                    new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_docker_compose = ConfigFileFinderDockerCompose()
             result = config_file_finder_docker_compose.check_for_config_files_filesystem_search(
@@ -99,10 +97,9 @@ class TestConfigFileFinderDockerCompose(unittest.TestCase):
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["docker-compose.dev.yaml"])]), \
                 unittest.mock.patch(
-                    ("coguard_cli.discovery.config_file_finders.config_file_"
-                     "finder_docker_compose.ConfigFileFinderDockerCompose._create_temp_"
+                    ("coguard_cli.discovery.config_file_finders.create_temp_"
                      "location_and_mainfest_entry"),
-                    new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
+                    new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_docker_compose = ConfigFileFinderDockerCompose()
             result = config_file_finder_docker_compose.check_for_config_files_filesystem_search(
@@ -121,10 +118,9 @@ class TestConfigFileFinderDockerCompose(unittest.TestCase):
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["docker-compose.dev.yml"])]), \
                 unittest.mock.patch(
-                    ("coguard_cli.discovery.config_file_finders.config_file_"
-                     "finder_docker_compose.ConfigFileFinderDockerCompose._create_temp_"
+                    ("coguard_cli.discovery.config_file_finders.create_temp_"
                      "location_and_mainfest_entry"),
-                    new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
+                    new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_docker_compose = ConfigFileFinderDockerCompose()
             result = config_file_finder_docker_compose.check_for_config_files_filesystem_search(
@@ -133,27 +129,6 @@ class TestConfigFileFinderDockerCompose(unittest.TestCase):
             self.assertEqual(len(result), 1)
             self.assertEqual(result[0][0], {"foo": "bar"})
             self.assertEqual(result[0][1], "/etc/bar")
-
-    def test_create_temp_location_and_manifest_entry(self):
-        """
-        Testing the creation of temporary locations and manifest entries.
-        """
-        def new_callable(prefix="/tmp"):
-            return "/tmp/foo"
-        with unittest.mock.patch(
-                'tempfile.mkdtemp',
-                new_callable=lambda: new_callable), \
-             unittest.mock.patch(
-                 'shutil.copy'
-             ):
-            config_file_finder_docker_compose = ConfigFileFinderDockerCompose()
-            result = config_file_finder_docker_compose._create_temp_location_and_mainfest_entry(
-                '/',
-                'Docker_Compose',
-                '/foo/Docker_Compose'
-            )
-            self.assertEqual(result[1], "/tmp/foo")
-            self.assertEqual(result[0]["serviceName"], "docker_compose")
 
     def test_check_call_command_in_container(self):
         """

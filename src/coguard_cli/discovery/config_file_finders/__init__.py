@@ -7,7 +7,7 @@ import re
 import logging
 import shutil
 import tempfile
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
 def get_path_behind_symlinks(
@@ -348,3 +348,46 @@ def common_call_command_in_container(
             except:
                 pass
     return result_files
+
+def create_temp_location_and_mainfest_entry(
+            path_to_file_system: str,
+            file_name: str,
+            location_on_current_machine: str,
+            service_name: str,
+            default_file_name: str,
+            config_file_type: str) -> Tuple[Dict, str]:
+    """
+    Common helper function which creates a temporary folder location for the
+    configuration files. It returns
+    a tuple containing a manifest for a kubernetes service and the path to the
+    temporary location.
+    """
+    temp_location = tempfile.mkdtemp(prefix="coguard-cli-kubernetes")
+    to_copy = get_path_behind_symlinks(
+        path_to_file_system,
+        location_on_current_machine
+    )
+    shutil.copy(
+        to_copy,
+        os.path.join(
+            temp_location,
+            os.path.basename(location_on_current_machine)
+        )
+    )
+    manifest_entry = {
+        "version": "1.0",
+        "serviceName": service_name,
+        "configFileList": [
+            {
+                "fileName": file_name,
+                "defaultFileName": default_file_name,
+                "subPath": ".",
+                "configFileType": config_file_type
+            }
+        ],
+        "complimentaryFileList": []
+    }
+    return (
+        manifest_entry,
+        temp_location
+    )

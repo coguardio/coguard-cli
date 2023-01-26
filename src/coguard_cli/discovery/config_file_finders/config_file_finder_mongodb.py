@@ -4,7 +4,6 @@ inside a folder structure.
 """
 
 import os
-import shutil
 import tempfile
 from typing import Dict, List, Optional, Tuple
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
@@ -15,46 +14,6 @@ class ConfigFileFinderMongodb(ConfigFileFinder):
     """
     The class to find mongodb configuration files within a file system.
     """
-
-    def _create_temp_location_and_mainfest_entry(
-            self,
-            path_to_file_system: str,
-            location_on_current_machine: str) -> Tuple[Dict, str]:
-        """
-        Common helper function which creates a temporary folder location for the
-        configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for an mongodb service and the path to the
-        temporary location.
-        """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-mongodb")
-        to_copy = cff_util.get_path_behind_symlinks(
-            path_to_file_system,
-            location_on_current_machine
-        )
-        shutil.copy(
-            to_copy,
-            os.path.join(
-                temp_location,
-                os.path.basename(location_on_current_machine)
-            )
-        )
-        manifest_entry = {
-            "version": "1.0",
-            "serviceName": "mongodb",
-            "configFileList": [
-                {
-                    "fileName": "mongod.conf",
-                    "defaultFileName": "mongod.conf",
-                    "subPath": ".",
-                    "configFileType": "yaml"
-                }
-            ],
-            "complimentaryFileList": []
-        }
-        return (
-            manifest_entry,
-            temp_location
-        )
 
     def create_empty_file_for_default(self) -> Tuple[Dict, str]:
         """
@@ -97,9 +56,13 @@ class ConfigFileFinderMongodb(ConfigFileFinder):
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
-            return self._create_temp_location_and_mainfest_entry(
+            return cff_util.create_temp_location_and_mainfest_entry(
                 path_to_file_system,
-                location_on_current_machine
+                "mongod.conf",
+                location_on_current_machine,
+                self.get_service_name(),
+                "mongod.conf",
+                "yaml"
             )
         return None
 
@@ -122,9 +85,13 @@ class ConfigFileFinderMongodb(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(cff_util.create_temp_location_and_mainfest_entry(
                 path_to_file_system,
-                result_file
+                os.path.basename(result_file),
+                result_file,
+                self.get_service_name(),
+                "mongod.conf",
+                "yaml"
             ))
         return results
 
@@ -147,9 +114,13 @@ class ConfigFileFinderMongodb(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(cff_util.create_temp_location_and_mainfest_entry(
                 path_to_file_system,
-                os.path.join(path_to_file_system, result_file)
+                os.path.basename(result_file),
+                os.path.join(path_to_file_system, result_file),
+                self.get_service_name(),
+                "mongod.conf",
+                "yaml"
             ))
         empty_call_result = cff_util.common_call_command_in_container(
             docker_config,
