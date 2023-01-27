@@ -238,3 +238,72 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
             )
             self.assertEqual(result[1], "/tmp/foo")
             self.assertEqual(result[0]["serviceName"], "kubernetes")
+
+    def test_does_config_yaml_contain_required_keys(self):
+        """
+        Tests if a file is a proper kubernetes yaml file, heuristically.
+        """
+        with unittest.mock.patch(
+                'builtins.open',
+                unittest.mock.mock_open(
+                    read_data="receiversprocessorsexportersextensionsservice")):
+            self.assertFalse(cff_util.does_config_yaml_contain_required_keys(
+                "foo.txt",
+                []
+            ))
+
+    def test_does_config_yaml_contain_required_keys_proper_not_kube(self):
+        """
+        Tests if a file is a proper kubernetes yaml file, heuristically.
+        """
+        with unittest.mock.patch(
+                'builtins.open',
+                unittest.mock.mock_open(
+                    read_data= "foo: bar")):
+            self.assertFalse(cff_util.does_config_yaml_contain_required_keys(
+                "foo.txt",
+                [
+                    "apiVersion",
+                    "kind",
+                    "metadata",
+                    "spec"
+                ]
+            ))
+
+    def test_does_config_yaml_contain_required_keys_proper_kube(self):
+        """
+        Tests if a file is a proper kubernetes yaml file, heuristically.
+        """
+        with unittest.mock.patch(
+                'builtins.open',
+                unittest.mock.mock_open(
+                    read_data= \
+                    """
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
+                    """)):
+            self.assertTrue(cff_util.does_config_yaml_contain_required_keys(
+                "foo.txt",
+                [
+                    "apiVersion",
+                    "kind",
+                    "metadata",
+                    "spec"
+                ]))

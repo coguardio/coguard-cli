@@ -5,7 +5,7 @@ Tests for the functions in the Docker DAO module
 import subprocess
 import unittest
 import unittest.mock
-from coguard_cli.image_check import docker_dao
+from coguard_cli import docker_dao
 
 class TestDockerDao(unittest.TestCase):
     """

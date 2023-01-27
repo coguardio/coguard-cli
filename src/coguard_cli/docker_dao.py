@@ -224,3 +224,22 @@ def extract_all_installed_docker_images() -> List[str]:
         logging.error("Failed to list all images: %s", str(exception))
         return []
     return []
+
+def get_kubernetes_translation_from_helm(helm_dir: str) -> Optional[str]:
+    """
+    Helper function to call HELM and translate the directory directives
+    into kubernetes yamls. Returns the output of the command
+    `helm template <helm_dir>`
+    """
+    try:
+        return subprocess.run(
+            f"docker run --rm -v \"{helm_dir}\":/opt/infra alpine/helm template /opt/infra/",
+            check=True,
+            shell=True,
+            capture_output=True,
+            timeout=DOCKER_CALL_TIMEOUT_S
+        ).stdout.decode()
+    except subprocess.CalledProcessError as exception:
+        logging.error("Failed to list all images: %s", str(exception))
+        return None
+    return None

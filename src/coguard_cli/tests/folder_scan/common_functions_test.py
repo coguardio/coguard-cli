@@ -22,7 +22,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         stored on the file-system.
         """
         with unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.store_image_file_system",
+                "coguard_cli.docker_dao.store_image_file_system",
                  new_callable = lambda: lambda x: None):
             result = folder_scan.create_zip_to_upload_from_file_system(
                 None,
