@@ -80,8 +80,8 @@ class TestConfigFileFinderKubernetes(unittest.TestCase):
                     new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ), \
                 unittest.mock.patch(
-                    ("coguard_cli.discovery.config_file_finders.config_file_"
-                     "finder_kubernetes.ConfigFileFinderKubernetes._is_file_kubernetes_yaml"),
+                    ("coguard_cli.discovery.config_file_finders."
+                     "does_config_yaml_contain_required_keys"),
                     new_callable=lambda: lambda a, b: True
                 ):
             config_file_finder_kubernetes = ConfigFileFinderKubernetes()
@@ -106,8 +106,8 @@ class TestConfigFileFinderKubernetes(unittest.TestCase):
                     new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ), \
                 unittest.mock.patch(
-                    ("coguard_cli.discovery.config_file_finders.config_file_"
-                     "finder_kubernetes.ConfigFileFinderKubernetes._is_file_kubernetes_yaml"),
+                    ("coguard_cli.discovery.config_file_finders."
+                     "does_config_yaml_contain_required_keys"),
                     new_callable=lambda: lambda a, b: True
                 ):
             config_file_finder_kubernetes = ConfigFileFinderKubernetes()
@@ -141,57 +141,3 @@ class TestConfigFileFinderKubernetes(unittest.TestCase):
             }
         )
         self.assertListEqual(result, [])
-
-    def test_is_file_kubernetes_yaml_failed_to_load(self):
-        """
-        Tests if a file is a proper kubernetes yaml file, heuristically.
-        """
-        with unittest.mock.patch(
-                'builtins.open',
-                unittest.mock.mock_open(
-                    read_data="receiversprocessorsexportersextensionsservice")):
-            config_file_finder_kubernetes = ConfigFileFinderKubernetes()
-            self.assertFalse(config_file_finder_kubernetes._is_file_kubernetes_yaml("foo.txt"))
-
-    def test_is_file_kubernetes_yaml_proper_not_kube(self):
-        """
-        Tests if a file is a proper kubernetes yaml file, heuristically.
-        """
-        with unittest.mock.patch(
-                'builtins.open',
-                unittest.mock.mock_open(
-                    read_data= "foo: bar")):
-            config_file_finder_kubernetes = ConfigFileFinderKubernetes()
-            self.assertFalse(config_file_finder_kubernetes._is_file_kubernetes_yaml("foo.txt"))
-
-    def test_is_file_kubernetes_yaml_proper_kube(self):
-        """
-        Tests if a file is a proper kubernetes yaml file, heuristically.
-        """
-        with unittest.mock.patch(
-                'builtins.open',
-                unittest.mock.mock_open(
-                    read_data= \
-                    """
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx-deployment
-spec:
-  selector:
-    matchLabels:
-      app: nginx
-  replicas: 2 # tells deployment to run 2 pods matching the template
-  template:
-    metadata:
-      labels:
-        app: nginx
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.14.2
-        ports:
-        - containerPort: 80
-                    """)):
-            config_file_finder_kubernetes = ConfigFileFinderKubernetes()
-            self.assertTrue(config_file_finder_kubernetes._is_file_kubernetes_yaml("foo.txt"))
