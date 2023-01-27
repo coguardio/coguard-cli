@@ -221,8 +221,8 @@ annotations:
                 'tempfile.mkdtemp',
                 new_callable=lambda: new_callable), \
              unittest.mock.patch(
-                 'coguard_cli.image_check.docker_dao.get_kubernetes_translation_from_helm',
-                 new_callable=lambda: lambda dir:  "foo: bar"
+                 'coguard_cli.docker_dao.get_kubernetes_translation_from_helm',
+                 new_callable=lambda: lambda dir: "foo: bar"
              ), \
              unittest.mock.patch(
                 'builtins.open'

@@ -23,7 +23,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         creation fails.
         """
         with unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.create_docker_image",
+                "coguard_cli.docker_dao.create_docker_image",
                 new_callable = lambda: lambda x, y: None):
             result = image_check.create_zip_to_upload_from_docker_image(
                 "foo",
@@ -38,10 +38,10 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         inspection fails.
         """
         with unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.create_docker_image",
+                "coguard_cli.docker_dao.create_docker_image",
                 new_callable = lambda: lambda x, y: "fooImage"), \
              unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.get_inspect_result",
+                "coguard_cli.docker_dao.get_inspect_result",
                  new_callable = lambda: lambda x: None):
             result = image_check.create_zip_to_upload_from_docker_image(
                 "foo",
@@ -56,13 +56,13 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         stored on the file-system.
         """
         with unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.create_docker_image",
+                "coguard_cli.docker_dao.create_docker_image",
                 new_callable = lambda: lambda x, y: "fooImage"), \
              unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.get_inspect_result",
+                "coguard_cli.docker_dao.get_inspect_result",
                  new_callable = lambda: lambda x: {"foo": "bar"}), \
              unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.store_image_file_system",
+                "coguard_cli.docker_dao.store_image_file_system",
                  new_callable = lambda: lambda x: None):
             result = image_check.create_zip_to_upload_from_docker_image(
                 "foo",
@@ -77,13 +77,13 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         function is returning None.
         """
         with unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.create_docker_image",
+                "coguard_cli.docker_dao.create_docker_image",
                 new_callable = lambda: lambda x, y: "fooImage"), \
              unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.get_inspect_result",
+                "coguard_cli.docker_dao.get_inspect_result",
                  new_callable = lambda: lambda x: {"foo": "bar"}), \
              unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.store_image_file_system",
+                "coguard_cli.docker_dao.store_image_file_system",
                  new_callable = lambda: lambda x: "/foo/bar"), \
              unittest.mock.patch(
                 "coguard_cli.image_check.find_configuration_files_and_collect",
@@ -102,13 +102,13 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         def new_tempfile(prefix, suffix):
             return ("foo", "bar")
         with unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.create_docker_image",
+                "coguard_cli.docker_dao.create_docker_image",
                 new_callable = lambda: lambda x, y: "fooImage"), \
              unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.get_inspect_result",
+                "coguard_cli.docker_dao.get_inspect_result",
                  new_callable = lambda: lambda x: {"foo": "bar"}), \
              unittest.mock.patch(
-                "coguard_cli.image_check.docker_dao.store_image_file_system",
+                "coguard_cli.docker_dao.store_image_file_system",
                  new_callable = lambda: lambda x: "/foo/bar"), \
              unittest.mock.patch(
                 "coguard_cli.image_check.find_configuration_files_and_collect",
@@ -137,7 +137,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                  "shutil.rmtree"
              ), \
              unittest.mock.patch(
-                 "coguard_cli.image_check.docker_dao.rm_temporary_container_name"
+                 "coguard_cli.docker_dao.rm_temporary_container_name"
              ):
             result, _ = image_check.create_zip_to_upload_from_docker_image(
                 "foo",
@@ -257,7 +257,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         This checks the function where None is returned.
         """
         with unittest.mock.patch(
-                'coguard_cli.image_check.docker_dao.extract_docker_file',
+                'coguard_cli.docker_dao.extract_docker_file',
                 new_callable=lambda: lambda x: None):
             self.assertIsNone(image_check.extract_docker_file_and_store("foo"))
 
@@ -266,7 +266,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         Tests the functionality to extract a docker file and store it.
         """
         with unittest.mock.patch(
-                'coguard_cli.image_check.docker_dao.extract_docker_file',
+                'coguard_cli.docker_dao.extract_docker_file',
                 new_callable=lambda: lambda x: "foo"), \
              unittest.mock.patch(
                  'tempfile.mkdtemp',

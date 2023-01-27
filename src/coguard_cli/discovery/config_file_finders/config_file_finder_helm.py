@@ -12,7 +12,7 @@ import yaml
 from flatten_dict import unflatten
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
-from coguard_cli.image_check import docker_dao
+from coguard_cli import docker_dao
 
 class ConfigFileFinderHelm(ConfigFileFinder):
     """

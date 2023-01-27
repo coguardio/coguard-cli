@@ -12,7 +12,7 @@ from typing import Optional, Dict, Tuple
 import zipfile
 from coguard_cli.util import replace_special_chars_with_underscore
 from coguard_cli.auth import DealEnum
-from coguard_cli.image_check import docker_dao
+from coguard_cli import docker_dao
 import coguard_cli.discovery.config_file_finder_factory as factory
 from coguard_cli.print_colors import COLOR_RED, COLOR_TERMINATION
 
