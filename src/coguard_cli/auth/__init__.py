@@ -16,6 +16,7 @@ from typing import Dict, Optional
 from pathlib import Path
 import jwt
 import requests
+from coguard_cli.auth.token import Token
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 from coguard_cli.api_connection import does_user_with_email_already_exist, \
     sign_up_for_coguard, \
@@ -59,7 +60,7 @@ def check_password_strength(password: str) -> Optional[str]:
         return "Your password needs to have at least one special character."
     return None
 
-def sign_in_or_sign_up(coguard_url: str, auth_url: str) -> Optional[str]:
+def sign_in_or_sign_up(coguard_url: str, auth_url: str) -> Optional[Token]:
     """
     The functionality to sign in to keycloak or sign up.
 
@@ -127,7 +128,7 @@ def sign_in_or_sign_up(coguard_url: str, auth_url: str) -> Optional[str]:
     token = authenticate_to_server(new_config_object)
     if token is not None:
         store_config_object_in_auth_file(new_config_object)
-    return token
+    return Token(token, new_config_object)
 
 def store_config_object_in_auth_file(
         new_config_object: CoGuardCliConfig,
@@ -211,7 +212,7 @@ def retrieve_configuration_object(
         return CoGuardCliConfig(username, password, coguard_url)
     return CoGuardCliConfig(username, password)
 
-def authenticate_to_server(config_object: Optional[CoGuardCliConfig]) -> Optional[str]:
+def authenticate_to_server(config_object: Optional[CoGuardCliConfig]) -> Optional[Token]:
     """
     This is the function which tries to make the call to the coguard authentication server.
     Returns None if authentication could not have been done, and the auth token otherwise.
@@ -242,7 +243,9 @@ def authenticate_to_server(config_object: Optional[CoGuardCliConfig]) -> Optiona
                       token_request.reason)
         return None
     response_json = token_request.json()
-    return response_json.get("access_token", None)
+    if response_json.get("access_token", None) is None:
+        return None
+    return Token(response_json.get("access_token", None), config_object)
 
 
 def get_public_key(config_object: CoGuardCliConfig) -> Optional[str]:
@@ -268,7 +271,7 @@ def get_public_key(config_object: CoGuardCliConfig) -> Optional[str]:
     logging.debug("The public key is %s", str(public_key))
     return public_key
 
-def get_decoded_jwt_token(token: str, public_key: str) -> jwt.jwk.AbstractJWKBase:
+def get_decoded_jwt_token(token: Token, public_key: str) -> jwt.jwk.AbstractJWKBase:
     """
     Helper function to get a decoded JWT token.
     """
@@ -276,9 +279,9 @@ def get_decoded_jwt_token(token: str, public_key: str) -> jwt.jwk.AbstractJWKBas
     {public_key}
     -----END PUBLIC KEY-----""".replace("    ", "")
     jwt_obj = jwt.JWT()
-    return jwt_obj.decode(token, jwt.jwk_from_pem(expanded_pkey.encode()))
+    return jwt_obj.decode(token.get_token(False), jwt.jwk_from_pem(expanded_pkey.encode()))
 
-def extract_organization_from_token(token: str, config_object: CoGuardCliConfig) -> Optional[str]:
+def extract_organization_from_token(token: Token, config_object: CoGuardCliConfig) -> Optional[str]:
     """
     This is the helper function to extract the organization from the token.
     Returning None if there is no organization.
@@ -289,7 +292,7 @@ def extract_organization_from_token(token: str, config_object: CoGuardCliConfig)
     jwt_decoded = get_decoded_jwt_token(token, public_key)
     return jwt_decoded.get("organization", None)
 
-def extract_deal_type_from_token(token: str, config_object: CoGuardCliConfig) -> DealEnum:
+def extract_deal_type_from_token(token: Token, config_object: CoGuardCliConfig) -> DealEnum:
     """
     This function uses a token, and a configuruation object, and extracts the deal
     type of the account stored in the JWT token.

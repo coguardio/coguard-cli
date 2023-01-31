@@ -7,10 +7,11 @@ import logging
 from typing import Dict, Optional
 import requests
 
+from coguard_cli.auth.token import Token
 from coguard_cli.util import replace_special_chars_with_underscore
 
 def run_report(
-        auth_token: str,
+        auth_token: Token,
         coguard_api_url: str,
         scan_identifier: str,
         organization: str):
@@ -23,10 +24,10 @@ def run_report(
          f"{replace_special_chars_with_underscore(scan_identifier)}?"
          f"organizationName={organization}"),
         headers={
-            "Authorization": f'Bearer {auth_token}',
+            "Authorization": f'Bearer {auth_token.get_token()}',
             "Content-Type": "application/json"
         },
-        timeout=300
+        timeout=1600
     )
     if resp.status_code != 204:
         logging.error("Could not run a report on the specified cluster")
@@ -34,7 +35,7 @@ def run_report(
     return True
 
 def get_latest_report(
-        auth_token: str,
+        auth_token: Token,
         coguard_api_url: str,
         scan_identifier: str,
         organization: str) -> Optional[str]:
@@ -47,7 +48,7 @@ def get_latest_report(
          f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
          f"organizationName={organization}"),
          headers={
-            "Authorization": f'Bearer {auth_token}',
+            "Authorization": f'Bearer {auth_token.get_token()}',
             "Content-Type": "application/json"
         },
         timeout=300
@@ -64,7 +65,7 @@ def get_latest_report(
 def send_zip_file_for_scanning(
         zip_file: str,
         user_name: str,
-        auth_token: str,
+        auth_token: Token,
         coguard_api_url: str,
         scan_identifier: str,
         organization: Optional[str]) -> Optional[Dict]:
@@ -89,7 +90,7 @@ def send_zip_file_for_scanning(
                  f"upload-cluster-zip?organizationName={organization}&"
                  "overwrite=true"),
                 headers={
-                    "Authorization": f'Bearer {auth_token}',
+                    "Authorization": f'Bearer {auth_token.get_token()}',
                     "Content-Type": "application/octet-stream"
                 },
                 data=file_to_send.read(),
@@ -122,7 +123,7 @@ def send_zip_file_for_scanning(
                  f"organizationName={organization}&"
                  f"reportName={latest_report}"),
                 headers={
-                    "Authorization": f'Bearer {auth_token}',
+                    "Authorization": f'Bearer {auth_token.get_token()}',
                     "Content-Type": "application/json"
                 },
                 timeout=300
@@ -132,7 +133,7 @@ def send_zip_file_for_scanning(
                 (f"{coguard_api_url}/coguard-cli/"
                  f"upload-cluster-zip?userName={user_name}"),
                 headers={
-                    "Authorization": f'Bearer {auth_token}',
+                    "Authorization": f'Bearer {auth_token.get_token()}',
                     "Content-Type": "application/octet-stream"
                 },
                 data=file_to_send.read(),

@@ -240,6 +240,41 @@ def get_kubernetes_translation_from_helm(helm_dir: str) -> Optional[str]:
             timeout=DOCKER_CALL_TIMEOUT_S
         ).stdout.decode()
     except subprocess.CalledProcessError as exception:
-        logging.error("Failed to list all images: %s", str(exception))
+        logging.error("Failed to run the helm_image extraction: %s", str(exception))
         return None
     return None
+
+def terraformer_wrapper(location_to_mount: str,
+                        environment_variables: Dict[str, str]) -> bool:
+    """
+    This function builds and runs the terraformer wrapper we built for CoGuard.
+    """
+    # TODO: Make a test that fails in case we change the loc of this file.
+    terraformer_wrapper_image_name = "terraformer_coguard_wrapper"
+    working_dir_of_this_file = os.path.dirname(os.path.abspath(__file__))
+    try:
+        subprocess.run(
+            f"docker build -t {terraformer_wrapper_image_name} " + \
+            os.path.join(working_dir_of_this_file,
+                         "discovery",
+                         "cloud_discovery",
+                         "terraformer_extract_image_helper"),
+            check=True,
+            shell=True,
+            capture_output=True,
+            timeout=DOCKER_CALL_TIMEOUT_S
+        )
+        subprocess.run(
+            f"docker run --rm -v \"{location_to_mount}\":/opt/terraformer_export_data " + \
+            " ".join(f"-e \"{k}\"=\"{v}\"" for k, v in environment_variables.items()) + \
+            f" {terraformer_wrapper_image_name}",
+            check=True,
+            shell=True,
+            capture_output=True,
+            timeout=DOCKER_CALL_TIMEOUT_S * 10
+        )
+        return True
+    except subprocess.CalledProcessError as exception:
+        logging.error("Failed to run the terraformer wrapper: %s", str(exception))
+        return False
+    return False

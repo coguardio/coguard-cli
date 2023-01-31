@@ -1,0 +1,57 @@
+#!/bin/bash
+
+set -ex
+
+UPDATED_TERRAFORMER_VERSION="$(curl -s https://api.github.com/repos/GoogleCloudPlatform/terraformer/releases/latest | grep tag_name | cut -d '"' -f 4)"
+if [ "$CURRENT_TERRAFORMER_VERSION" != "$UPDATED_TERRAFORMER_VERSION" ]; then
+    echo "WARNING: Newer terraformer version available";
+fi;
+
+# Checking if all the necessary environment variables are set
+test -n "$AWS_ACCESS_KEY_ID"
+test -n "$AWS_SECRET_ACCESS_KEY"
+test -n "$COGUARD_USERNAME"
+test -n "$COGUARD_PASSWORD"
+test -n "$ORGANIZATION"
+test -n "$REGIONS"
+
+# The import function is creating a folder for each resource, even when there is
+# nothing to export on. This function cleans up the folders where there was nothing
+# exported from
+# The input parameters are
+# - region: a specific region that is done being explored
+cleanup () {
+    region="$1";
+    # shellcheck disable=SC2045
+    for service in $(ls "$TERRAFORMER_EXPORT_DATA"/"$region"/"$PROVIDER"); do
+        DELETE_IT="$TERRAFORMER_EXPORT_DATA"/"$region"/"$PROVIDER"/"$service"
+        for tf_file in $(find "$TERRAFORMER_EXPORT_DATA"/"$region"/"$PROVIDER"/"$service" -type f \
+                              -print0 -not -iname "provider.tf" -and -not -iname "variables.tf" \
+                              -and -not -iname "terraform.tfstate" | \
+                             xargs -n 1 dirname | uniq); do
+            if [ "$TERRAFORMER_EXPORT_DATA"/"$region"/"$PROVIDER"/"$service" = "$tf_file" ]
+            then
+                DELETE_IT="";
+            fi
+        done;
+        if [ -n "$DELETE_IT" ]
+        then
+            rm -rf "$DELETE_IT";
+        fi
+    done;
+}
+
+# Comment here: Normally, any AWS SDK is using primarily the environment variables.
+# Terraformer seems to insist on that credentials file, and we are writing it here
+# using the environment variables.
+echo -e "[default]\naws_access_key_id=$AWS_ACCESS_KEY_ID\naws_secret_access_key=$AWS_SECRET_ACCESS_KEY" > /home/terraformerUser/.aws/credentials
+
+# In the case where the export data was already there, we should empty its contents
+rm -rf "${TERRAFORMER_EXPORT_DATA:-?}"/*
+cp /opt/tmp/versions.tf "$TERRAFORMER_EXPORT_DATA"
+terraform init
+for region in ${REGIONS//,/ }; do
+    terraformer import "$PROVIDER" --resources=* --regions="$region";
+    mv generated "$region";
+    cleanup "$region";
+done

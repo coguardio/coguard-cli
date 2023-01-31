@@ -164,7 +164,7 @@ class TestAuthClass(unittest.TestCase):
                                  new_callable=lambda: new_json):
             result = coguard_cli.auth.authenticate_to_server(config_obj)
             self.assertIsNotNone(result)
-            self.assertEqual(result, "foo")
+            self.assertEqual(result.get_token(False), "foo")
 
     def test_store_config_object_in_auth_file(self):
         """
@@ -257,7 +257,8 @@ class TestAuthClass(unittest.TestCase):
                 new_callable = lambda: lambda b: "foo"
         ):
             result = coguard_cli.auth.get_decoded_jwt_token(
-                "foo",
+                unittest.mock.Mock(
+                    get_token = lambda x: "foo"),
                 "bar"
             )
             self.assertEqual(result, mock_result)
