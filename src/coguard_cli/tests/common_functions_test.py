@@ -7,7 +7,6 @@ import unittest
 import unittest.mock
 from io import StringIO
 import coguard_cli
-from coguard_cli import auth
 
 class TestCommonFunctions(unittest.TestCase):
     """
@@ -111,11 +110,11 @@ class TestCommonFunctions(unittest.TestCase):
                 new_callable=lambda: lambda arg_coguard_url, arg_auth_url: {}
         ), \
         unittest.mock.patch(
-            'coguard_cli.auth.authenticate_to_server',
+            'coguard_cli.auth.token.Token.authenticate_to_server',
             new_callable=lambda: lambda auth_config: "foo"
         ):
             token = coguard_cli.auth_token_retrieval("foo", "bar")
-            self.assertEqual(token, "foo")
+            self.assertIsNotNone(token)
 
     def auth_token_retrieval_auth_config_none_test(self):
         """
@@ -126,7 +125,7 @@ class TestCommonFunctions(unittest.TestCase):
                 new_callable=lambda: lambda arg_coguard_url, arg_auth_url: "None"
         ), \
         unittest.mock.patch(
-            'coguard_cli.auth.authenticate_to_server',
+            'coguard_cli.auth.token.Token.authenticate_to_server',
             new_callable=lambda: lambda auth_config: "foo"
         ), \
         unittest.mock.patch(
@@ -134,7 +133,7 @@ class TestCommonFunctions(unittest.TestCase):
             new_callable=lambda: lambda coguard_api_url, coguard_auth_url: "foo"
         ):
             token = coguard_cli.auth_token_retrieval("foo", "bar")
-            self.assertEqual(token, "foo")
+            self.assertIsNotNone(token)
 
     def upload_and_evaluate_zip_candidate_zip_candidate_none_test(self):
         """

@@ -26,7 +26,8 @@ class TestApiConnection(unittest.TestCase):
             self.assertIsNone(api_connection.send_zip_file_for_scanning(
                 "foo",
                 "bar",
-                "baz",
+                unittest.mock.Mock(
+                    return_value = lambda: "baz"),
                 "biz",
                 "zip",
                 None
@@ -50,7 +51,8 @@ class TestApiConnection(unittest.TestCase):
             self.assertDictEqual(api_connection.send_zip_file_for_scanning(
                 "foo",
                 "bar",
-                "baz",
+                unittest.mock.Mock(
+                    return_value = lambda: "baz"),
                 "biz",
                 "zip",
                 None
@@ -74,7 +76,8 @@ class TestApiConnection(unittest.TestCase):
             self.assertIsNone(api_connection.send_zip_file_for_scanning(
                 "foo",
                 "bar",
-                "baz",
+                unittest.mock.Mock(
+                    return_value = lambda: "baz"),
                 "biz",
                 "zip",
                 "org"
@@ -102,7 +105,8 @@ class TestApiConnection(unittest.TestCase):
             self.assertIsNone(api_connection.send_zip_file_for_scanning(
                 "foo",
                 "bar",
-                "baz",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
                 "biz",
                 "zip",
                 "org"
@@ -134,7 +138,8 @@ class TestApiConnection(unittest.TestCase):
             self.assertIsNone(api_connection.send_zip_file_for_scanning(
                 "foo",
                 "bar",
-                "baz",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
                 "biz",
                 "zip",
                 "org"
@@ -174,7 +179,8 @@ class TestApiConnection(unittest.TestCase):
             self.assertDictEqual(api_connection.send_zip_file_for_scanning(
                 "foo",
                 "bar",
-                "baz",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
                 "biz",
                 "zip",
                 "org"
@@ -282,7 +288,8 @@ class TestApiConnection(unittest.TestCase):
                 'requests.put',
                 new_callable=lambda: lambda url, headers, timeout: mock_response):
             result = api_connection.run_report(
-                "token",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
                 "organization"
@@ -300,7 +307,8 @@ class TestApiConnection(unittest.TestCase):
                 'requests.put',
                 new_callable=lambda: lambda url, headers, timeout: mock_response):
             result = api_connection.run_report(
-                "token",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
                 "organization"
@@ -318,7 +326,8 @@ class TestApiConnection(unittest.TestCase):
                 'requests.get',
                 new_callable=lambda: lambda url, headers, timeout: mock_response):
             result = api_connection.get_latest_report(
-                "token",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
                 "organization"
@@ -337,7 +346,8 @@ class TestApiConnection(unittest.TestCase):
                 'requests.get',
                 new_callable=lambda: lambda url, headers, timeout: mock_response):
             result = api_connection.get_latest_report(
-                "token",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
                 "organization"
@@ -357,7 +367,8 @@ class TestApiConnection(unittest.TestCase):
                 'requests.get',
                 new_callable=lambda: lambda url, headers, timeout: mock_response):
             result = api_connection.get_latest_report(
-                "token",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
                 "organization"

@@ -16,7 +16,8 @@ from coguard_cli.util import replace_special_chars_with_underscore
 
 def find_configuration_files_and_collect(
         folder_path: str,
-        customer_id: str
+        customer_id: str,
+        manifest_name: Optional[str] = None
 ) -> Optional[Tuple[str, Dict]]:
     """
     This function consumes a file_system store location,
@@ -39,10 +40,10 @@ def find_configuration_files_and_collect(
         "name": replace_special_chars_with_underscore(
             os.path.basename(
                 os.path.dirname(
-                    folder_path
+                    folder_path + os.sep
                 )
             )
-        ),
+        ) if manifest_name is None else manifest_name,
         "customerId": customer_id,
         "machines": {
             "folder": {
@@ -93,7 +94,8 @@ def find_configuration_files_and_collect(
 
 def create_zip_to_upload_from_file_system(
         folder_path: str,
-        customer_id: str) -> Optional[Tuple[str, Dict]]:
+        customer_id: str,
+        cluster_name: Optional[str] = None) -> Optional[Tuple[str, Dict]]:
     """
     This function creates a zip file from a given image name which is
     ready to be uploaded to the CoGuard back-end. If something goes wrong,
@@ -106,7 +108,8 @@ def create_zip_to_upload_from_file_system(
         return None
     collected_location_manifest_tuple = find_configuration_files_and_collect(
         folder_path,
-        customer_id
+        customer_id,
+        cluster_name
     )
     if collected_location_manifest_tuple is None:
         return None

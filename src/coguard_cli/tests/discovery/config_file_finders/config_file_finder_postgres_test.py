@@ -37,6 +37,8 @@ class TestConfigFileFinderPostgres(unittest.TestCase):
         This checks for the standard location test and sees if the file is
         existent or not.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
                 "os.path.lexists",
                 new_callable=lambda: lambda location: True), \
@@ -50,7 +52,10 @@ class TestConfigFileFinderPostgres(unittest.TestCase):
                      "foo": "bar",
                      "configFileList": []
                  }, "/etc/bar")
-             ):
+             ), \
+             unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable):
             config_file_finder_postgres = ConfigFileFinderPostgres()
             result = config_file_finder_postgres.check_for_config_files_in_standard_location(
                 "foo"
@@ -88,10 +93,15 @@ class TestConfigFileFinderPostgres(unittest.TestCase):
         This checks for the standard location test and sees if the file is
         existent or not.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+             unittest.mock.patch(
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["postgresql.conf"])]), \
-                unittest.mock.patch(
+             unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_postgres.ConfigFileFinderPostgres._create_temp_"
                      "location_and_mainfest_entry"),
@@ -151,7 +161,12 @@ class TestConfigFileFinderPostgres(unittest.TestCase):
         The function to test the attempted extraction of the postgresql.conf
         location from call commands.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+             unittest.mock.patch(
                 'builtins.open',
                 unittest.mock.mock_open(read_data="postgres -c config-file=/etc/postgresql.conf")), \
              unittest.mock.patch(

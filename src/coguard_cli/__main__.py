@@ -119,7 +119,7 @@ def main():
         help="The sub-command to find configuration files within a folder and scan them."
     )
     folder_scanning_parser.add_argument(
-        'scan',
+        SubParserNames.SCAN.value,
         type=str,
         default="",
         nargs='?',
@@ -132,6 +132,28 @@ def main():
         default="",
         nargs='?',
         help=("The path to the folder. Defaults to the current working directory.")
+    )
+    cloud_scanning_parser = subparsers.add_parser(
+        SubParserNames.CLOUD_SCAN.value,
+        help="The sub-command to find configuration files within a folder and scan them."
+    )
+    cloud_scanning_parser.add_argument(
+        SubParserNames.SCAN.value,
+        type=str,
+        choices=["aws", "gcp", "azure", "scan", ""],
+        default="",
+        nargs='?',
+        help=("The indicator that we are aiming to do a scan.")
+    )
+    cloud_scanning_parser.add_argument(
+        'cloud_provider_name',
+        metavar="cloud_provider_name",
+        choices=["aws", "gcp", "azure", ""],
+        type=str,
+        default="",
+        nargs='?',
+        help=("The name of the cloud providers. The choices are \"gcp\", "
+              "\"aws\" and \"azure\". Defaults to \"aws.\"")
     )
     docker_image_parser = subparsers.add_parser(
         SubParserNames.SCAN.value,
