@@ -50,8 +50,6 @@ class ConfigFileFinderTerraform(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        # TODO: Ensure that not tons of separate services are defined for terraform
-        # and/or Kubernetes.
         standard_names = [".*\\.tf"]
         result_files = []
         logging.debug("Trying to find the file by searching"

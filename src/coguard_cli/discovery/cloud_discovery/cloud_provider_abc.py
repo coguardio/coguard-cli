@@ -27,7 +27,6 @@ class CloudProvider(ABC):
         them as a dictionary. If no credentials could be extracted, None is being returned.
         """
 
-    # TODO: Potentially move the organization into the cli config
     @abstractmethod
     def extract_iac_files_for_account(
             self,
