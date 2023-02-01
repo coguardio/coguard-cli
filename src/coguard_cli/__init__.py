@@ -319,7 +319,6 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
           OXXXXXXXXXXd
     """)
     token = auth_token_retrieval(args.coguard_api_url, args.coguard_auth_url)
-    logging.debug("Auth token is: %s", token)
     if token is None:
         print(f"{COLOR_RED}Failed to authenticate.{COLOR_TERMINATION}")
         return
