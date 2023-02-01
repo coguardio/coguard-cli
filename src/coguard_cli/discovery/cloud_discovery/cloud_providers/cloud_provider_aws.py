@@ -62,7 +62,6 @@ class CloudProviderAWS(CloudProvider):
         profiles = session.available_profiles
         try:
             if len(profiles) == 0:
-                # TODO: Check if the profiles are empty if we are using environment variables.
                 logging.error("No profiles found.")
                 return None
             if len(profiles) == 1:
@@ -85,8 +84,7 @@ class CloudProviderAWS(CloudProvider):
             return None
 
     def extract_iac_files_for_account(self,
-                                      cli_conf: CoGuardCliConfig,
-                                      organization: str) -> Optional[str]:
+                                      cli_conf: CoGuardCliConfig) -> Optional[str]:
         """
         Consider the abstract base class for documentation.
         """
@@ -101,7 +99,6 @@ class CloudProviderAWS(CloudProvider):
             "AWS_SECRET_ACCESS_KEY": self._aws_secret_access_key,
             "COGUARD_USERNAME": cli_conf.get_username(),
             "COGUARD_PASSWORD": cli_conf.get_password(),
-            "ORGANIZATION": organization,
             "REGIONS": ",".join(all_regions)
         }
         res = docker_dao.terraformer_wrapper(temp_location, environment_variables)

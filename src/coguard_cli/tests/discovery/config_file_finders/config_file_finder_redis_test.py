@@ -36,7 +36,12 @@ class TestConfigFileFinderRedis(unittest.TestCase):
         This checks for the standard location test and sees if the file is
         existent or not.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+             unittest.mock.patch(
                 "os.path.lexists",
                 new_callable=lambda: lambda location: True), \
              unittest.mock.patch(
@@ -72,7 +77,12 @@ class TestConfigFileFinderRedis(unittest.TestCase):
         This checks for the standard location test and sees if the file is
         existent or not.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+             unittest.mock.patch(
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["redis.conf"])]), \
                 unittest.mock.patch(
@@ -135,7 +145,12 @@ class TestConfigFileFinderRedis(unittest.TestCase):
         The function to test the attempted extraction of the my.cnf
         location from call commands.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+             unittest.mock.patch(
                 'builtins.open',
                 unittest.mock.mock_open(read_data="redis-server /etc/redis.conf")), \
              unittest.mock.patch(

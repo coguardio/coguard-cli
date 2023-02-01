@@ -4,6 +4,7 @@ The CoGuard CLI top level entrypoint where the entrypoint function is being defi
 
 from enum import Enum
 import json
+import shutil
 import os
 import sys
 import textwrap
@@ -112,7 +113,10 @@ def auth_token_retrieval(
         auth_config = auth.retrieve_configuration_object()
     else:
         logging.debug("Retrieving config with auth_config %s", str(auth_config))
-        token = auth.authenticate_to_server(auth_config)
+        token = auth.token.Token("", auth_config)
+        res = token.authenticate_to_server()
+        if res is None:
+            token = None
     return token
 
 def upload_and_evaluate_zip_candidate(
@@ -151,9 +155,9 @@ def upload_and_evaluate_zip_candidate(
     print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {scan_identifier}"
           f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
     if output_format == 'formatted':
-        output_result_json_from_coguard(result, manifest_dict)
+        output_result_json_from_coguard(result or {}, manifest_dict)
     else:
-        print(json.dumps(result))
+        print(json.dumps(result or {}))
     os.remove(zip_file)
     max_fail_severity = max(
         entry["rule"]["severity"] for entry in result.get("failed", [])
@@ -193,7 +197,7 @@ def perform_docker_image_scan(
         zip_candidate = create_zip_to_upload_from_docker_image(
             auth_config.get_username(),
             image,
-            auth.DealEnum.ENTERPRISE
+            auth.util.DealEnum.ENTERPRISE
         )
         upload_and_evaluate_zip_candidate(
             zip_candidate,
@@ -208,7 +212,7 @@ def perform_docker_image_scan(
 
 def perform_folder_scan(
         folder_name: Optional[str],
-        deal_type: auth.DealEnum,
+        deal_type: auth.util.DealEnum,
         auth_config: auth.CoGuardCliConfig,
         token: auth.token.Token,
         organization: str,
@@ -219,11 +223,11 @@ def perform_folder_scan(
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
     """
-    if deal_type != auth.DealEnum.ENTERPRISE:
+    if deal_type != auth.util.DealEnum.ENTERPRISE:
         print("Folder scanning is only available for non-free accounts")
         sys.exit(1)
     folder_name = folder_name or "."
-    printed_folder_name = os.path.basename(os.path.dirname(folder_name))
+    printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
     zip_candidate = create_zip_to_upload_from_file_system(
         folder_name,
@@ -242,7 +246,7 @@ def perform_folder_scan(
 
 def perform_cloud_provider_scan(
         cloud_provider_name: Optional[str],
-        deal_type: auth.DealEnum,
+        deal_type: auth.util.DealEnum,
         auth_config: auth.CoGuardCliConfig,
         token: auth.token.Token,
         organization: str,
@@ -253,7 +257,7 @@ def perform_cloud_provider_scan(
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
     """
-    if deal_type != auth.DealEnum.ENTERPRISE:
+    if deal_type != auth.util.DealEnum.ENTERPRISE:
         print("Cloud provider scanning is only available for non-free accounts")
         sys.exit(1)
     provider_name = cloud_provider_name or "aws"
@@ -268,7 +272,6 @@ def perform_cloud_provider_scan(
         sys.exit(1)
     folder_name = cloud_provider.extract_iac_files_for_account(
         auth_config,
-        organization
     )
     if not folder_name:
         logging.error("Unable to extract the requested cloud provider %s.",
@@ -276,9 +279,10 @@ def perform_cloud_provider_scan(
         sys.exit(1)
     zip_candidate = create_zip_to_upload_from_file_system(
         folder_name,
-        organization
+        organization,
+        f"{provider_name}_extraction"
     )
-    #os.removedirs(folder_name)
+    shutil.rmtree(folder_name)
     upload_and_evaluate_zip_candidate(
         zip_candidate,
         auth_config,
@@ -323,8 +327,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         arg_coguard_url = args.coguard_api_url,
         arg_auth_url = args.coguard_auth_url
     )
-    deal_type = auth.extract_deal_type_from_token(token, auth_config)
-    organization = auth.extract_organization_from_token(token, auth_config)
+    deal_type = token.extract_deal_type_from_token()
+    organization = token.extract_organization_from_token()
     logging.debug("Extracted deal type: %s", deal_type)
     logging.debug("Extracted organization: %s", organization)
     if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:

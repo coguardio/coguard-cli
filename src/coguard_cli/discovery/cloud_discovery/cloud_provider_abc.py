@@ -31,8 +31,7 @@ class CloudProvider(ABC):
     @abstractmethod
     def extract_iac_files_for_account(
             self,
-            cli_config: CoGuardCliConfig,
-            organization: str) -> Optional[str]:
+            cli_config: CoGuardCliConfig) -> Optional[str]:
         """
         The main function which creates a temporary folder,
         and then extracts all cloud information in IaC. If the process

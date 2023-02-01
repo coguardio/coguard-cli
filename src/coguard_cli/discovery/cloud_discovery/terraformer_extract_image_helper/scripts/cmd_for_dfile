@@ -12,7 +12,6 @@ test -n "$AWS_ACCESS_KEY_ID"
 test -n "$AWS_SECRET_ACCESS_KEY"
 test -n "$COGUARD_USERNAME"
 test -n "$COGUARD_PASSWORD"
-test -n "$ORGANIZATION"
 test -n "$REGIONS"
 
 # The import function is creating a folder for each resource, even when there is
@@ -26,9 +25,9 @@ cleanup () {
     for service in $(ls "$TERRAFORMER_EXPORT_DATA"/"$region"/"$PROVIDER"); do
         DELETE_IT="$TERRAFORMER_EXPORT_DATA"/"$region"/"$PROVIDER"/"$service"
         for tf_file in $(find "$TERRAFORMER_EXPORT_DATA"/"$region"/"$PROVIDER"/"$service" -type f \
-                              -print0 -not -iname "provider.tf" -and -not -iname "variables.tf" \
-                              -and -not -iname "terraform.tfstate" | \
-                             xargs -n 1 dirname | uniq); do
+                              -not -iname "provider.tf" -and -not -iname "variables.tf" \
+                              -and -not -iname "terraform.tfstate" -print0 | \
+                             xargs -0 dirname | sort | uniq); do
             if [ "$TERRAFORMER_EXPORT_DATA"/"$region"/"$PROVIDER"/"$service" = "$tf_file" ]
             then
                 DELETE_IT="";

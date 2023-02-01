@@ -2,6 +2,7 @@
 Tests for the functions in the Docker DAO module
 """
 
+import os
 import subprocess
 import unittest
 import unittest.mock
@@ -354,3 +355,18 @@ class TestDockerDao(unittest.TestCase):
                 docker_dao.extract_all_installed_docker_images(),
                 []
             )
+
+    def test_terraformer_wrapper_location(self):
+        """
+        A bit of an unusual test, but since we are determining the location
+        of the terraformer container relative to the docker_dao.py path,
+        we should ensure that it stays there and that there is a test
+        catching if it moves.
+        """
+        self.assertTrue(os.path.exists(
+            os.path.join(
+                ".",
+                "coguard_cli",
+                "docker_dao.py"
+            )
+        ))

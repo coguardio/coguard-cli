@@ -9,9 +9,6 @@ FROM centos:8
 # - AWS_SECRET_ACCESS_KEY (The secret access key for AWS)
 # - COGUARD_USERNAME (The username to authenticate to CoGuard)
 # - COGUARD_PASSWORD (The password to authenticate to CoGuard)
-# - ORGANIZATION (The organization under which the coguard account
-#                 identified by the username and password above is
-#                 registered)
 
 #coguard-config-checker: disable dockerfile_container_healthcheck_parameter Not a continuously running service
 

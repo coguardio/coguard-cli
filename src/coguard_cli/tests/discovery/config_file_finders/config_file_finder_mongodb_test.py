@@ -24,7 +24,7 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
         existent or not.
         """
         with unittest.mock.patch(
-                "os.path.exists",
+                "os.path.lexists",
                 new_callable=lambda: lambda location: False):
             config_file_finder_mongodb = ConfigFileFinderMongodb()
             self.assertIsNone(
@@ -38,9 +38,14 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
         This checks for the standard location test and sees if the file is
         existent or not.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
                 "os.path.lexists",
                 new_callable=lambda: lambda location: True), \
+             unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.create_temp_"
                   "location_and_mainfest_entry"),
@@ -73,7 +78,12 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
         This checks for the standard location test and sees if the file is
         existent or not.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+            unittest.mock.patch(
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["mongod.conf"])]), \
                 unittest.mock.patch(
@@ -111,7 +121,12 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
         The function to test the attempted extraction of the mongod.conf
         location from call commands.
         """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
         with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+             unittest.mock.patch(
                 'builtins.open',
                 unittest.mock.mock_open(read_data="mongod --config /etc/mongod.conf")), \
              unittest.mock.patch(

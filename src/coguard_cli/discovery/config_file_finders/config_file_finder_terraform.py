@@ -107,4 +107,8 @@ class ConfigFileFinderTerraform(ConfigFileFinder):
         """
         return 'terraform'
 
+    def is_cluster_service(self):
+        return True
+
+
 ConfigFileFinder.register(ConfigFileFinderTerraform)
