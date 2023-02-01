@@ -40,7 +40,7 @@ def find_configuration_files_and_collect(
         "name": replace_special_chars_with_underscore(
             os.path.basename(
                 os.path.dirname(
-                    folder_path
+                    folder_path + os.sep
                 )
             )
         ) if manifest_name is None else manifest_name,
