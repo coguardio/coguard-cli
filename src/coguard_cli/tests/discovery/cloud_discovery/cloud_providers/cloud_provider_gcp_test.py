@@ -276,29 +276,42 @@ class TestCloudProviderGCP(unittest.TestCase):
                 "/tmp/bar"
             )
 
-    # def test_get_all_regions(self):
-    #     """
-    #     Testing the functionality to get all regions.
-    #     """
-    #     gcp_provider = CloudProviderGCP()
-    #     mock_client = unittest.mock.Mock(
-    #         describe_regions = lambda: {"Regions": [{"RegionName": "ca-central-1"}]}
-    #     )
-    #     with unittest.mock.patch(
-    #             'boto3.client',
-    #             new_callable = lambda: lambda resource: mock_client
-    #     ):
-    #         self.assertListEqual(
-    #             gcp_provider.get_all_regions(),
-    #             ["ca-central-1"]
-    #         )
-
     def test_get_all_regions_no_extraction(self):
         """
         Testing the functionality to get all regions.
         """
         gcp_provider = CloudProviderGCP()
-        self.assertEqual(
-            len(gcp_provider.get_all_regions()),
-            36
-        )
+        with unittest.mock.patch(
+                "subprocess.run",
+                new_callable=lambda: \
+                lambda cmd, check, shell, capture_output, timeout: \
+                unittest.mock.Mock(
+                    stdout=b"[]"
+                )
+        ):
+            self.assertEqual(
+                len(gcp_provider.get_all_regions()),
+                36
+            )
+
+    def test_get_all_regions_with_extraction(self):
+        """
+        Testing the functionality to get all regions.
+        """
+        gcp_provider = CloudProviderGCP()
+        with unittest.mock.patch(
+                "subprocess.run",
+                new_callable=lambda: \
+                lambda cmd, check, shell, capture_output, timeout: \
+                unittest.mock.Mock(
+                    stdout=b"[{\"name\": \"foo\"}]"
+                )
+        ):
+            self.assertEqual(
+                len(gcp_provider.get_all_regions()),
+                1
+            )
+            self.assertEqual(
+                gcp_provider.get_all_regions()[0],
+                "foo"
+            )

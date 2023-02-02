@@ -186,6 +186,8 @@ class CloudProviderGCP(CloudProvider):
                 timeout=300
             ).stdout.decode()
             regions_outp_obj = json.loads(regions)
+            if not regions_outp_obj:
+                return default
             result = [r["name"] for r in regions_outp_obj]
             return result
         except subprocess.CalledProcessError as exception:
