@@ -8,11 +8,30 @@ if [ "$CURRENT_TERRAFORMER_VERSION" != "$UPDATED_TERRAFORMER_VERSION" ]; then
 fi;
 
 # Checking if all the necessary environment variables are set
-test -n "$AWS_ACCESS_KEY_ID"
-test -n "$AWS_SECRET_ACCESS_KEY"
-test -n "$COGUARD_USERNAME"
-test -n "$COGUARD_PASSWORD"
-test -n "$REGIONS"
+if [ "$PROVIDER" = "aws" ]
+then
+    test -n "$AWS_ACCESS_KEY_ID"
+    test -n "$AWS_SECRET_ACCESS_KEY"
+    test -n "$REGIONS"
+    # Comment here: Normally, any AWS SDK is using primarily the environment variables.
+    # Terraformer seems to insist on that credentials file, and we are writing it here
+    # using the environment variables.
+    echo -e "[default]\naws_access_key_id=$AWS_ACCESS_KEY_ID\naws_secret_access_key=$AWS_SECRET_ACCESS_KEY" > /home/terraformerUser/.aws/credentials
+elif [ "$PROVIDER" = "gcp" ]
+then
+    test -n "$PROJECTS"
+    test -n "$REGIONS"
+    test -n "$CREDENTIALS"
+    echo "$CREDENTIALS" > /opt/tmp/gcp_creds.json
+    export GOOGLE_APPLICATION_CREDENTIALS=/opt/tmp/gcp_creds.json
+elif [ "$PROVIDER" = "azure" ]
+then
+    ARM_SUBSCRIPTION_ID=$(az account show | jq -r '.id');
+    export ARM_SUBSCRIPTION_ID
+else
+    echo "No supported provider used: $PROVIDER";
+    exit 1;
+fi
 
 # The import function is creating a folder for each resource, even when there is
 # nothing to export on. This function cleans up the folders where there was nothing
@@ -40,17 +59,21 @@ cleanup () {
     done;
 }
 
-# Comment here: Normally, any AWS SDK is using primarily the environment variables.
-# Terraformer seems to insist on that credentials file, and we are writing it here
-# using the environment variables.
-echo -e "[default]\naws_access_key_id=$AWS_ACCESS_KEY_ID\naws_secret_access_key=$AWS_SECRET_ACCESS_KEY" > /home/terraformerUser/.aws/credentials
-
 # In the case where the export data was already there, we should empty its contents
 rm -rf "${TERRAFORMER_EXPORT_DATA:-?}"/*
 cp /opt/tmp/versions.tf "$TERRAFORMER_EXPORT_DATA"
 terraform init
 for region in ${REGIONS//,/ }; do
-    terraformer import "$PROVIDER" --resources=* --regions="$region";
+    if [ "$PROVIDER" = "aws" ]
+    then
+        terraformer import "$PROVIDER" --resources=* --regions="$region";
+    elif [ "$PROVIDER" = "gcp" ]
+    then
+        terraformer import google --resources=* --regions="$region" --projects="$PROJECTS";
+    elif [ "$PROVIDER" = "azure" ]
+    then
+        terraformer import azure -r "$(az group list | jq -r 'map(.name) | join(",")')";
+    fi
     mv generated "$region";
     cleanup "$region";
 done
