@@ -364,7 +364,7 @@ def create_temp_location_and_mainfest_entry(
     a tuple containing a manifest for a kubernetes service and the path to the
     temporary location.
     """
-    temp_location = tempfile.mkdtemp(prefix="coguard-cli-kubernetes")
+    temp_location = tempfile.mkdtemp(prefix=f"coguard-cli-{service_name}")
     to_copy = get_path_behind_symlinks(
         path_to_file_system,
         location_on_current_machine

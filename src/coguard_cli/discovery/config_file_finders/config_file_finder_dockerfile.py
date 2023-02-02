@@ -84,8 +84,8 @@ class ConfigFileFinderDockerfile(ConfigFileFinder):
             results.append(cff_util.create_temp_location_and_mainfest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
-                self.get_service_name(),
                 result_file,
+                self.get_service_name(),
                 "Dockerfile",
                 "dockerfile"
             ))
