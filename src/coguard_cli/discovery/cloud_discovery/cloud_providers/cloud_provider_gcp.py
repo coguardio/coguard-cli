@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 import configparser
 import json
+import subprocess
 from typing import Optional, Dict, List
 import tempfile
 from coguard_cli.discovery.cloud_discovery.cloud_provider_abc import CloudProvider
@@ -176,7 +177,20 @@ class CloudProviderGCP(CloudProvider):
             "us-west4",
             "us-west4"
         ]
-        # TODO: Get a list of regions
+        try:
+            regions = subprocess.run(
+                "gcloud compute regions list --format=\"json\"",
+                check=True,
+                shell=True,
+                capture_output=True,
+                timeout=300
+            ).stdout.decode()
+            regions_outp_obj = json.loads(regions)
+            result = [r["name"] for r in regions_outp_obj]
+            return result
+        except subprocess.CalledProcessError as exception:
+            logging.error("Failed to get the regions dynamically; using defaults.")
+            return default
         return default
 
 CloudProvider.register(CloudProviderGCP)

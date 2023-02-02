@@ -31,7 +31,7 @@ RUN yum -y install jq-1.5-12.el8
 # Install Azure CLI
 RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc
 RUN dnf install -y https://packages.microsoft.com/config/rhel/8/packages-microsoft-prod.rpm
-RUN dnf install azure-cli
+RUN dnf install -y azure-cli
 
 # Install Terraformer
 
