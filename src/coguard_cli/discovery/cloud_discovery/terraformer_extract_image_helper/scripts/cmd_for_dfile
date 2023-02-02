@@ -19,11 +19,12 @@ then
     echo -e "[default]\naws_access_key_id=$AWS_ACCESS_KEY_ID\naws_secret_access_key=$AWS_SECRET_ACCESS_KEY" > /home/terraformerUser/.aws/credentials
 elif [ "$PROVIDER" = "gcp" ]
 then
-    test -n "$PROJECTS"
-    test -n "$REGIONS"
-    test -n "$CREDENTIALS"
-    echo "$CREDENTIALS" > /opt/tmp/gcp_creds.json
-    export GOOGLE_APPLICATION_CREDENTIALS=/opt/tmp/gcp_creds.json
+    test -n "$PROJECTS";
+    test -n "$REGIONS";
+    test -n "$CREDENTIALS";
+    echo "$CREDENTIALS" > /opt/tmp/gcp_creds.json;
+    GOOGLE_APPLICATION_CREDENTIALS=/opt/tmp/gcp_creds.json;
+    export GOOGLE_APPLICATION_CREDENTIALS;
 elif [ "$PROVIDER" = "azure" ]
 then
     ARM_SUBSCRIPTION_ID=$(az account show | jq -r '.id');
