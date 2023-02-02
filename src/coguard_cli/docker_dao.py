@@ -10,7 +10,7 @@ import uuid
 import logging
 import tarfile
 import os
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 
 DOCKER_CALL_TIMEOUT_S = 300
 
@@ -245,12 +245,15 @@ def get_kubernetes_translation_from_helm(helm_dir: str) -> Optional[str]:
     return None
 
 def terraformer_wrapper(location_to_mount: str,
-                        environment_variables: Dict[str, str]) -> bool:
+                        environment_variables: Dict[str, str],
+                        mounts: List[Tuple[str, str]],
+                        cloud_provider_name: str,
+                        cloud_provider_alt_name: str) -> bool:
     """
     This function builds and runs the terraformer wrapper we built for CoGuard.
     """
-    terraformer_wrapper_image_name = "terraformer_coguard_wrapper"
-    terraformer_container_name = "coguard_terraformer_extract"
+    terraformer_wrapper_image_name = f"terraformer_coguard_wrapper_{cloud_provider_name}"
+    terraformer_container_name = f"coguard_terraformer_extract_{cloud_provider_name}"
     working_dir_of_this_file = os.path.dirname(os.path.abspath(__file__))
     try:
         logging.info("Creating cloud extraction image on this machine.")
@@ -260,7 +263,9 @@ def terraformer_wrapper(location_to_mount: str,
                          "discovery",
                          "cloud_discovery",
                          "terraformer_extract_image_helper") + \
-            f" --build-arg USER_ID={os.getuid()} --build-arg GROUP_ID={os.getgid()}",
+            f" --build-arg USER_ID={os.getuid()} --build-arg GROUP_ID={os.getgid()}" + \
+            f" --build-arg PROVIDER={cloud_provider_name}" + \
+            f" --build-arg PROVIDER_ALT={cloud_provider_alt_name}",
             check=True,
             shell=True,
             capture_output=True,
@@ -269,8 +274,10 @@ def terraformer_wrapper(location_to_mount: str,
         logging.info("Extracting your cloud configurations. This may take a while.")
         subprocess.run(
             f"docker container stop {terraformer_container_name} || true && " + \
-            f"docker run --rm --name={terraformer_container_name} " + \
+            f"docker container rm {terraformer_container_name} || true && " + \
+            f"docker run --name={terraformer_container_name} " + \
             f"-v \"{location_to_mount}\":/opt/terraformer_export_data " + \
+            " ".join(f"-v \"{k}\":\"{v}\"" for k, v in mounts) + \
             " ".join(f"-e \"{k}\"=\"{v}\"" for k, v in environment_variables.items()) + \
             f" {terraformer_wrapper_image_name}",
             check=True,

@@ -28,16 +28,22 @@ RUN yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashic
 RUN yum -y install terraform-1.2.9-1
 RUN yum -y install jq-1.5-12.el8
 
+# Install Azure CLI
+RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc
+RUN dnf install -y https://packages.microsoft.com/config/rhel/8/packages-microsoft-prod.rpm
+RUN dnf install -y azure-cli
+
 # Install Terraformer
 
-ENV CURRENT_TERRAFORMER_VERSION=0.8.21
+ENV CURRENT_TERRAFORMER_VERSION=0.8.22
 # For now, we assume the provider to be AWS only; we would need to
 # check for adjustments for other providers, and maybe need to create
 # extra Docker files for that.
-ENV PROVIDER=aws
-RUN curl -LO "https://github.com/GoogleCloudPlatform/terraformer/releases/download/$CURRENT_TERRAFORMER_VERSION/terraformer-${PROVIDER}-linux-amd64"
-RUN chmod +x terraformer-${PROVIDER}-linux-amd64
-RUN mv terraformer-${PROVIDER}-linux-amd64 /usr/local/bin/terraformer
+ARG PROVIDER=aws
+ARG PROVIDER_ALT=""
+RUN curl -f -LO "https://github.com/GoogleCloudPlatform/terraformer/releases/download/$CURRENT_TERRAFORMER_VERSION/terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64"
+RUN chmod +x terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64
+RUN mv terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64 /usr/local/bin/terraformer
 
 ENV TERRAFORMER_EXPORT_DATA=/opt/terraformer_export_data
 

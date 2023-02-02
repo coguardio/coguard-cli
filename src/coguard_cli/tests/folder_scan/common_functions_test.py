@@ -38,7 +38,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
             return ("foo", "bar")
         with unittest.mock.patch(
                 "coguard_cli.folder_scan.find_configuration_files_and_collect",
-                 new_callable = lambda: lambda x, y: ("/foo/bar/baz", {})), \
+                 new_callable = lambda: lambda x, y, z: ("/foo/bar/baz", {})), \
              unittest.mock.patch(
                 "tempfile.mkstemp",
                  new_callable = lambda: new_tempfile), \
@@ -71,7 +71,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
             return ("foo", "bar")
         with unittest.mock.patch(
                 "coguard_cli.folder_scan.find_configuration_files_and_collect",
-                 new_callable = lambda: lambda x, y: None), \
+                 new_callable = lambda: lambda x, y, z: None), \
              unittest.mock.patch(
                 "tempfile.mkstemp",
                  new_callable = lambda: new_tempfile), \

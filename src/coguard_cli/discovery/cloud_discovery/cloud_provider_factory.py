@@ -7,6 +7,10 @@ from typing import Generator
 
 from coguard_cli.discovery.cloud_discovery.cloud_providers.cloud_provider_aws \
     import CloudProviderAWS
+from coguard_cli.discovery.cloud_discovery.cloud_providers.cloud_provider_gcp \
+    import CloudProviderGCP
+from coguard_cli.discovery.cloud_discovery.cloud_providers.cloud_provider_azure \
+    import CloudProviderAzure
 from coguard_cli.discovery.cloud_discovery.cloud_provider_abc import CloudProvider
 
 def cloud_provider_factory() -> Generator[CloudProvider, None, None]:

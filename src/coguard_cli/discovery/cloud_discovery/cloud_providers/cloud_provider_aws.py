@@ -68,7 +68,9 @@ class CloudProviderAWS(CloudProvider):
                 credentials = session.get_credentials()
             else:
                 # The case of multiple profiles
+                logging.debug("Multiple profiles given. Choosing one")
                 profile = self._get_profile(profiles)
+                logging.debug("Profile chosen: %s", profile)
                 session = boto3.Session(profile_name=profile)
                 credentials = session.get_credentials()
             self._aws_access_key_id = credentials.access_key
@@ -94,14 +96,22 @@ class CloudProviderAWS(CloudProvider):
             return None
         temp_location = tempfile.mkdtemp(prefix="aws_cloud_extraction")
         all_regions = self.get_all_regions()
+        #TODO: Remove the COGUARD_USERNAME schmarrn here
         environment_variables = {
+            "PROVIDER": self.get_cloud_provider_name(),
             "AWS_ACCESS_KEY_ID": self._aws_access_key_id,
             "AWS_SECRET_ACCESS_KEY": self._aws_secret_access_key,
             "COGUARD_USERNAME": cli_conf.get_username(),
             "COGUARD_PASSWORD": cli_conf.get_password(),
             "REGIONS": ",".join(all_regions)
         }
-        res = docker_dao.terraformer_wrapper(temp_location, environment_variables)
+        res = docker_dao.terraformer_wrapper(
+            temp_location,
+            environment_variables,
+            [],
+            self.get_cloud_provider_name(),
+            self.get_cloud_provider_name()
+        )
         if not res:
             return None
         return temp_location

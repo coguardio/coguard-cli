@@ -267,7 +267,7 @@ def perform_cloud_provider_scan(
         logging.debug("Checking if %s matches.", cloud_provider.get_cloud_provider_name())
         if cloud_provider.get_cloud_provider_name() == cloud_provider_name:
             break
-    if not cloud_provider:
+    if not cloud_provider or cloud_provider.get_cloud_provider_name() != cloud_provider_name:
         logging.error("The cloud provider you requested is not implemented yet.")
         sys.exit(1)
     folder_name = cloud_provider.extract_iac_files_for_account(
