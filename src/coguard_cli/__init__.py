@@ -136,8 +136,7 @@ def upload_and_evaluate_zip_candidate(
     if zip_candidate is None:
         print(
             f"{COLOR_YELLOW}We were unable to extract any known "
-            "configuration files from the given "
-            "image name. If you believe that this is due to a bug, please report it "
+            "configuration files. If you believe that this is due to a bug, please report it "
             f"to info@coguard.io{COLOR_TERMINATION}"
         )
         return
