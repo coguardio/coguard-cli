@@ -135,9 +135,7 @@ def upload_and_evaluate_zip_candidate(
     """
     if zip_candidate is None:
         print(
-            f"{COLOR_YELLOW}We were unable to extract any known "
-            "configuration files. If you believe that this is due to a bug, please report it "
-            f"to info@coguard.io{COLOR_TERMINATION}"
+            f"{COLOR_YELLOW}Unable to identify any known configuration files.{COLOR_TERMINATION}"
         )
         return
     zip_file, manifest_dict = zip_candidate
@@ -198,6 +196,8 @@ def perform_docker_image_scan(
             image,
             auth.util.DealEnum.ENTERPRISE
         )
+        if zip_candidate is None:
+            print(f"{COLOR_YELLOW}Image {image} - NO CONFIGURATION FILES FOUND.")
         upload_and_evaluate_zip_candidate(
             zip_candidate,
             auth_config,
@@ -232,6 +232,8 @@ def perform_folder_scan(
         folder_name,
         organization
     )
+    if zip_candidate is None:
+        print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
     upload_and_evaluate_zip_candidate(
         zip_candidate,
         auth_config,
@@ -282,6 +284,8 @@ def perform_cloud_provider_scan(
         f"{provider_name}_extraction"
     )
     shutil.rmtree(folder_name)
+    if zip_candidate is None:
+        print(f"{COLOR_YELLOW}Cloud Provider {cloud_provider_name} - NO CONFIGURATION FILES FOUND.")
     upload_and_evaluate_zip_candidate(
         zip_candidate,
         auth_config,
