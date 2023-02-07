@@ -20,7 +20,7 @@ class ConfigFileFinderHelm(ConfigFileFinder):
 
     def _create_temp_location_and_mainfest_entry(
             self,
-            helm_chart_file: str):
+            helm_chart_file: str) -> Optional[Tuple[Dict, str]]:
         """
         Helper function to extract the Helm charts from a file system and
         put it into a folder.
@@ -29,6 +29,9 @@ class ConfigFileFinderHelm(ConfigFileFinder):
         kubernetes_file_content = docker_dao.get_kubernetes_translation_from_helm(
             os.path.dirname(helm_chart_file)
         )
+        if not kubernetes_file_content:
+            logging.error("Failed to extract helm template.")
+            return None
         logging.debug("The content to write: %s", kubernetes_file_content)
         file_name = "kube-deployment.yaml"
         with open(
@@ -113,9 +116,11 @@ class ConfigFileFinderHelm(ConfigFileFinder):
                 f"{helm_chart_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            result_files.append(self._create_temp_location_and_mainfest_entry(
+            new_entry_candidate = self._create_temp_location_and_mainfest_entry(
                 helm_chart_file
-            ))
+            )
+            if new_entry_candidate:
+                result_files.append(new_entry_candidate)
         return result_files
 
     def check_call_command_in_container(
