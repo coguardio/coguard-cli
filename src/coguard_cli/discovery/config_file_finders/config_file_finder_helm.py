@@ -111,15 +111,15 @@ class ConfigFileFinderHelm(ConfigFileFinder):
                       " for the standard name in the filesystem.")
         helm_chart_files = self._find_charts_files(path_to_file_system)
         for helm_chart_file in helm_chart_files:
-            print(
-                f"{COLOR_CYAN}Found file "
-                f"{helm_chart_file.replace(path_to_file_system, '')}"
-                f"{COLOR_TERMINATION}"
-            )
             new_entry_candidate = self._create_temp_location_and_mainfest_entry(
                 helm_chart_file
             )
             if new_entry_candidate:
+                print(
+                    f"{COLOR_CYAN}Found file "
+                    f"{helm_chart_file.replace(path_to_file_system, '')}"
+                    f"{COLOR_TERMINATION}"
+                )
                 result_files.append(new_entry_candidate)
         return result_files
 

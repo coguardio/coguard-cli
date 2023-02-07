@@ -162,7 +162,7 @@ class ConfigFileFinder(ABC):
         )
         heuristic_message = (
             f"{COLOR_YELLOW}Found configuration files for {self.get_service_name()}"
-            " in non-standard location.{COLOR_TERMINATION}"
+            f" in non-standard location.{COLOR_TERMINATION}"
         )
         if len(configuration_file_system_search) > 0:
             print(heuristic_message)
