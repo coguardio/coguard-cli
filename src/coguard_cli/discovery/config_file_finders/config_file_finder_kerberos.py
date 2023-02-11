@@ -31,10 +31,19 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
             path_to_file_system,
             location_on_current_machine
         )
+        loc_within_machine = (os.path.dirname(location_on_current_machine)+os.sep).replace(
+            path_to_file_system,
+            ''
+        )
+        loc_within_machine = loc_within_machine[1:] \
+            if loc_within_machine.startswith(os.sep) \
+               else loc_within_machine
+        os.makedirs(os.path.join(temp_location, loc_within_machine))
         shutil.copy(
             to_copy,
             os.path.join(
                 temp_location,
+                loc_within_machine,
                 os.path.basename(location_on_current_machine)
             )
         )
@@ -45,7 +54,7 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
                 {
                     "fileName": "krb5.conf",
                     "defaultFileName": "krb5.conf",
-                    "subPath": ".",
+                    "subPath": f".{os.sep}{loc_within_machine}",
                     "configFileType": "krb"
                 }
             ],

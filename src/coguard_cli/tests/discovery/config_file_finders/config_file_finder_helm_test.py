@@ -112,7 +112,7 @@ class TestConfigFileFinderHelm(unittest.TestCase):
                     ("coguard_cli.discovery.config_file_finders.config_file_finder"
                      "_helm.ConfigFileFinderHelm._create_temp_"
                      "location_and_mainfest_entry"),
-                    new_callable=lambda: lambda a, b: ({"foo": "bar"}, "/etc/bar")
+                    new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_helm = ConfigFileFinderHelm()
             result = config_file_finder_helm.check_for_config_files_filesystem_search(

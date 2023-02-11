@@ -57,7 +57,7 @@ class ConfigFileFinderDockerfile(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = ["Dockerfile.*", ".*\\.dockerfile"]
+        standard_names = ["Dockerfile.*", ".*\\.[dD]ockerfile"]
         result_files = []
         logging.debug("Trying to find the file by searching"
                       " for the standard name in the filesystem.")

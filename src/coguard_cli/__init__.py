@@ -28,16 +28,30 @@ def print_failed_check(color: str, entry: Dict, manifest_dict: Dict):
     :param manifest_dict: The manifest dictionary containing information about the included
                           configuration files
     """
-    services_dict = manifest_dict.get("machines", {}).get("container", {}).get("services", {})
+    machines_dict = manifest_dict.get("machines", {})
     reference = ""
-    if entry.get("service") in services_dict:
-        config_file_list_of_container = \
-            [
-                entry["fileName"]
-                for entry in services_dict.get(entry.get("service")).get("configFileList", [])
-            ]
-        if config_file_list_of_container:
-            reference = f" (affected files: {', '.join(config_file_list_of_container)})"
+    for machine in machines_dict.values():
+        services_dict = machine.get("services", {})
+        if entry.get("service") in services_dict:
+            config_file_list_of_container = \
+                [
+                    os.path.join(entry["subPath"], entry["fileName"])
+                    for entry in services_dict.get(entry.get("service")).get("configFileList", [])
+                ]
+            if config_file_list_of_container:
+                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
+                break
+    if not reference:
+        # Could be in cluster services
+        services_dict = manifest_dict.get("clusterServices", {})
+        if entry.get("service") in services_dict:
+            config_file_list_of_container = \
+                [
+                    os.path.join(entry["subPath"], entry["fileName"])
+                    for entry in services_dict.get(entry.get("service")).get("configFileList", [])
+                ]
+            if config_file_list_of_container:
+                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
     print(
         f'{color} X Severity {entry["rule"]["severity"]}: '
         f'{entry["rule"]["name"]}{COLOR_TERMINATION}'
@@ -155,7 +169,7 @@ def upload_and_evaluate_zip_candidate(
         output_result_json_from_coguard(result or {}, manifest_dict)
     else:
         print(json.dumps(result or {}))
-    os.remove(zip_file)
+    #os.remove(zip_file)
     max_fail_severity = max(
         entry["rule"]["severity"] for entry in result.get("failed", [])
     ) if (result and result.get("failed", [])) else 0

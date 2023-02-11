@@ -153,7 +153,7 @@ class TestCommonFunctions(unittest.TestCase):
                 1,
                 "foo"
             )
-            self.assertIn("We were unable to extract", new_stdout.getvalue())
+            self.assertIn("Unable to identify any known configuration files.", new_stdout.getvalue())
 
     def upload_and_evaluate_zip_candidate_test(self):
         """
