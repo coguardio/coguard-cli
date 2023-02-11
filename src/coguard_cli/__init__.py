@@ -19,6 +19,41 @@ from coguard_cli import api_connection
 from coguard_cli.print_colors import COLOR_TERMINATION, \
     COLOR_RED, COLOR_GRAY, COLOR_CYAN, COLOR_YELLOW
 
+def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
+    """
+    This is a helper function to extract the respective file in the manifest
+    corresponding to an entry in the failed rules.
+    """
+    machines_dict = manifest_dict.get("machines", {})
+    reference = ""
+    for machine in machines_dict.values():
+        services_dict = machine.get("services", {})
+        if entry_dict.get("service") in services_dict:
+            config_file_list_of_container = \
+                [
+                    os.path.join(entry["subPath"], entry["fileName"])
+                    for entry in services_dict.get(
+                            entry_dict.get("service")
+                    ).get("configFileList", [])
+                ]
+            if config_file_list_of_container:
+                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
+                break
+    if not reference:
+        # Could be in cluster services
+        services_dict = manifest_dict.get("clusterServices", {})
+        if entry_dict.get("service") in services_dict:
+            config_file_list_of_container = \
+                [
+                    os.path.join(entry["subPath"], entry["fileName"])
+                    for entry in services_dict.get(
+                            entry_dict.get("service")
+                    ).get("configFileList", [])
+                ]
+            if config_file_list_of_container:
+                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
+    return reference
+
 def print_failed_check(color: str, entry: Dict, manifest_dict: Dict):
     """
     This is the function to print a failed check entry, given a color.
@@ -28,30 +63,7 @@ def print_failed_check(color: str, entry: Dict, manifest_dict: Dict):
     :param manifest_dict: The manifest dictionary containing information about the included
                           configuration files
     """
-    machines_dict = manifest_dict.get("machines", {})
-    reference = ""
-    for machine in machines_dict.values():
-        services_dict = machine.get("services", {})
-        if entry.get("service") in services_dict:
-            config_file_list_of_container = \
-                [
-                    os.path.join(entry["subPath"], entry["fileName"])
-                    for entry in services_dict.get(entry.get("service")).get("configFileList", [])
-                ]
-            if config_file_list_of_container:
-                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
-                break
-    if not reference:
-        # Could be in cluster services
-        services_dict = manifest_dict.get("clusterServices", {})
-        if entry.get("service") in services_dict:
-            config_file_list_of_container = \
-                [
-                    os.path.join(entry["subPath"], entry["fileName"])
-                    for entry in services_dict.get(entry.get("service")).get("configFileList", [])
-                ]
-            if config_file_list_of_container:
-                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
+    reference = extract_reference_string(entry, manifest_dict)
     print(
         f'{color} X Severity {entry["rule"]["severity"]}: '
         f'{entry["rule"]["name"]}{COLOR_TERMINATION}'
@@ -169,7 +181,7 @@ def upload_and_evaluate_zip_candidate(
         output_result_json_from_coguard(result or {}, manifest_dict)
     else:
         print(json.dumps(result or {}))
-    #os.remove(zip_file)
+    os.remove(zip_file)
     max_fail_severity = max(
         entry["rule"]["severity"] for entry in result.get("failed", [])
     ) if (result and result.get("failed", [])) else 0

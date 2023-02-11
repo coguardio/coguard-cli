@@ -38,7 +38,8 @@ class ConfigFileFinderApache(ConfigFileFinder):
         loc_within_machine = loc_within_machine[1:] \
             if loc_within_machine.startswith(os.sep) \
                else loc_within_machine
-        os.makedirs(os.path.join(temp_location, loc_within_machine))
+        os.makedirs(os.path.join(temp_location, loc_within_machine),
+                    exist_ok=True)
         file_name = os.path.basename(location_on_current_machine)
         shutil.copy(
             to_copy,
