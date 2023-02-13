@@ -226,6 +226,9 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
                 'tempfile.mkdtemp',
                 new_callable=lambda: new_callable), \
              unittest.mock.patch(
+                 'os.makedirs'
+             ), \
+             unittest.mock.patch(
                  'shutil.copy'
              ):
             result = cff_util.create_temp_location_and_mainfest_entry(

@@ -102,6 +102,9 @@ class TestConfigFileFinderNginx(unittest.TestCase):
                  'shutil.copy'
              ), \
              unittest.mock.patch(
+                 'os.makedirs'
+             ), \
+             unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
              ):

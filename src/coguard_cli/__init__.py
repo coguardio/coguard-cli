@@ -19,6 +19,41 @@ from coguard_cli import api_connection
 from coguard_cli.print_colors import COLOR_TERMINATION, \
     COLOR_RED, COLOR_GRAY, COLOR_CYAN, COLOR_YELLOW
 
+def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
+    """
+    This is a helper function to extract the respective file in the manifest
+    corresponding to an entry in the failed rules.
+    """
+    machines_dict = manifest_dict.get("machines", {})
+    reference = ""
+    for machine in machines_dict.values():
+        services_dict = machine.get("services", {})
+        if entry_dict.get("service") in services_dict:
+            config_file_list_of_container = \
+                [
+                    os.path.join(entry["subPath"], entry["fileName"])
+                    for entry in services_dict.get(
+                            entry_dict.get("service")
+                    ).get("configFileList", [])
+                ]
+            if config_file_list_of_container:
+                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
+                break
+    if not reference:
+        # Could be in cluster services
+        services_dict = manifest_dict.get("clusterServices", {})
+        if entry_dict.get("service") in services_dict:
+            config_file_list_of_container = \
+                [
+                    os.path.join(entry["subPath"], entry["fileName"])
+                    for entry in services_dict.get(
+                            entry_dict.get("service")
+                    ).get("configFileList", [])
+                ]
+            if config_file_list_of_container:
+                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
+    return reference
+
 def print_failed_check(color: str, entry: Dict, manifest_dict: Dict):
     """
     This is the function to print a failed check entry, given a color.
@@ -28,16 +63,7 @@ def print_failed_check(color: str, entry: Dict, manifest_dict: Dict):
     :param manifest_dict: The manifest dictionary containing information about the included
                           configuration files
     """
-    services_dict = manifest_dict.get("machines", {}).get("container", {}).get("services", {})
-    reference = ""
-    if entry.get("service") in services_dict:
-        config_file_list_of_container = \
-            [
-                entry["fileName"]
-                for entry in services_dict.get(entry.get("service")).get("configFileList", [])
-            ]
-        if config_file_list_of_container:
-            reference = f" (affected files: {', '.join(config_file_list_of_container)})"
+    reference = extract_reference_string(entry, manifest_dict)
     print(
         f'{color} X Severity {entry["rule"]["severity"]}: '
         f'{entry["rule"]["name"]}{COLOR_TERMINATION}'

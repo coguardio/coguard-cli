@@ -20,11 +20,14 @@ class ConfigFileFinderHelm(ConfigFileFinder):
 
     def _create_temp_location_and_mainfest_entry(
             self,
+            path_to_file_system: str,
             helm_chart_file: str) -> Optional[Tuple[Dict, str]]:
         """
         Helper function to extract the Helm charts from a file system and
         put it into a folder.
         """
+        logging.debug("The path to the filesystem is: %s",
+                      path_to_file_system)
         temp_location = tempfile.mkdtemp(prefix="coguard-cli-helm")
         kubernetes_file_content = docker_dao.get_kubernetes_translation_from_helm(
             os.path.dirname(helm_chart_file)
@@ -33,9 +36,25 @@ class ConfigFileFinderHelm(ConfigFileFinder):
             logging.error("Failed to extract helm template.")
             return None
         logging.debug("The content to write: %s", kubernetes_file_content)
-        file_name = "kube-deployment.yaml"
+        logging.debug("The helm chart file before the replace is %s.",
+                      helm_chart_file)
+        # The reason we added os.sep at the end is because the file location may be
+        # at the root of the path_to_file_system. In this case, if there is a separation
+        # character at the end of path_to_file_system, the replace may not work.
+        # That is why we just add it here.
+        loc_within_machine = (os.path.dirname(helm_chart_file) + os.sep).replace(
+            path_to_file_system,
+            ''
+        )
+        loc_within_machine = loc_within_machine[1:] \
+            if loc_within_machine.startswith(os.sep) \
+               else loc_within_machine
+        logging.debug("The location within the folder is: %s",
+                      loc_within_machine)
+        file_name = "Charts_Formatted.yaml"
+        os.makedirs(os.path.join(temp_location, loc_within_machine), exist_ok=True)
         with open(
-                os.path.join(temp_location, file_name),
+                os.path.join(temp_location, loc_within_machine, file_name),
                 'w',
                 encoding='utf-8'
         ) as kube_file:
@@ -46,8 +65,8 @@ class ConfigFileFinderHelm(ConfigFileFinder):
             "configFileList": [
                 {
                     "fileName": file_name,
-                    "defaultFileName": file_name,
-                    "subPath": ".",
+                    "defaultFileName": "kube-deployment.yaml",
+                    "subPath": f".{os.sep}{loc_within_machine}",
                     "configFileType": "yaml"
                 }
             ],
@@ -112,6 +131,7 @@ class ConfigFileFinderHelm(ConfigFileFinder):
         helm_chart_files = self._find_charts_files(path_to_file_system)
         for helm_chart_file in helm_chart_files:
             new_entry_candidate = self._create_temp_location_and_mainfest_entry(
+                path_to_file_system,
                 helm_chart_file
             )
             if new_entry_candidate:

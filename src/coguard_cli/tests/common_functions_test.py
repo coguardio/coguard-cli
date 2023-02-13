@@ -153,7 +153,7 @@ class TestCommonFunctions(unittest.TestCase):
                 1,
                 "foo"
             )
-            self.assertIn("We were unable to extract", new_stdout.getvalue())
+            self.assertIn("Unable to identify any known configuration files.", new_stdout.getvalue())
 
     def upload_and_evaluate_zip_candidate_test(self):
         """
@@ -210,3 +210,53 @@ class TestCommonFunctions(unittest.TestCase):
                 "foo"
             )
             self.assertIn('{"failed": []}', new_stdout.getvalue())
+
+    def extract_reference_string_test_empty_dicts(self):
+        """
+        A test of the extract reference string function.
+        """
+        self.assertEqual(coguard_cli.extract_reference_string(
+            {}, {}
+        ), "")
+
+    def extract_reference_string_test_non_trivial_dicts(self):
+        """
+        A test of the extract reference string function.
+        """
+        self.assertEqual(coguard_cli.extract_reference_string(
+            {"service": "foo"}, {
+                "machines": {
+                    "machine": {
+                        "services": {
+                            "foo": {
+                                "configFileList": [
+                                    {
+                                        "subPath": "bar",
+                                        "fileName": "foo.txt"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        ), " (affected files: bar/foo.txt)")
+
+    def extract_reference_string_test_cluster_services_dicts(self):
+        """
+        A test of the extract reference string function.
+        """
+        self.assertEqual(coguard_cli.extract_reference_string(
+            {"service": "foo"}, {
+                "clusterServices": {
+                    "foo": {
+                        "configFileList": [
+                            {
+                                "subPath": "bar",
+                                "fileName": "foo.txt"
+                            }
+                        ]
+                    }
+                }
+            }
+        ), " (affected files: bar/foo.txt)")
