@@ -49,7 +49,7 @@ class TestConfigFileFinderOpenTelemetryCollector(unittest.TestCase):
             ), unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_open_telemetry_collector.ConfigFileFinderOpenTelemetryCollector."
-                  "_create_temp_location_and_mainfest_entry"),
+                  "_create_temp_location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d=None, e=None: ({
                      "foo": "bar",
                      "configFileList": []
@@ -96,7 +96,7 @@ class TestConfigFileFinderOpenTelemetryCollector(unittest.TestCase):
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_open_telemetry_collector.ConfigFileFinderOpenTelemetryCollector."
-                     "_create_temp_location_and_mainfest_entry"),
+                     "_create_temp_location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d=None, e=None: (
                         {"foo": "bar"},
                         "/etc/bar"
@@ -130,7 +130,7 @@ class TestConfigFileFinderOpenTelemetryCollector(unittest.TestCase):
                   "extract_include_directives")
              ):
             config_file_finder_otel = ConfigFileFinderOpenTelemetryCollector()
-            result = config_file_finder_otel._create_temp_location_and_mainfest_entry(
+            result = config_file_finder_otel._create_temp_location_and_manifest_entry(
                 '/',
                 ('config.yaml', "/etc")
             )

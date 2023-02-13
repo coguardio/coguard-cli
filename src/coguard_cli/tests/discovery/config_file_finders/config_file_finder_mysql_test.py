@@ -42,7 +42,7 @@ class TestConfigFileFinderMysql(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_mysql.ConfigFileFinderMysql._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_mysql = ConfigFileFinderMysql()
@@ -78,7 +78,7 @@ class TestConfigFileFinderMysql(unittest.TestCase):
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_mysql.ConfigFileFinderMysql._create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_mysql = ConfigFileFinderMysql()
@@ -109,7 +109,7 @@ class TestConfigFileFinderMysql(unittest.TestCase):
                   "extract_include_directives")
              ):
             config_file_finder_mysql = ConfigFileFinderMysql()
-            result = config_file_finder_mysql._create_temp_location_and_mainfest_entry(
+            result = config_file_finder_mysql._create_temp_location_and_manifest_entry(
                 '/',
                 'my.cnf',
                 '/foo/my.cnf'
@@ -148,7 +148,7 @@ class TestConfigFileFinderMysql(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_mysql.ConfigFileFinderMysql._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_mysql = ConfigFileFinderMysql()

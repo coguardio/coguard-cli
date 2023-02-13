@@ -123,7 +123,9 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              unittest.mock.patch(
                 ('coguard_cli.discovery.config_file_finders.config_file_finder_nginx.'
                  'ConfigFileFinderNginx.find_configuration_files'),
-                 new_callable=lambda: lambda x, y, z: [({"foo": "bar"}, "/etc/foo/bar")]), \
+                 new_callable=lambda: lambda x, y, z: [
+                     ({"foo": "bar", "configFileList": []}, "/etc/foo/bar")
+                 ]), \
              unittest.mock.patch(
                  'tempfile.mkdtemp',
                  new_callable = lambda: lambda prefix: "/foo"
@@ -162,7 +164,9 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              unittest.mock.patch(
                 ('coguard_cli.discovery.config_file_finders.config_file_finder_netlify.'
                  'ConfigFileFinderNetlify.find_configuration_files'),
-                 new_callable=lambda: lambda x, y, z: [({"foo": "bar"}, "/etc/foo/bar")]), \
+                 new_callable=lambda: lambda x, y, z: [
+                     ({"foo": "bar", "configFileList": []}, "/etc/foo/bar")
+                 ]), \
              unittest.mock.patch(
                  'tempfile.mkdtemp',
                  new_callable = lambda: lambda prefix: "/foo"

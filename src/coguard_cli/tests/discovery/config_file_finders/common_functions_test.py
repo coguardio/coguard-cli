@@ -231,7 +231,7 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
              unittest.mock.patch(
                  'shutil.copy'
              ):
-            result = cff_util.create_temp_location_and_mainfest_entry(
+            result = cff_util.create_temp_location_and_manifest_entry(
                 '/',
                 'Kubernetes',
                 '/foo/Kubernetes',
@@ -241,6 +241,36 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
             )
             self.assertEqual(result[1], "/tmp/foo")
             self.assertEqual(result[0]["serviceName"], "kubernetes")
+
+    def test_create_grouped_temp_locations_and_manifest_entries(self):
+        """
+        Testing the creation of temporary locations and manifest entries.
+        """
+        def new_callable(prefix="/tmp"):
+            return "/tmp/foo"
+        with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: new_callable), \
+             unittest.mock.patch(
+                 'os.makedirs'
+             ), \
+             unittest.mock.patch(
+                 'shutil.copy'
+             ):
+            result = cff_util.create_grouped_temp_locations_and_manifest_entries(
+                '/',
+                {
+                    "foo": [
+                        "Kubernetes"
+                    ]
+                },
+                "kubernetes",
+                "kubernetes",
+                "yaml"
+            )
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0][1], "/tmp/foo")
+            self.assertEqual(result[0][0]["serviceName"], "kubernetes")
 
     def test_does_config_yaml_contain_required_keys(self):
         """
@@ -310,3 +340,75 @@ spec:
                     "metadata",
                     "spec"
                 ]))
+
+    def test_group_found_files_by_sub_path(self):
+        """
+        Testing the function to group found files by subpath.
+        """
+        path_to_file_system = "/etc"
+        files = [
+            "/etc/foo/bar/foo.txt",
+            "/etc/foo/bar/bar.txt",
+            "/etc/foo/bar/baz/biz/foo.txt",
+            "/etc/foo/bor/boz/bez/biz.txt",
+            "/etc/bla.txt"
+        ]
+        result = cff_util.group_found_files_by_subpath(
+            path_to_file_system,
+            files
+        )
+        expected_result = {
+            "foo": [
+                "/etc/foo/bar/foo.txt",
+                "/etc/foo/bar/bar.txt",
+                "/etc/foo/bar/baz/biz/foo.txt",
+                "/etc/foo/bor/boz/bez/biz.txt"
+            ],
+            "": [
+                "/etc/bla.txt"
+            ]
+        }
+        self.assertListEqual(
+            list(result.keys()),
+            list(expected_result.keys())
+        )
+        for key_val in result:
+            self.assertListEqual(result[key_val], expected_result[key_val])
+
+    def test_amalgamate_keys(self):
+        """
+        Tests the amalgamation function.
+        """
+        input_dict = {
+            "foo": [
+                "/etc/foo/bar/foo.txt",
+                "/etc/foo/bar/bar.txt"
+            ],
+            "foo/bar": [
+                "/etc/foo/bar/baz/biz/foo.txt"
+            ],
+            "foo/bor": [
+                "/etc/foo/bor/boz/bez/biz.txt"
+            ],
+            "": [
+                "/etc/bla.txt"
+            ]
+        }
+        expected_result = {
+            "foo": [
+                "/etc/foo/bar/foo.txt",
+                "/etc/foo/bar/bar.txt",
+                "/etc/foo/bar/baz/biz/foo.txt",
+                "/etc/foo/bor/boz/bez/biz.txt"
+            ],
+            "": [
+                "/etc/bla.txt"
+            ]
+        }
+        result = cff_util._amalgamate_keys(input_dict)
+        self.assertListEqual(
+            list(result.keys()),
+            list(expected_result.keys())
+        )
+        for key_val in result:
+            self.assertListEqual(result[key_val], expected_result[key_val])

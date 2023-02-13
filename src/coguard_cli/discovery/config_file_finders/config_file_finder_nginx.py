@@ -16,7 +16,7 @@ class ConfigFileFinderNginx(ConfigFileFinder):
     The class to find nginx configuration files within a file system.
     """
 
-    def _create_temp_location_and_mainfest_entry(
+    def _create_temp_location_and_manifest_entry(
             self,
             path_to_file_system: str,
             location_on_current_machine: str) -> Tuple[Dict, str]:
@@ -88,7 +88,7 @@ class ConfigFileFinderNginx(ConfigFileFinder):
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
-            return self._create_temp_location_and_mainfest_entry(
+            return self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 location_on_current_machine
             )
@@ -113,7 +113,7 @@ class ConfigFileFinderNginx(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 result_file
             ))
@@ -138,7 +138,7 @@ class ConfigFileFinderNginx(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.join(path_to_file_system, result_file)
             ))

@@ -19,7 +19,7 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
     The class to find tomcat configuration files within a file system.
     """
 
-    def _create_temp_location_and_mainfest_entry(
+    def _create_temp_location_and_manifest_entry(
             self,
             path_to_file_system: str,
             file_name_and_current_location: Tuple[str, str],
@@ -139,12 +139,12 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
             file_name = os.path.basename(location_on_current_machine)
             print(f"{COLOR_CYAN} Found configuration file {config_file_path}{COLOR_TERMINATION}")
             if temp_location_tuple is None:
-                temp_location_tuple = self._create_temp_location_and_mainfest_entry(
+                temp_location_tuple = self._create_temp_location_and_manifest_entry(
                     path_to_file_system,
                     (file_name, location_on_current_machine)
                 )
             else:
-                temp_location_tuple = self._create_temp_location_and_mainfest_entry(
+                temp_location_tuple = self._create_temp_location_and_manifest_entry(
                     path_to_file_system,
                     (file_name, location_on_current_machine),
                     temp_location_tuple[1],
@@ -208,7 +208,7 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 (os.path.basename(result_file), result_file)
             ))

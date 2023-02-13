@@ -43,7 +43,7 @@ class TestConfigFileFinderHelm(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_finder"
                   "_helm.ConfigFileFinderHelm._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_helm = ConfigFileFinderHelm()
@@ -111,7 +111,7 @@ class TestConfigFileFinderHelm(unittest.TestCase):
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_finder"
                      "_helm.ConfigFileFinderHelm._create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_helm = ConfigFileFinderHelm()

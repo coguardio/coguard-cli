@@ -18,7 +18,7 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
     The class to find postgres configuration files within a file system.
     """
 
-    def _create_temp_location_and_mainfest_entry(
+    def _create_temp_location_and_manifest_entry(
             self,
             path_to_file_system: str,
             file_name: str,
@@ -124,7 +124,7 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
         if os.path.lexists(location_on_current_machine):
             file_name = os.path.basename(location_on_current_machine)
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
-            temp_location_tuple = self._create_temp_location_and_mainfest_entry(
+            temp_location_tuple = self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 file_name,
                 location_on_current_machine
@@ -180,7 +180,7 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
                 result_file
@@ -206,7 +206,7 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
                 os.path.join(path_to_file_system, result_file)

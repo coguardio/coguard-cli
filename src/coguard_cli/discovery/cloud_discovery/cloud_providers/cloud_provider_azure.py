@@ -4,9 +4,7 @@ This module contains the class to represent the AZURE cloud provider, and the ne
 
 import logging
 from pathlib import Path
-import configparser
-import json
-from typing import Optional, Dict, List
+from typing import Optional, Dict
 import tempfile
 from coguard_cli.discovery.cloud_discovery.cloud_provider_abc import CloudProvider
 from coguard_cli import docker_dao
@@ -35,7 +33,7 @@ class CloudProviderAzure(CloudProvider):
         }
 
     def extract_iac_files_for_account(self,
-                                      cli_conf: CoGuardCliConfig) -> Optional[str]:
+                                      cli_config: CoGuardCliConfig) -> Optional[str]:
         """
         Consider the abstract base class for documentation.
         """

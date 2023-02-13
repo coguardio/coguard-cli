@@ -18,7 +18,7 @@ class ConfigFileFinderMysql(ConfigFileFinder):
     The class to find mysql configuration files within a file system.
     """
 
-    def _create_temp_location_and_mainfest_entry(
+    def _create_temp_location_and_manifest_entry(
             self,
             path_to_file_system: str,
             file_name: str,
@@ -111,7 +111,7 @@ class ConfigFileFinderMysql(ConfigFileFinder):
                     f"{COLOR_TERMINATION}"
                 )
                 file_name = os.path.basename(location_on_current_machine)
-                return self._create_temp_location_and_mainfest_entry(
+                return self._create_temp_location_and_manifest_entry(
                     path_to_file_system,
                     file_name,
                     location_on_current_machine
@@ -143,7 +143,7 @@ class ConfigFileFinderMysql(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
                 result_file
@@ -169,7 +169,7 @@ class ConfigFileFinderMysql(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_mainfest_entry(
+            results.append(self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
                 os.path.join(path_to_file_system, result_file)

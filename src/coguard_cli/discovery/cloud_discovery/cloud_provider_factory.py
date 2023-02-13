@@ -5,6 +5,7 @@ instances needed to consider.
 
 from typing import Generator
 
+# pylint: disable=unused-import
 from coguard_cli.discovery.cloud_discovery.cloud_providers.cloud_provider_aws \
     import CloudProviderAWS
 from coguard_cli.discovery.cloud_discovery.cloud_providers.cloud_provider_gcp \

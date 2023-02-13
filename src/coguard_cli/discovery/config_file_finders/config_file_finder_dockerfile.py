@@ -39,7 +39,7 @@ class ConfigFileFinderDockerfile(ConfigFileFinder):
                     f"{COLOR_TERMINATION}"
                 )
                 file_name = os.path.basename(location_on_current_machine)
-                return cff_util.create_temp_location_and_mainfest_entry(
+                return cff_util.create_temp_location_and_manifest_entry(
                     path_to_file_system,
                     file_name,
                     location_on_current_machine,
@@ -81,7 +81,7 @@ class ConfigFileFinderDockerfile(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(cff_util.create_temp_location_and_mainfest_entry(
+            results.append(cff_util.create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
                 result_file,

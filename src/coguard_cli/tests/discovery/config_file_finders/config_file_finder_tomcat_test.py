@@ -45,7 +45,7 @@ class TestConfigFileFinderTomcat(unittest.TestCase):
             ), unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_tomcat.ConfigFileFinderTomcat._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d=None, e=None: ({
                      "foo": "bar",
                      "configFileList": []
@@ -87,7 +87,7 @@ class TestConfigFileFinderTomcat(unittest.TestCase):
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_tomcat.ConfigFileFinderTomcat._create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d=None, e=None: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_tomcat = ConfigFileFinderTomcat()
@@ -118,7 +118,7 @@ class TestConfigFileFinderTomcat(unittest.TestCase):
                   "extract_include_directives")
              ):
             config_file_finder_tomcat = ConfigFileFinderTomcat()
-            result = config_file_finder_tomcat._create_temp_location_and_mainfest_entry(
+            result = config_file_finder_tomcat._create_temp_location_and_manifest_entry(
                 '/',
                 ('server.xml', "/etc")
             )
@@ -153,7 +153,7 @@ class TestConfigFileFinderTomcat(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_tomcat.ConfigFileFinderTomcat._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d=None, e=None: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_tomcat = ConfigFileFinderTomcat()

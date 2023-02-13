@@ -42,7 +42,7 @@ class TestConfigFileFinderDockerfile(unittest.TestCase):
                 new_callable=lambda: lambda location: True), \
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_dockerfile = ConfigFileFinderDockerfile()
@@ -77,7 +77,7 @@ class TestConfigFileFinderDockerfile(unittest.TestCase):
                 new_callable=lambda: lambda location: [("etc", [], ["Dockerfile"])]), \
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_dockerfile = ConfigFileFinderDockerfile()
@@ -98,7 +98,7 @@ class TestConfigFileFinderDockerfile(unittest.TestCase):
                 new_callable=lambda: lambda location: [("etc", [], ["foo.dockerfile"])]), \
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_dockerfile = ConfigFileFinderDockerfile()

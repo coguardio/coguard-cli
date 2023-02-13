@@ -70,9 +70,9 @@ class TestConfigFileFinderTerraform(unittest.TestCase):
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["terraform.tf"])]), \
                 unittest.mock.patch(
-                    ("coguard_cli.discovery.config_file_finders.create_temp_"
-                     "location_and_mainfest_entry"),
-                    new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
+                    ("coguard_cli.discovery.config_file_finders.create_grouped_temp_"
+                     "locations_and_manifest_entries"),
+                    new_callable=lambda: lambda a, b, c, d, e: [({"foo": "bar"}, "/etc/bar")]
                 ), \
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders."

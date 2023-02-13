@@ -18,7 +18,7 @@ class ConfigFileFinderHelm(ConfigFileFinder):
     The class to find helm configuration files within a file system.
     """
 
-    def _create_temp_location_and_mainfest_entry(
+    def _create_temp_location_and_manifest_entry(
             self,
             path_to_file_system: str,
             helm_chart_file: str) -> Optional[Tuple[Dict, str]]:
@@ -130,7 +130,7 @@ class ConfigFileFinderHelm(ConfigFileFinder):
                       " for the standard name in the filesystem.")
         helm_chart_files = self._find_charts_files(path_to_file_system)
         for helm_chart_file in helm_chart_files:
-            new_entry_candidate = self._create_temp_location_and_mainfest_entry(
+            new_entry_candidate = self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 helm_chart_file
             )
