@@ -123,9 +123,13 @@ def find_configuration_files_and_collect(
          as manifest_file:
         json.dump(manifest_blueprint, manifest_file)
     # cleanup
-    for (_, tuple_list) in collected_service_results_dicts.values():
-        for (_, directory_to_delete) in tuple_list:
-            shutil.rmtree(directory_to_delete, ignore_errors=True)
+    directories_to_delete = [
+        directory_to_delete
+        for (_, tuple_list) in collected_service_results_dicts.values()
+        for (_, directory_to_delete) in tuple_list
+    ]
+    for directory_to_delete in directories_to_delete:
+        shutil.rmtree(directory_to_delete, ignore_errors=True)
     return (final_location, manifest_blueprint)
 
 def create_zip_to_upload_from_docker_image(
