@@ -103,12 +103,12 @@ class CloudProviderGCP(CloudProvider):
         if not self._projects:
             return None
         result = None
-        with self._location_of_auth_json.open() as auth_json:
+        with self._location_of_auth_json.open(encoding='utf-8') as auth_json:
             result = json.load(auth_json)
         return result
 
     def extract_iac_files_for_account(self,
-                                      cli_conf: CoGuardCliConfig) -> Optional[str]:
+                                      cli_config: CoGuardCliConfig) -> Optional[str]:
         """
         Consider the abstract base class for documentation.
         """
@@ -191,7 +191,8 @@ class CloudProviderGCP(CloudProvider):
             result = [r["name"] for r in regions_outp_obj]
             return result
         except subprocess.CalledProcessError as exception:
-            logging.error("Failed to get the regions dynamically; using defaults.")
+            logging.error("Failed to get the regions dynamically; using defaults: %s",
+                          exception)
             return default
         return default
 

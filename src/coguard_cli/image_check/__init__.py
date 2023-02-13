@@ -89,7 +89,7 @@ def find_configuration_files_and_collect(
     os.mkdir(machine_location)
     already_used_identifiers = set()
     for (service_id, (is_cluster_service, tuple_list)) in collected_service_results_dicts.items():
-        for idx, (tuple_instance, tuple_dir) in enumerate(tuple_list):
+        for (tuple_instance, tuple_dir) in tuple_list:
             new_service_custom_identifier = create_service_identifier(
                 service_id,
                 already_used_identifiers,

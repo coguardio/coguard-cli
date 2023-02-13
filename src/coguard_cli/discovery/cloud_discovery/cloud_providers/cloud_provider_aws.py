@@ -79,14 +79,14 @@ class CloudProviderAWS(CloudProvider):
                 "aws_access_key_id": credentials.access_key,
                 "aws_secret_access_key": credentials.secret_key
             }
-        #pylint: disable=bare-except
+        #pylint: disable=broad-exception-caught
         except Exception as err:
             logging.error("Error while trying to retrieve access credentials: %s",
                           err)
             return None
 
     def extract_iac_files_for_account(self,
-                                      cli_conf: CoGuardCliConfig) -> Optional[str]:
+                                      cli_config: CoGuardCliConfig) -> Optional[str]:
         """
         Consider the abstract base class for documentation.
         """
@@ -96,13 +96,10 @@ class CloudProviderAWS(CloudProvider):
             return None
         temp_location = tempfile.mkdtemp(prefix="aws_cloud_extraction")
         all_regions = self.get_all_regions()
-        #TODO: Remove the COGUARD_USERNAME schmarrn here
         environment_variables = {
             "PROVIDER": self.get_cloud_provider_name(),
             "AWS_ACCESS_KEY_ID": self._aws_access_key_id,
             "AWS_SECRET_ACCESS_KEY": self._aws_secret_access_key,
-            "COGUARD_USERNAME": cli_conf.get_username(),
-            "COGUARD_PASSWORD": cli_conf.get_password(),
             "REGIONS": ",".join(all_regions)
         }
         res = docker_dao.terraformer_wrapper(
