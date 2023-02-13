@@ -38,6 +38,10 @@ class ConfigFileFinderHelm(ConfigFileFinder):
         logging.debug("The content to write: %s", kubernetes_file_content)
         logging.debug("The helm chart file before the replace is %s.",
                       helm_chart_file)
+        # The reason we added os.sep at the end is because the file location may be
+        # at the root of the path_to_file_system. In this case, if there is a separation
+        # character at the end of path_to_file_system, the replace may not work.
+        # That is why we just add it here.
         loc_within_machine = (os.path.dirname(helm_chart_file) + os.sep).replace(
             path_to_file_system,
             ''

@@ -34,6 +34,10 @@ class ConfigFileFinderMysql(ConfigFileFinder):
             path_to_file_system,
             location_on_current_machine
         )
+        # The reason we added os.sep at the end is because the file location may be
+        # at the root of the path_to_file_system. In this case, if there is a separation
+        # character at the end of path_to_file_system, the replace may not work.
+        # That is why we just add it here.
         loc_within_machine = (os.path.dirname(location_on_current_machine)+os.sep).replace(
             path_to_file_system,
             ''
