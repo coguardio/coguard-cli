@@ -65,14 +65,17 @@ class ConfigFileFinderKubernetes(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(cff_util.create_temp_location_and_mainfest_entry(
-                path_to_file_system,
-                os.path.basename(result_file),
-                result_file,
-                self.get_service_name(),
-                "kube-deployment.yaml",
-                "yaml"
-            ))
+        grouped_result_files = cff_util.group_found_files_by_subpath(
+            path_to_file_system,
+            result_files
+        )
+        results.extend(cff_util.create_grouped_temp_locations_and_manifest_entries(
+            path_to_file_system,
+            grouped_result_files,
+            self.get_service_name(),
+            "kube-deployment.yaml",
+            "yaml"
+        ))
         return results
 
     def check_call_command_in_container(

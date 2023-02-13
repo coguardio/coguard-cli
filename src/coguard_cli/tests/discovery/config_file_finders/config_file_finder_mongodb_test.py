@@ -48,7 +48,7 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
                 new_callable=lambda: new_callable), \
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_mongodb = ConfigFileFinderMongodb()
@@ -88,7 +88,7 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
                 new_callable=lambda: lambda location: [("etc", [], ["mongod.conf"])]), \
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_mongodb = ConfigFileFinderMongodb()
@@ -135,7 +135,7 @@ class TestConfigFileFinderMongodb(unittest.TestCase):
              ), \
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d, e, f: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_mongodb = ConfigFileFinderMongodb()

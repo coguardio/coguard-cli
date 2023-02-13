@@ -47,7 +47,7 @@ class TestConfigFileFinderPostgres(unittest.TestCase):
             ), unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_postgres.ConfigFileFinderPostgres._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d: ({
                      "foo": "bar",
                      "configFileList": []
@@ -104,7 +104,7 @@ class TestConfigFileFinderPostgres(unittest.TestCase):
              unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_postgres.ConfigFileFinderPostgres._create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_postgres = ConfigFileFinderPostgres()
@@ -135,7 +135,7 @@ class TestConfigFileFinderPostgres(unittest.TestCase):
                   "extract_include_directives")
              ):
             config_file_finder_postgres = ConfigFileFinderPostgres()
-            result = config_file_finder_postgres._create_temp_location_and_mainfest_entry(
+            result = config_file_finder_postgres._create_temp_location_and_manifest_entry(
                 '/',
                 'postgresql.conf',
                 '/foo/postgresql.conf'
@@ -179,7 +179,7 @@ class TestConfigFileFinderPostgres(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_postgres.ConfigFileFinderPostgres._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_postgres = ConfigFileFinderPostgres()

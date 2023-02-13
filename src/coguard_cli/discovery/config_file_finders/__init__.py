@@ -351,7 +351,112 @@ def common_call_command_in_container(
                 pass
     return result_files
 
-def create_temp_location_and_mainfest_entry(
+def group_found_files_by_subpath(
+        path_to_file_system: str,
+        files: List[str]) -> Dict[str, List[str]]:
+    """
+    This function takes files that are identified by the system as
+    configuration files, and groups them together potentially to belong
+    to the same device/cluster. They all have the `path_to_filesystem`
+    prefix in common. The output is a dictionary with keys being common prefixes
+    and values being a list of files falling under the common prefixes.
+
+    The algorithm to determine these prefixes works as follows.
+
+    All files have the form
+    ```
+    path_to_file_system/sub_path/file-name
+    ```
+
+    The `path_to_file_system` part is being cut out, where only
+
+    ```
+    sub_path/file-name
+    ```
+
+    remains. If `sub_path` has less than three folders in its path, sub_path is
+    the key under which the file is being stored in the end. If there are three or more
+    folders, say a/b/c, we are cutting off b/c and assume that
+    files which have a in common belong together, and the key in the dictionary
+    is `a`.
+    """
+    result = {}
+    for result_file in files:
+        extracted_subpath = (os.path.dirname(result_file)+os.sep).replace(
+            path_to_file_system,
+            ''
+        )
+        extracted_subpath = extracted_subpath.strip(os.sep)
+        logging.debug("Extracted subPath for file %s: %s.",
+                      result_file,
+                      extracted_subpath)
+        sub_path_split = [entry for entry in extracted_subpath.split(os.sep)
+                          if entry]
+        if len(sub_path_split) <= 2:
+            key_val = extracted_subpath
+        else:
+            key_val = os.sep.join(sub_path_split[:-2])
+        list_to_expand = result.setdefault(key_val, [])
+        list_to_expand.append(result_file)
+    return result
+
+def create_grouped_temp_locations_and_manifest_entries(
+        path_to_file_system: str,
+        files_dict: Dict[str, List[str]],
+        service_name,
+        default_file_name: str,
+        config_file_type) -> List[Tuple[Dict, str]]:
+    """
+    This function acts similar to `create_temp_location_and_manifest_entry`,
+    with the main difference that it takes the output of `group_found_files_by_subpath`
+    and creates a list of temporary folders and manifest entries.
+    """
+    result = []
+    for file_list in files_dict.values():
+        temp_location = tempfile.mkdtemp(prefix=f"coguard-cli-{service_name}")
+        manifest_entry = {
+            "version": "1.0",
+            "serviceName": service_name,
+            "configFileList": [],
+            "complimentaryFileList": []
+        }
+        for location_on_current_machine in file_list:
+            to_copy = get_path_behind_symlinks(
+                path_to_file_system,
+                location_on_current_machine
+            )
+            # The reason we added os.sep at the end is because the file location may be
+            # at the root of the path_to_file_system. In this case, if there is a separation
+            # character at the end of path_to_file_system, the replace may not work.
+            # That is why we just add it here.
+            loc_within_machine = (os.path.dirname(location_on_current_machine)+os.sep).replace(
+                path_to_file_system,
+                ''
+            )
+            loc_within_machine = loc_within_machine[1:] \
+                if loc_within_machine.startswith(os.sep) \
+                   else loc_within_machine
+            os.makedirs(os.path.join(temp_location, loc_within_machine), exist_ok=True)
+            shutil.copy(
+                to_copy,
+                os.path.join(
+                    temp_location,
+                    loc_within_machine,
+                    os.path.basename(location_on_current_machine)
+                )
+            )
+            manifest_entry["configFileList"].append(
+                {
+                    "fileName": os.path.basename(location_on_current_machine),
+                    "defaultFileName": default_file_name,
+                    "subPath": f".{os.sep}{loc_within_machine}",
+                    "configFileType": config_file_type
+                }
+            )
+        result.append((manifest_entry, temp_location))
+    return result
+
+def create_temp_location_and_manifest_entry(
             path_to_file_system: str,
             file_name: str,
             location_on_current_machine: str,

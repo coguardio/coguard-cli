@@ -42,7 +42,7 @@ class TestConfigFileFinderApache(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_apache.ConfigFileFinderApache._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_apache = ConfigFileFinderApache()
@@ -78,7 +78,7 @@ class TestConfigFileFinderApache(unittest.TestCase):
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_apache.ConfigFileFinderApache._create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_apache = ConfigFileFinderApache()
@@ -109,7 +109,7 @@ class TestConfigFileFinderApache(unittest.TestCase):
                   "extract_include_directives")
              ):
             config_file_finder_apache = ConfigFileFinderApache()
-            result = config_file_finder_apache._create_temp_location_and_mainfest_entry(
+            result = config_file_finder_apache._create_temp_location_and_manifest_entry(
                 '/',
                 '/httpd.conf'
             )
@@ -147,7 +147,7 @@ class TestConfigFileFinderApache(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_apache.ConfigFileFinderApache._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_apache = ConfigFileFinderApache()

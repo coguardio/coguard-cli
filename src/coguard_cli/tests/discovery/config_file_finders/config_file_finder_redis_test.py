@@ -47,7 +47,7 @@ class TestConfigFileFinderRedis(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_redis.ConfigFileFinderRedis._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_redis = ConfigFileFinderRedis()
@@ -88,7 +88,7 @@ class TestConfigFileFinderRedis(unittest.TestCase):
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_redis.ConfigFileFinderRedis._create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_redis = ConfigFileFinderRedis()
@@ -119,7 +119,7 @@ class TestConfigFileFinderRedis(unittest.TestCase):
                   "extract_include_directives")
              ):
             config_file_finder_redis = ConfigFileFinderRedis()
-            result = config_file_finder_redis._create_temp_location_and_mainfest_entry(
+            result = config_file_finder_redis._create_temp_location_and_manifest_entry(
                 '/',
                 'my.cnf',
                 '/foo/my.cnf'
@@ -163,7 +163,7 @@ class TestConfigFileFinderRedis(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_redis.ConfigFileFinderRedis._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c, d: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_redis = ConfigFileFinderRedis()

@@ -44,7 +44,7 @@ class TestConfigFileFinderKerberos(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_kerberos.ConfigFileFinderKerberos._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_kerberos = ConfigFileFinderKerberos()
@@ -80,7 +80,7 @@ class TestConfigFileFinderKerberos(unittest.TestCase):
                 unittest.mock.patch(
                     ("coguard_cli.discovery.config_file_finders.config_file_"
                      "finder_kerberos.ConfigFileFinderKerberos._create_temp_"
-                     "location_and_mainfest_entry"),
+                     "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
                 ):
             config_file_finder_kerberos = ConfigFileFinderKerberos()
@@ -111,7 +111,7 @@ class TestConfigFileFinderKerberos(unittest.TestCase):
                   "extract_include_directives")
              ):
             config_file_finder_kerberos = ConfigFileFinderKerberos()
-            result = config_file_finder_kerberos._create_temp_location_and_mainfest_entry(
+            result = config_file_finder_kerberos._create_temp_location_and_manifest_entry(
                 '/',
                 '/foo'
             )
@@ -149,7 +149,7 @@ class TestConfigFileFinderKerberos(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders.config_file_"
                   "finder_kerberos.ConfigFileFinderKerberos._create_temp_"
-                  "location_and_mainfest_entry"),
+                  "location_and_manifest_entry"),
                  new_callable=lambda: lambda a, b, c: ({"foo": "bar"}, "/etc/bar")
              ):
             config_file_finder_kerberos = ConfigFileFinderKerberos()

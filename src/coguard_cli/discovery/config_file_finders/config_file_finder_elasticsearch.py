@@ -24,7 +24,7 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
             print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
-            return cff_util.create_temp_location_and_mainfest_entry(
+            return cff_util.create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(standard_location),
                 self.get_service_name,
@@ -53,7 +53,7 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(cff_util.create_temp_location_and_mainfest_entry(
+            results.append(cff_util.create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
                 result_file,
@@ -82,7 +82,7 @@ class ConfigFileFinderElasticsearch(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(cff_util.create_temp_location_and_mainfest_entry(
+            results.append(cff_util.create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
                 os.path.join(path_to_file_system, result_file),
