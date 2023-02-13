@@ -5,6 +5,7 @@ Some common functions for config file finding.
 import os
 import re
 import logging
+import copy
 import shutil
 import tempfile
 from typing import Optional, Dict, List, Tuple
@@ -351,6 +352,34 @@ def common_call_command_in_container(
                 pass
     return result_files
 
+def _amalgamate_keys(path_dict: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    """
+    Helper function for amalgamating paths if they are direct subpaths from each other.
+    This is in assistance to the `group_found_files_by_subpath` function.
+    """
+    change_done = False
+    first_run = True
+    result_dict = copy.deepcopy(path_dict)
+    while (change_done or first_run):
+        first_run = False
+        change_done = False
+        logging.debug("Current state of dict during amalgamation %s", str(result_dict))
+        keys = sorted(result_dict.keys())
+        for i, i_itm in enumerate(keys):
+            if not i_itm:
+                #emtpy string case
+                continue
+            for j in range(i + 1, len(keys)):
+                if keys[j].startswith(i_itm):
+                    result_dict[i_itm].extend(result_dict[keys[j]])
+                    del result_dict[keys[j]]
+                    change_done = True
+                    break
+            if change_done:
+                break
+    return result_dict
+
+
 def group_found_files_by_subpath(
         path_to_file_system: str,
         files: List[str]) -> Dict[str, List[str]]:
@@ -374,11 +403,40 @@ def group_found_files_by_subpath(
     sub_path/file-name
     ```
 
-    remains. If `sub_path` has less than three folders in its path, sub_path is
+    remains. If `sub_path` has less than three folders in its path, the first key of subpath is
     the key under which the file is being stored in the end. If there are three or more
     folders, say a/b/c, we are cutting off b/c and assume that
     files which have a in common belong together, and the key in the dictionary
-    is `a`.
+    is `a`. If there are keys in the final dictionary that are prefixes of each other,
+    these keys are amalgamated in the end.
+
+    Example:
+
+    Say you have a list of files
+
+    ```
+    "/etc/foo/bar/foo.txt",
+    "/etc/foo/bar/bar.txt",
+    "/etc/foo/bar/baz/biz/foo.txt",
+    "/etc/foo/bor/boz/bez/biz.txt",
+    "/etc/bla.txt"
+    ```
+
+    The resulting dictionary in the end should be
+
+    ```
+    {
+        "foo": [
+            "/etc/foo/bar/foo.txt",
+            "/etc/foo/bar/bar.txt",
+            "/etc/foo/bar/baz/biz/foo.txt",
+            "/etc/foo/bor/boz/bez/biz.txt"
+        ],
+        "": [
+            "/etc/bla.txt"
+        ]
+    }
+    ```
     """
     result = {}
     for result_file in files:
@@ -393,12 +451,12 @@ def group_found_files_by_subpath(
         sub_path_split = [entry for entry in extracted_subpath.split(os.sep)
                           if entry]
         if len(sub_path_split) <= 2:
-            key_val = extracted_subpath
+            key_val = os.sep.join(sub_path_split[0:1]) if sub_path_split else ''
         else:
             key_val = os.sep.join(sub_path_split[:-2])
         list_to_expand = result.setdefault(key_val, [])
         list_to_expand.append(result_file)
-    return result
+    return _amalgamate_keys(result)
 
 def create_grouped_temp_locations_and_manifest_entries(
         path_to_file_system: str,

@@ -358,9 +358,33 @@ spec:
             files
         )
         expected_result = {
-            "foo/bar": [
+            "foo": [
                 "/etc/foo/bar/foo.txt",
                 "/etc/foo/bar/bar.txt",
+                "/etc/foo/bar/baz/biz/foo.txt",
+                "/etc/foo/bor/boz/bez/biz.txt"
+            ],
+            "": [
+                "/etc/bla.txt"
+            ]
+        }
+        self.assertListEqual(
+            list(result.keys()),
+            list(expected_result.keys())
+        )
+        for key_val in result:
+            self.assertListEqual(result[key_val], expected_result[key_val])
+
+    def test_amalgamate_keys(self):
+        """
+        Tests the amalgamation function.
+        """
+        input_dict = {
+            "foo": [
+                "/etc/foo/bar/foo.txt",
+                "/etc/foo/bar/bar.txt"
+            ],
+            "foo/bar": [
                 "/etc/foo/bar/baz/biz/foo.txt"
             ],
             "foo/bor": [
@@ -370,6 +394,18 @@ spec:
                 "/etc/bla.txt"
             ]
         }
+        expected_result = {
+            "foo": [
+                "/etc/foo/bar/foo.txt",
+                "/etc/foo/bar/bar.txt",
+                "/etc/foo/bar/baz/biz/foo.txt",
+                "/etc/foo/bor/boz/bez/biz.txt"
+            ],
+            "": [
+                "/etc/bla.txt"
+            ]
+        }
+        result = cff_util._amalgamate_keys(input_dict)
         self.assertListEqual(
             list(result.keys()),
             list(expected_result.keys())
