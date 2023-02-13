@@ -10,7 +10,8 @@ import stat
 import tempfile
 from typing import Optional, Dict, Tuple
 import zipfile
-from coguard_cli.util import replace_special_chars_with_underscore
+from coguard_cli.util import replace_special_chars_with_underscore, \
+    create_service_identifier
 from coguard_cli.auth.util import DealEnum
 from coguard_cli import docker_dao
 import coguard_cli.discovery.config_file_finder_factory as factory
@@ -86,9 +87,14 @@ def find_configuration_files_and_collect(
     final_location = tempfile.mkdtemp(prefix="coguard-cli-folder")
     machine_location = os.path.join(final_location, "container")
     os.mkdir(machine_location)
+    already_used_identifiers = set()
     for (service_id, (is_cluster_service, tuple_list)) in collected_service_results_dicts.items():
         for idx, (tuple_instance, tuple_dir) in enumerate(tuple_list):
-            new_service_custom_identifier = f"{service_id}_{idx}"
+            new_service_custom_identifier = create_service_identifier(
+                service_id,
+                already_used_identifiers,
+                tuple_instance
+            )
             if is_cluster_service:
                 manifest_blueprint["clusterServices"]\
                     [new_service_custom_identifier] = tuple_instance
