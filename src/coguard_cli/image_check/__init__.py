@@ -69,8 +69,13 @@ def find_configuration_files_and_collect(
             collected_service_results_dicts[finder_instance.get_service_name()] = \
                 (finder_instance.is_cluster_service(), discovered_config_files)
     dockerfile_entry = extract_docker_file_and_store(image_name)
+    image_name_no_special_chars = replace_special_chars_with_underscore(image_name)
     if dockerfile_entry is not None:
-        collected_service_results_dicts["dockerfile"] = (False, [dockerfile_entry])
+        collected_service_results_dicts[f"{image_name_no_special_chars}_dockerfile"] = (
+            False,
+            [dockerfile_entry]
+        )
+        # collected_service_results_dicts["dockerfile"] = (False, [dockerfile_entry])
     if not collected_service_results_dicts:
         return None
     manifest_blueprint = {
@@ -87,7 +92,7 @@ def find_configuration_files_and_collect(
     final_location = tempfile.mkdtemp(prefix="coguard-cli-folder")
     machine_location = os.path.join(final_location, "container")
     os.mkdir(machine_location)
-    already_used_identifiers = set()
+    already_used_identifiers = set([f"{image_name_no_special_chars}_dockerfile"])
     for (service_id, (is_cluster_service, tuple_list)) in collected_service_results_dicts.items():
         for (tuple_instance, tuple_dir) in tuple_list:
             new_service_custom_identifier = create_service_identifier(
@@ -132,17 +137,17 @@ def find_configuration_files_and_collect(
         shutil.rmtree(directory_to_delete, ignore_errors=True)
     return (final_location, manifest_blueprint)
 
-def create_zip_to_upload_from_docker_image(
-        customer_id,
+def extract_image_to_file_system(
         image_name: str,
-        deal_identifier: DealEnum) -> Optional[Tuple[str, Dict]]:
+        deal_identifier: DealEnum) -> Optional[Tuple[str, Dict, str]]:
     """
-    This function creates a zip file from a given image name which is
-    ready to be uploaded to the CoGuard back-end. If something goes wrong,
-    the output will be None; otherwise, it will be the path to the zip file.
+    This is a helper function to extract the file system of the
+    Docker image and put it into a folder. An optional tuple containing
+    the path to this folder, the result of a `docker inspect`
+    of that image and the temporary docker image created are returned.
 
-    Keep in mind that whoever is calling this function is in charge of deleting
-    the zip file afterwards.
+    Remark: It is the function's caller's resposibility to delete the generated
+    folder afterwards.
     """
     temp_image_name = docker_dao.create_docker_image(image_name, deal_identifier != DealEnum.FREE)
     if temp_image_name is None:
@@ -158,12 +163,23 @@ def create_zip_to_upload_from_docker_image(
     file_system_store_location = docker_dao.store_image_file_system(temp_image_name)
     if file_system_store_location is None:
         return None
-    collected_location_manifest_tuple = find_configuration_files_and_collect(
-        image_name,
-        customer_id,
-        file_system_store_location,
-        inspect_result
-    )
+    for (dir_loc, _, _) in os.walk(file_system_store_location):
+        # This is to ensure that all folders can be written. We noticed some issues there
+        # before.
+        os.chmod(dir_loc, os.stat(dir_loc).st_mode | stat.S_IWRITE)
+    return (file_system_store_location, inspect_result, temp_image_name)
+
+def create_zip_to_upload_from_docker_image(
+        collected_location_manifest_tuple: Optional[Tuple[str, Dict]]
+) -> Optional[Tuple[str, Dict]]:
+    """
+    This function creates a zip file from a given image name which is
+    ready to be uploaded to the CoGuard back-end. If something goes wrong,
+    the output will be None; otherwise, it will be the path to the zip file.
+
+    Keep in mind that whoever is calling this function is in charge of deleting
+    the zip file afterwards.
+    """
     if collected_location_manifest_tuple is None:
         return None
     collected_location, manifest_dict = collected_location_manifest_tuple
@@ -174,12 +190,4 @@ def create_zip_to_upload_from_docker_image(
             for file_name in file_names:
                 file_path = os.path.join(dir_path, file_name)
                 upload_zip.write(file_path, arcname=file_path[len(collected_location):])
-    #cleanup
-    shutil.rmtree(collected_location, ignore_errors=True)
-    for (dir_loc, _, _) in os.walk(file_system_store_location):
-        # This is to ensure that all folders can be written. We noticed some issues there
-        # before.
-        os.chmod(dir_loc, os.stat(dir_loc).st_mode | stat.S_IWRITE)
-    shutil.rmtree(file_system_store_location, ignore_errors=True)
-    docker_dao.rm_temporary_container_name(temp_image_name)
     return (temp_zip, manifest_dict)

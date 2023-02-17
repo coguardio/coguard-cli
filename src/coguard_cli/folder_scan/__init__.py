@@ -3,11 +3,14 @@ This is the area where common functionality for scanning folders is collected.
 """
 
 import json
+import logging
 import os
 import tempfile
 import shutil
 import zipfile
-from typing import Optional, Tuple, Dict
+from typing import Optional, Tuple, Dict, List, Union
+import yaml
+from flatten_dict import unflatten
 
 import coguard_cli.discovery.config_file_finder_factory as factory
 from coguard_cli.util import replace_special_chars_with_underscore, \
@@ -24,7 +27,12 @@ def find_configuration_files_and_collect(
     and extracts services and files from that, and stores it at a common location
     with a manifest file as acceptable by CoGuard. If nothing was possible to be
     extracted, None is returned.
+
+    Keep in mind that whoever is calling this function is in charge of deleting
+    the generated folder afterwards.
     """
+    if folder_path is None:
+        return None
     collected_service_results_dicts = {}
     for finder_instance in factory.config_file_finder_factory():
         discovered_config_files = finder_instance.find_configuration_files(
@@ -92,30 +100,25 @@ def find_configuration_files_and_collect(
          as manifest_file:
         json.dump(manifest_blueprint, manifest_file)
     # cleanup
-    for (_, tuple_list) in collected_service_results_dicts.values():
-        for (_, directory_to_delete) in tuple_list:
-            shutil.rmtree(directory_to_delete, ignore_errors=True)
+    directories_to_delete = [
+        directory_to_delete
+        for (_, tuple_list) in collected_service_results_dicts.values()
+        for (_, directory_to_delete) in tuple_list
+    ]
+    for directory_to_delete in directories_to_delete:
+        shutil.rmtree(directory_to_delete, ignore_errors=True)
     return (final_location, manifest_blueprint)
 
 def create_zip_to_upload_from_file_system(
-        folder_path: str,
-        customer_id: str,
-        cluster_name: Optional[str] = None) -> Optional[Tuple[str, Dict]]:
+        collected_location_manifest_tuple: Optional[Tuple[str, Dict]]
+) -> Optional[Tuple[str, Dict]]:
     """
-    This function creates a zip file from a given image name which is
-    ready to be uploaded to the CoGuard back-end. If something goes wrong,
-    the output will be None; otherwise, it will be the path to the zip file.
+    This function creates a zip file from the tuple provided as input, which
+    comes from the `find_configuration_files_and_collect` function.
 
     Keep in mind that whoever is calling this function is in charge of deleting
     the zip file afterwards.
     """
-    if folder_path is None:
-        return None
-    collected_location_manifest_tuple = find_configuration_files_and_collect(
-        folder_path,
-        customer_id,
-        cluster_name
-    )
     if collected_location_manifest_tuple is None:
         return None
     collected_location, manifest_dict = collected_location_manifest_tuple
@@ -126,6 +129,91 @@ def create_zip_to_upload_from_file_system(
             for file_name in file_names:
                 file_path = os.path.join(dir_path, file_name)
                 upload_zip.write(file_path, arcname=file_path[len(collected_location):])
-    #cleanup
-    shutil.rmtree(collected_location, ignore_errors=True)
     return (temp_zip, manifest_dict)
+
+def _find_images_recursively(
+        config: Union[Dict, List]) -> List[str]:
+    """
+    Helper function for `_find_and_extract_docker_images_from_config_files`.
+    It takes in a config object, tries to find keys referencing "image" and returns
+    the results as a list.
+    """
+    result = []
+    if isinstance(config, dict):
+        if "image" in config and isinstance(config["image"], str):
+            result.append(config["image"])
+        for sub_vals in config.values():
+            result.extend(_find_images_recursively(sub_vals))
+    elif isinstance(config, List):
+        for sub_vals in config:
+            result.extend(_find_images_recursively(sub_vals))
+    return result
+
+def _find_and_extract_docker_images_from_config_files(
+        config_file_list: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
+    """
+    Helper function to `extract_included_docker_images`. This one consumes a list
+    of files which may have docker image references inside, and extractes these names.
+    """
+    result = []
+    for path_to_file_system, file_path in config_file_list:
+        try:
+            with open(os.path.join(path_to_file_system, file_path),
+                      'r',
+                      encoding='utf-8') as file_stream:
+                config_res = yaml.safe_load_all(file_stream)
+                logging.debug("Loaded %s", config_res)
+                config = [] if config_res is None else [
+                    unflatten(config_part, splitter='dot') for config_part in config_res
+                ]
+                logging.debug("The unflattened config is %s", config)
+            result.extend([(image, file_path) for image in _find_images_recursively(config)])
+        #pylint: disable=broad-exception-caught
+        except Exception as err:
+            logging.debug(
+                "Failed to load %s: %s",
+                os.path.join(path_to_file_system, file_path),
+                err
+            )
+    return result
+
+def extract_included_docker_images(
+        collected_location_manifest_tuple: Optional[Tuple[str, Dict]]) -> List[str]:
+    """
+    This function takes in a tuple as produced by `find_configuration_files_and_collect`,
+    and searches for docker images included in different Kubernetes or docker-compose files.
+    The image names and source file names are returned as list of tuples.
+    """
+    if not collected_location_manifest_tuple:
+        return []
+    collected_location, collected_manifest = collected_location_manifest_tuple
+    extracted_relevant_machine_config_files = [
+        (os.path.join(
+            collected_location,
+            machine_name,
+            service_name),
+         os.path.join(
+            config_file["subPath"],
+            config_file["fileName"]
+         )) for machine_name, machine_dict in collected_manifest.get("machines", {}).items()
+        for service_name, service_dict in machine_dict.get("services", {}).items()
+        for config_file in service_dict.get("configFileList", [])
+        if service_dict.get("serviceName", "") in ["kubernetes", "docker_compose"]
+    ]
+    extracted_relevant_cluster_service_config_files = [
+        (os.path.join(
+            collected_location,
+            "clusterServices",
+            service_name
+        ),
+         os.path.join(
+            config_file["subPath"],
+            config_file["fileName"]
+         ))
+        for service_name, service_dict in collected_manifest.get("clusterServices", {}).items()
+        for config_file in service_dict.get("configFileList", [])
+        if service_dict.get("serviceName", "") in ["kubernetes", "docker_compose"]
+    ]
+    return _find_and_extract_docker_images_from_config_files(
+        extracted_relevant_machine_config_files + extracted_relevant_cluster_service_config_files
+    )

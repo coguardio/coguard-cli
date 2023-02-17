@@ -26,13 +26,65 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                 "coguard_cli.docker_dao.create_docker_image",
                 new_callable = lambda: lambda x, y: None):
             result = image_check.create_zip_to_upload_from_docker_image(
-                "foo",
-                "foo",
-                DealEnum.ENTERPRISE
+                None
             )
             self.assertIsNone(result)
 
-    def test_create_zip_to_upload_docker_image_get_inspect_result_failed(self):
+    def test_create_zip_to_upload_docker_image_collected(self):
+        """
+        Proper test of create_zip_to_upload_from_docker_image.
+        """
+        def new_tempfile(prefix, suffix):
+            return ("foo", "bar")
+        with unittest.mock.patch(
+                "tempfile.mkstemp",
+                 new_callable = lambda: new_tempfile), \
+             unittest.mock.patch(
+                 "os.close",
+                 new_callable=lambda: lambda x: x), \
+             unittest.mock.patch(
+                 "zipfile.ZipFile",
+                 new_callable = lambda: lambda x, y: unittest.mock.mock_open(
+                     mock=unittest.mock.MagicMock()
+                 )):
+            result, _ = image_check.create_zip_to_upload_from_docker_image(
+                ("/foo/bar/baz", {})
+            )
+            self.assertIsNotNone(result)
+            self.assertEqual(result, "bar")
+
+            # unittest.mock.patch(
+            #    "coguard_cli.docker_dao.create_docker_image",
+            #    new_callable = lambda: lambda x, y: "fooImage"), \
+            # unittest.mock.patch(
+            #    "coguard_cli.docker_dao.get_inspect_result",
+            #     new_callable = lambda: lambda x: {"foo": "bar"}), \
+            # unittest.mock.patch(
+            #    "coguard_cli.docker_dao.store_image_file_system",
+            #     new_callable = lambda: lambda x: "/foo/bar"), \
+            # unittest.mock.patch(
+            #    "coguard_cli.image_check.find_configuration_files_and_collect",
+            #     new_callable = lambda: lambda x, y, z, a: ("/foo/bar/baz", {})), \
+            # unittest.mock.patch(
+            #     "os.walk",
+            #     new_callable=lambda: lambda x: [("/etc/foo/bar", [], ['foo.conf'])]), \
+            # unittest.mock.patch(
+            #     "os.chmod",
+            #     new_callable=lambda: lambda x, y: x), \
+            # unittest.mock.patch(
+            #     "os.stat",
+            #     new_callable=lambda: lambda x: unittest.mock.Mock(st_mode=256)), \
+            # unittest.mock.patch(
+            #     "os.close",
+            #     new_callable=lambda: lambda x: x), \
+            # unittest.mock.patch(
+            #     "shutil.rmtree"
+            # ), \
+            # unittest.mock.patch(
+            #     "coguard_cli.docker_dao.rm_temporary_container_name"
+            # )
+
+    def test_extract_image_to_filesystem_docker_inspect_failed(self):
         """
         This checks that None is being returned if the docker image
         inspection fails.
@@ -43,14 +95,13 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              unittest.mock.patch(
                 "coguard_cli.docker_dao.get_inspect_result",
                  new_callable = lambda: lambda x: None):
-            result = image_check.create_zip_to_upload_from_docker_image(
-                "foo",
+            result = image_check.extract_image_to_file_system(
                 "foo",
                 DealEnum.ENTERPRISE
             )
             self.assertIsNone(result)
 
-    def test_create_zip_to_upload_docker_image_get_file_store_failed(self):
+    def test_extract_image_to_filesystem_get_file_store_failed(self):
         """
         This checks that None is being returned if the image cannot be
         stored on the file-system.
@@ -64,14 +115,13 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              unittest.mock.patch(
                 "coguard_cli.docker_dao.store_image_file_system",
                  new_callable = lambda: lambda x: None):
-            result = image_check.create_zip_to_upload_from_docker_image(
-                "foo",
+            result = image_check.extract_image_to_file_system(
                 "foo",
                 DealEnum.ENTERPRISE
             )
             self.assertIsNone(result)
 
-    def test_create_zip_to_upload_docker_image_collected_location_none(self):
+    def test_extract_image_to_filesystem_collected_location_none(self):
         """
         This checks that None is being returned if the find_configuration_and_collect
         function is returning None.
@@ -84,68 +134,15 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                  new_callable = lambda: lambda x: {"foo": "bar"}), \
              unittest.mock.patch(
                 "coguard_cli.docker_dao.store_image_file_system",
-                 new_callable = lambda: lambda x: "/foo/bar"), \
-             unittest.mock.patch(
-                "coguard_cli.image_check.find_configuration_files_and_collect",
-                 new_callable = lambda: lambda x, y, z, a: None):
-            result = image_check.create_zip_to_upload_from_docker_image(
-                "foo",
+                 new_callable = lambda: lambda x: "/foo/bar"):
+            result = image_check.extract_image_to_file_system(
                 "foo",
                 DealEnum.ENTERPRISE
             )
-            self.assertIsNone(result)
-
-    def test_create_zip_to_upload_docker_image_collected(self):
-        """
-        Proper test of create_zip_to_upload_from_docker_image.
-        """
-        def new_tempfile(prefix, suffix):
-            return ("foo", "bar")
-        with unittest.mock.patch(
-                "coguard_cli.docker_dao.create_docker_image",
-                new_callable = lambda: lambda x, y: "fooImage"), \
-             unittest.mock.patch(
-                "coguard_cli.docker_dao.get_inspect_result",
-                 new_callable = lambda: lambda x: {"foo": "bar"}), \
-             unittest.mock.patch(
-                "coguard_cli.docker_dao.store_image_file_system",
-                 new_callable = lambda: lambda x: "/foo/bar"), \
-             unittest.mock.patch(
-                "coguard_cli.image_check.find_configuration_files_and_collect",
-                 new_callable = lambda: lambda x, y, z, a: ("/foo/bar/baz", {})), \
-             unittest.mock.patch(
-                "tempfile.mkstemp",
-                 new_callable = lambda: new_tempfile), \
-             unittest.mock.patch(
-                 "zipfile.ZipFile",
-                 new_callable = lambda: lambda x, y: unittest.mock.mock_open(
-                     mock=unittest.mock.MagicMock()
-                 )), \
-             unittest.mock.patch(
-                 "os.walk",
-                 new_callable=lambda: lambda x: [("/etc/foo/bar", [], ['foo.conf'])]), \
-             unittest.mock.patch(
-                 "os.chmod",
-                 new_callable=lambda: lambda x, y: x), \
-             unittest.mock.patch(
-                 "os.stat",
-                 new_callable=lambda: lambda x: unittest.mock.Mock(st_mode=256)), \
-             unittest.mock.patch(
-                 "os.close",
-                 new_callable=lambda: lambda x: x), \
-             unittest.mock.patch(
-                 "shutil.rmtree"
-             ), \
-             unittest.mock.patch(
-                 "coguard_cli.docker_dao.rm_temporary_container_name"
-             ):
-            result, _ = image_check.create_zip_to_upload_from_docker_image(
-                "foo",
-                "foo",
-                DealEnum.ENTERPRISE
+            self.assertEqual(
+                result,
+                ("/foo/bar", {"foo": "bar"}, "fooImage")
             )
-            self.assertIsNotNone(result)
-            self.assertEqual(result, "bar")
 
     def test_find_configuration_files_and_collect_none_result(self):
         """

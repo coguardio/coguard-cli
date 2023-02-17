@@ -87,7 +87,7 @@ class ConfigFileFinderNginx(ConfigFileFinder):
         standard_location ='/etc/nginx/nginx.conf'
         location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
         if os.path.lexists(location_on_current_machine):
-            print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
+            print(f"{COLOR_CYAN}Found configuration file {standard_location}{COLOR_TERMINATION}")
             return self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 location_on_current_machine

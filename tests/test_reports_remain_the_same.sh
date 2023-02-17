@@ -4,11 +4,16 @@ set -ex
 
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
+TEMP_DIR="$(mktemp -d)";
+
+echo "Created temp directory $TEMP_DIR to store the temporary directory results."
+
 test_image_checksum() {
     IMAGE_NAME="$1";
     EXPECTED_CHECKSUM="$2"
-    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python -m coguard_cli docker-image "$IMAGE_NAME") | sort | shasum | awk '{print $1}' );
+    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python -m coguard_cli docker-image "$IMAGE_NAME") | tee "$TEMP_DIR/$IMAGE_NAME" | sort | shasum | awk '{print $1}' );
     test "$ACTUAL_CHECKSUM" = "$EXPECTED_CHECKSUM"
+    rm -rf "$TEMP_DIR/$IMAGE_NAME"
 }
 
 test_image_checksum "nginx:1.23.2" "c36b39ceb6249488c5a37cf960e6dfc90b23c53e"
@@ -33,3 +38,5 @@ test_image_checksum "redis:7.0.5" "dd74730402fdce6c3a88bdc0febbaddc75467879"
 docker image rm "redis:7.0.5"
 test_image_checksum "amazon/aws-otel-collector:v0.22.1" "dd4a2440a58ea901eecff892bec77b86d07fd96d"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
+
+rm -rf "$TEMP_DIR"
