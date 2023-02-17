@@ -235,8 +235,7 @@ def perform_docker_image_scan(
             collected_config_file_tuple
         )
         # cleanup
-        collected_location, _ = collected_config_file_tuple
-        shutil.rmtree(collected_location, ignore_errors=True)
+        shutil.rmtree(collected_config_file_tuple[0], ignore_errors=True)
         shutil.rmtree(temp_folder, ignore_errors=True)
         docker_dao.rm_temporary_container_name(temp_image)
         if zip_candidate is None:
@@ -252,29 +251,9 @@ def perform_docker_image_scan(
             organization
         )
 
-def perform_folder_scan(
-        folder_name: Optional[str],
-        deal_type: auth.util.DealEnum,
-        auth_config: auth.CoGuardCliConfig,
-        token: auth.token.Token,
-        organization: str,
-        coguard_api_url: Optional[str],
-        output_format: str,
-        fail_level: int):
-    """
-    Helper function to run a scan on a folder. If the folder_name parameter is None,
-    the current working directory is being used.
-    """
-    if deal_type != auth.util.DealEnum.ENTERPRISE:
-        print("Folder scanning is only available for non-free accounts")
-        sys.exit(1)
-    folder_name = folder_name or "."
-    printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
-    print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
-    collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
-        folder_name,
-        organization
-    )
+def _find_and_merge_included_docker_images(
+        collected_config_file_tuple: Tuple[str, Dict],
+        auth_config: auth.CoGuardCliConfig):
     docker_images_extracted = folder_scan.extract_included_docker_images(
         collected_config_file_tuple
     )
@@ -304,6 +283,34 @@ def perform_folder_scan(
         shutil.rmtree(collected_location, ignore_errors=True)
         shutil.rmtree(temp_folder, ignore_errors=True)
         docker_dao.rm_temporary_container_name(temp_image)
+
+def perform_folder_scan(
+        folder_name: Optional[str],
+        deal_type: auth.util.DealEnum,
+        auth_config: auth.CoGuardCliConfig,
+        token: auth.token.Token,
+        organization: str,
+        coguard_api_url: Optional[str],
+        output_format: str,
+        fail_level: int):
+    """
+    Helper function to run a scan on a folder. If the folder_name parameter is None,
+    the current working directory is being used.
+    """
+    if deal_type != auth.util.DealEnum.ENTERPRISE:
+        print("Folder scanning is only available for non-free accounts")
+        sys.exit(1)
+    folder_name = folder_name or "."
+    printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
+    print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
+    collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
+        folder_name,
+        organization
+    )
+    _find_and_merge_included_docker_images(
+        collected_config_file_tuple,
+        auth_config
+    )
     zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
         collected_config_file_tuple
     )
