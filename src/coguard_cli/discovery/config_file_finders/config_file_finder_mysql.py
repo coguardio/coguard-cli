@@ -106,7 +106,7 @@ class ConfigFileFinderMysql(ConfigFileFinder):
                 logging.debug("Found a file in the standard location: %s",
                               location_on_current_machine)
                 print(
-                    f"{COLOR_CYAN} Found configuration file "
+                    f"{COLOR_CYAN}Found configuration file "
                     f"{location_on_current_machine.replace(path_to_file_system, '')}"
                     f"{COLOR_TERMINATION}"
                 )

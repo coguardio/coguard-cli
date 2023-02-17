@@ -4,6 +4,7 @@ For every service, we define a child-class of this abstract base class,
 which implements the extraction of the respective configurations.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Tuple
 from coguard_cli.print_colors import COLOR_TERMINATION, COLOR_YELLOW
@@ -152,6 +153,9 @@ class ConfigFileFinder(ABC):
         :param docker_config: The Docker configuration of the Docker image as returned by
                               `docker inspect`.
         """
+        if path_to_file_system is None:
+            logging.error("Unexpectedly, the folder where the filesystem was located is None")
+            return None
         configuration_in_standard_location = self.check_for_config_files_in_standard_location(
             path_to_file_system
         )

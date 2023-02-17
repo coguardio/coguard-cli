@@ -240,7 +240,7 @@ class TestCommonFunctions(unittest.TestCase):
                     }
                 }
             }
-        ), " (affected files: bar/foo.txt)")
+        ), " (affected files: bar/foo.txt for service foo)")
 
     def extract_reference_string_test_cluster_services_dicts(self):
         """
@@ -259,4 +259,4 @@ class TestCommonFunctions(unittest.TestCase):
                     }
                 }
             }
-        ), " (affected files: bar/foo.txt)")
+        ), " (affected files: bar/foo.txt for service foo)")

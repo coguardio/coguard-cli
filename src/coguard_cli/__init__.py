@@ -11,8 +11,10 @@ import textwrap
 import logging
 from typing import Dict, Optional, Tuple
 
-from coguard_cli.image_check import create_zip_to_upload_from_docker_image, docker_dao
-from coguard_cli.folder_scan import create_zip_to_upload_from_file_system
+from coguard_cli import image_check
+from coguard_cli import folder_scan
+from coguard_cli import docker_dao
+from coguard_cli import util
 from coguard_cli.discovery.cloud_discovery.cloud_provider_factory import cloud_provider_factory
 from coguard_cli import auth
 from coguard_cli import api_connection
@@ -31,7 +33,8 @@ def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
         if entry_dict.get("service") in services_dict:
             config_file_list_of_container = \
                 [
-                    os.path.join(entry["subPath"], entry["fileName"])
+                    os.path.join(entry["subPath"], entry["fileName"]) + \
+                    " for service " + entry_dict.get("service")
                     for entry in services_dict.get(
                             entry_dict.get("service")
                     ).get("configFileList", [])
@@ -45,7 +48,8 @@ def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
         if entry_dict.get("service") in services_dict:
             config_file_list_of_container = \
                 [
-                    os.path.join(entry["subPath"], entry["fileName"])
+                    os.path.join(entry["subPath"], entry["fileName"]) + \
+                    " for service " + entry_dict.get("service")
                     for entry in services_dict.get(
                             entry_dict.get("service")
                     ).get("configFileList", [])
@@ -217,11 +221,23 @@ def perform_docker_image_scan(
         images = docker_dao.extract_all_installed_docker_images()
     for image in images:
         print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
-        zip_candidate = create_zip_to_upload_from_docker_image(
-            auth_config.get_username(),
+        temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
             image,
             auth.util.DealEnum.ENTERPRISE
         )
+        collected_config_file_tuple = image_check.find_configuration_files_and_collect(
+            image,
+            auth_config.get_username(),
+            temp_folder,
+            temp_inspection
+        )
+        zip_candidate = image_check.create_zip_to_upload_from_docker_image(
+            collected_config_file_tuple
+        )
+        # cleanup
+        shutil.rmtree(collected_config_file_tuple[0], ignore_errors=True)
+        shutil.rmtree(temp_folder, ignore_errors=True)
+        docker_dao.rm_temporary_container_name(temp_image)
         if zip_candidate is None:
             print(f"{COLOR_YELLOW}Image {image} - NO CONFIGURATION FILES FOUND.")
         upload_and_evaluate_zip_candidate(
@@ -234,6 +250,39 @@ def perform_docker_image_scan(
             fail_level,
             organization
         )
+
+def _find_and_merge_included_docker_images(
+        collected_config_file_tuple: Tuple[str, Dict],
+        auth_config: auth.CoGuardCliConfig):
+    docker_images_extracted = folder_scan.extract_included_docker_images(
+        collected_config_file_tuple
+    )
+    for image, location in docker_images_extracted:
+        print(
+            f"{COLOR_CYAN}Found referenced docker image "
+            f"{image} in configuration file {location}."
+            f"{COLOR_TERMINATION}"
+        )
+        temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
+            image,
+            auth.util.DealEnum.ENTERPRISE
+        )
+        collected_docker_config_file_tuple = image_check.find_configuration_files_and_collect(
+            image,
+            auth_config.get_username(),
+            temp_folder,
+            temp_inspection
+        )
+        util.merge_coguard_infrastructure_description_folders(
+            "included_docker_image",
+            collected_config_file_tuple,
+            collected_docker_config_file_tuple
+        )
+        # cleanup
+        collected_location, _ = collected_docker_config_file_tuple
+        shutil.rmtree(collected_location, ignore_errors=True)
+        shutil.rmtree(temp_folder, ignore_errors=True)
+        docker_dao.rm_temporary_container_name(temp_image)
 
 def perform_folder_scan(
         folder_name: Optional[str],
@@ -254,10 +303,19 @@ def perform_folder_scan(
     folder_name = folder_name or "."
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
-    zip_candidate = create_zip_to_upload_from_file_system(
+    collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
         folder_name,
         organization
     )
+    _find_and_merge_included_docker_images(
+        collected_config_file_tuple,
+        auth_config
+    )
+    zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
+        collected_config_file_tuple
+    )
+    collected_location, _ = collected_config_file_tuple
+    shutil.rmtree(collected_location, ignore_errors=True)
     if zip_candidate is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
     upload_and_evaluate_zip_candidate(
@@ -304,11 +362,16 @@ def perform_cloud_provider_scan(
         logging.error("Unable to extract the requested cloud provider %s.",
                       cloud_provider_name)
         sys.exit(1)
-    zip_candidate = create_zip_to_upload_from_file_system(
+    collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
         folder_name,
         organization,
         f"{provider_name}_extraction"
     )
+    zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
+        collected_config_file_tuple
+    )
+    collected_location, _ = collected_config_file_tuple
+    shutil.rmtree(collected_location, ignore_errors=True)
     shutil.rmtree(folder_name)
     if zip_candidate is None:
         print(f"{COLOR_YELLOW}Cloud Provider {cloud_provider_name} - NO CONFIGURATION FILES FOUND.")
