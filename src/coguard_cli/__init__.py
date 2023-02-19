@@ -231,6 +231,9 @@ def perform_docker_image_scan(
             temp_folder,
             temp_inspection
         )
+        if collected_config_file_tuple is None:
+            print(f"{COLOR_YELLOW}Image {image} - NO CONFIGURATION FILES FOUND.")
+            return
         zip_candidate = image_check.create_zip_to_upload_from_docker_image(
             collected_config_file_tuple
         )
@@ -240,6 +243,7 @@ def perform_docker_image_scan(
         docker_dao.rm_temporary_container_name(temp_image)
         if zip_candidate is None:
             print(f"{COLOR_YELLOW}Image {image} - NO CONFIGURATION FILES FOUND.")
+            return
         upload_and_evaluate_zip_candidate(
             zip_candidate,
             auth_config,
@@ -266,7 +270,9 @@ def _find_and_merge_included_docker_images(
         temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
             image,
             auth.util.DealEnum.ENTERPRISE
-        )
+        ) or (None, None, None)
+        if temp_folder is None or temp_inspection is None or temp_image is None:
+            continue
         collected_docker_config_file_tuple = image_check.find_configuration_files_and_collect(
             image,
             auth_config.get_username(),
@@ -307,6 +313,9 @@ def perform_folder_scan(
         folder_name,
         organization
     )
+    if collected_config_file_tuple is None:
+        print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
+        return
     _find_and_merge_included_docker_images(
         collected_config_file_tuple,
         auth_config
@@ -318,6 +327,7 @@ def perform_folder_scan(
     shutil.rmtree(collected_location, ignore_errors=True)
     if zip_candidate is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
+        return
     upload_and_evaluate_zip_candidate(
         zip_candidate,
         auth_config,

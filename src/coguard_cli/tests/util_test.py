@@ -151,7 +151,10 @@ class TestUtilRoot(unittest.TestCase):
         ) as open_mock, \
         unittest.mock.patch(
             "shutil.copytree"
-        ) as shutil_mock:
+        ) as shutil_mock, \
+        unittest.mock.patch(
+            "os.makedirs"
+        ):
             util.merge_coguard_infrastructure_description_folders(
                 "prefix",
                 inp1,
