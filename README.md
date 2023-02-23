@@ -3,10 +3,6 @@
     <source srcset="https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png" media="(prefers-color-scheme: dark)">
     <img src="https://github.com/coguardio/coguard-cli/raw/master/logo.png" alt="Light mode logo" width="500">
   </picture>
-  <picture>
-    <source srcset="https://github.com/coguardio/coguard-cli/raw/master/logo.png" media="(prefers-color-scheme: light)">
-    <img src="https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png" alt="Dark mode logo" width="500">
-  </picture>
 </p>
 
 # CoGuard
