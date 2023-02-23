@@ -83,7 +83,22 @@ def print_failed_check(color: str, entry: Dict, manifest_dict: Dict):
         width=max(80, terminal_size//2),
         subsequent_indent=' '*len(prefix)
     )
-    print(wrapper.fill(entry["rule"]["documentation"]))
+    documentation_candidate = entry["rule"]["documentation"]
+    if isinstance(documentation_candidate, str):
+        print(wrapper.fill(entry["rule"]["documentation"]))
+    else:
+        description = documentation_candidate["documentation"]
+        remediation = documentation_candidate["remediation"]
+        sources = ",\n".join(documentation_candidate["sources"])
+        documentation_string = f"""
+        {description}
+
+        Remediation: {remediation}
+
+        Source:
+        {sources}
+        """.replace("        ", "")
+        print(wrapper.fill(documentation_string))
 
 def output_result_json_from_coguard(result_json: Dict, manifest_dict: Dict):
     """
@@ -152,6 +167,7 @@ def auth_token_retrieval(
 def upload_and_evaluate_zip_candidate(
         zip_candidate: Optional[Tuple[str, Dict]],
         auth_config: Optional[auth.auth_config.CoGuardCliConfig],
+        deal_type,
         token: auth.token.Token,
         coguard_api_url: str,
         scan_identifier: str,
@@ -185,6 +201,11 @@ def upload_and_evaluate_zip_candidate(
         output_result_json_from_coguard(result or {}, manifest_dict)
     else:
         print(json.dumps(result or {}))
+    if deal_type != auth.util.DealEnum.ENTERPRISE:
+        print("""
+        🔧 Save time. Automatically find and fix vulnerabilities.
+           Upgrade to auto-remediate issues.
+        """)
     os.remove(zip_file)
     max_fail_severity = max(
         entry["rule"]["severity"] for entry in result.get("failed", [])
@@ -195,6 +216,7 @@ def upload_and_evaluate_zip_candidate(
 def perform_docker_image_scan(
         docker_image: Optional[str],
         auth_config: auth.CoGuardCliConfig,
+        deal_type: auth.util.DealEnum,
         token: auth.token.Token,
         organization: str,
         coguard_api_url: Optional[str],
@@ -222,8 +244,7 @@ def perform_docker_image_scan(
     for image in images:
         print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
         temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
-            image,
-            auth.util.DealEnum.ENTERPRISE
+            image
         )
         collected_config_file_tuple = image_check.find_configuration_files_and_collect(
             image,
@@ -243,6 +264,7 @@ def perform_docker_image_scan(
         upload_and_evaluate_zip_candidate(
             zip_candidate,
             auth_config,
+            deal_type,
             token,
             coguard_api_url,
             docker_image,
@@ -264,8 +286,7 @@ def _find_and_merge_included_docker_images(
             f"{COLOR_TERMINATION}"
         )
         temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
-            image,
-            auth.util.DealEnum.ENTERPRISE
+            image
         )
         collected_docker_config_file_tuple = image_check.find_configuration_files_and_collect(
             image,
@@ -297,9 +318,6 @@ def perform_folder_scan(
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
     """
-    if deal_type != auth.util.DealEnum.ENTERPRISE:
-        print("Folder scanning is only available for non-free accounts")
-        sys.exit(1)
     folder_name = folder_name or "."
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
@@ -321,6 +339,7 @@ def perform_folder_scan(
     upload_and_evaluate_zip_candidate(
         zip_candidate,
         auth_config,
+        deal_type,
         token,
         coguard_api_url,
         printed_folder_name,
@@ -342,26 +361,23 @@ def perform_cloud_provider_scan(
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
     """
-    if deal_type != auth.util.DealEnum.ENTERPRISE:
-        print("Cloud provider scanning is only available for non-free accounts")
-        sys.exit(1)
     provider_name = cloud_provider_name or "aws"
     print(f"{COLOR_CYAN}SCANNING CLOUD_PROVIDER {COLOR_TERMINATION}{provider_name}")
     cloud_provider = None
     for cloud_provider in cloud_provider_factory():
         logging.debug("Checking if %s matches.", cloud_provider.get_cloud_provider_name())
-        if cloud_provider.get_cloud_provider_name() == cloud_provider_name:
+        if cloud_provider.get_cloud_provider_name() == provider_name:
             break
-    if not cloud_provider or cloud_provider.get_cloud_provider_name() != cloud_provider_name:
+    if not cloud_provider or cloud_provider.get_cloud_provider_name() != provider_name:
         logging.error("The cloud provider you requested is not implemented yet.")
-        sys.exit(1)
+        return
     folder_name = cloud_provider.extract_iac_files_for_account(
         auth_config,
     )
     if not folder_name:
         logging.error("Unable to extract the requested cloud provider %s.",
-                      cloud_provider_name)
-        sys.exit(1)
+                      provider_name)
+        return
     collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
         folder_name,
         organization,
@@ -374,10 +390,12 @@ def perform_cloud_provider_scan(
     shutil.rmtree(collected_location, ignore_errors=True)
     shutil.rmtree(folder_name)
     if zip_candidate is None:
-        print(f"{COLOR_YELLOW}Cloud Provider {cloud_provider_name} - NO CONFIGURATION FILES FOUND.")
+        print(f"{COLOR_YELLOW}Cloud Provider {provider_name} - NO CONFIGURATION FILES FOUND.")
+        return
     upload_and_evaluate_zip_candidate(
         zip_candidate,
         auth_config,
+        deal_type,
         token,
         coguard_api_url,
         f"{provider_name}_extraction",
@@ -433,6 +451,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         perform_docker_image_scan(
             docker_image,
             auth_config,
+            deal_type,
             token,
             organization,
             args.coguard_api_url,
@@ -470,6 +489,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         perform_docker_image_scan(
             None,
             auth_config,
+            deal_type,
             token,
             organization,
             args.coguard_api_url,
@@ -486,3 +506,14 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.output_format,
             args.fail_level
         )
+        for cloud_provider in ["aws", "azure", "gcp"]:
+            perform_cloud_provider_scan(
+                cloud_provider,
+                deal_type,
+                auth_config,
+                token,
+                organization,
+                args.coguard_api_url,
+                args.output_format,
+                args.fail_level
+            )

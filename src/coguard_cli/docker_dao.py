@@ -48,7 +48,7 @@ def check_docker_version() -> Optional[str]:
         return None
     return None
 
-def create_docker_image(image_name: str, custom_repo_allowed: bool=False) -> Optional[str]:
+def create_docker_image(image_name: str) -> Optional[str]:
     """
     This function loads a Docker image and returns its created name, or None,
     if an error occurred.
@@ -64,11 +64,6 @@ def create_docker_image(image_name: str, custom_repo_allowed: bool=False) -> Opt
     :param custom_repo_allowed: Indicates whether or not a custom repository is allowed.
     :returns: The name of the image, if it could be created, or None.
     """
-    if not custom_repo_allowed and is_image_name_from_custom_repo(image_name):
-        logging.error(
-            "For the subscription of CoGuard you are using, custom repositories are not allowed"
-        )
-        return None
     temporary_image_name = str(uuid.uuid4())
     try:
         subprocess.run(

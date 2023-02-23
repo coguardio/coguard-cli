@@ -155,6 +155,6 @@ class Token():
         for deal_enum in list(util.DealEnum):
             if deal_enum.value.upper() in deal_identifiers:
                 return deal_enum
-        logging.error("No valid deal enum in decoded JWT token. Assuming free: %s",
+        logging.debug("No valid deal enum in decoded JWT token. Assuming free: %s",
                       str(jwt_decoded))
         return util.DealEnum.FREE

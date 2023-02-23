@@ -138,8 +138,7 @@ def find_configuration_files_and_collect(
     return (final_location, manifest_blueprint)
 
 def extract_image_to_file_system(
-        image_name: str,
-        deal_identifier: DealEnum) -> Optional[Tuple[str, Dict, str]]:
+        image_name: str) -> Optional[Tuple[str, Dict, str]]:
     """
     This is a helper function to extract the file system of the
     Docker image and put it into a folder. An optional tuple containing
@@ -149,7 +148,7 @@ def extract_image_to_file_system(
     Remark: It is the function's caller's resposibility to delete the generated
     folder afterwards.
     """
-    temp_image_name = docker_dao.create_docker_image(image_name, deal_identifier != DealEnum.FREE)
+    temp_image_name = docker_dao.create_docker_image(image_name)
     if temp_image_name is None:
         print(
             f"{COLOR_RED}Unable to extract image name. Make sure you "

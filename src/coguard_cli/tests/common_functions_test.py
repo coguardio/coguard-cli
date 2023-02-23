@@ -146,6 +146,7 @@ class TestCommonFunctions(unittest.TestCase):
             coguard_cli.upload_and_evaluate_zip_candidate(
                 None,
                 {},
+                coguard_cli.auth.util.DealEnum.ENTERPRISE,
                 "token",
                 "https://portal.coguard.io/server",
                 "foo",
@@ -174,6 +175,7 @@ class TestCommonFunctions(unittest.TestCase):
             coguard_cli.upload_and_evaluate_zip_candidate(
                 ("foo.zip", {}),
                 auth_config,
+                coguard_cli.auth.util.DealEnum.ENTERPRISE,
                 "token",
                 "https://portal.coguard.io/server",
                 "foo",
@@ -202,6 +204,7 @@ class TestCommonFunctions(unittest.TestCase):
             coguard_cli.upload_and_evaluate_zip_candidate(
                 ("foo.zip", {}),
                 auth_config,
+                coguard_cli.auth.util.DealEnum.ENTERPRISE,
                 "token",
                 "https://portal.coguard.io/server",
                 "foo",

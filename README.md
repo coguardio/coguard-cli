@@ -1,4 +1,13 @@
-![CoGuard Logo Dark](https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png#gh-dark-mode-only)![CoGuard_Light_Logo](https://github.com/coguardio/coguard-cli/raw/master/logo.png#gh-light-mode-only)
+<p align="center">
+  <picture>
+    <source srcset="https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png" media="(prefers-color-scheme: dark)">
+    <img src="https://github.com/coguardio/coguard-cli/raw/master/logo.png" alt="Light mode logo" width="500">
+  </picture>
+  <picture>
+    <source srcset="https://github.com/coguardio/coguard-cli/raw/master/logo.png" media="(prefers-color-scheme: light)">
+    <img src="https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png" alt="Dark mode logo" width="500">
+  </picture>
+</p>
 
 # CoGuard
 
@@ -21,14 +30,27 @@ locations of configuration files is lacking. This is why we created a
 command line tool helping with discovering those configurations, and
 scanning them.
 
-As an initial starting point for the CLI, we chose Docker images. Modern
-container scanners check for versions of software and libraries
-installed on those containers, and establish if there are common known
-vulnerabilities and exposures (CVEs). The
-CoGuard CLI is trying to find known configuration files for e.g. web
-servers or databases, and scans these for security and best practice.
-Additionally, the last Docker file used to create an image is analyzed
-as well.
+CoGuard's CLI combines multiple ways to extract and scan your configuration
+files.
+
+1. Docker images: Modern
+   container scanners check for versions of software and libraries
+   installed on those containers, and establish if there are common known
+   vulnerabilities and exposures (CVEs). The
+   CoGuard CLI is trying to find known configuration files for e.g. web
+   servers or databases, and scans these for security and best practice.
+   Additionally, the last Docker file used to create an image is analyzed
+   as well.
+2. Project Repositories: Modern projects store their infrastructure
+   information inside code repositories for better visibility and
+   traceability. CoGuard can extract Infrastructure as Code (IaC)
+   files and other supported configurations. It also searches for
+   external container references and scans these as well.
+3. Cloud configurations not represented as IaC: Many organizations
+   have either not yet started using IaC tools, or have a hybrid model
+   of part IaC, part manual management. For these cases, we can
+   extract cloud configurations for AWS, Azure or GCP, and scan them
+   as well.
 
 ## Introduction to the CoGuard CLI
 
@@ -38,7 +60,12 @@ configurations (cloud and on-premise).
 This project is the command line interface to CoGuard, with additional
 auto-discovery functionality.
 
-In its current release, it scans Docker images and its contents.
+In its current release, it scans
+1. Docker images and its contents,
+2. Project folders (such as GitHub Repositories) and
+3. automatically extracted cloud configurations from the three major
+   cloud providers
+
 In particular, it searches for known configuration files of different
 software packages (like webservers, databases, etc.), and scans these
 configurations for security and best practice.
@@ -112,12 +139,67 @@ Keep in mind that it is a requirement to have Docker installed locally.
 
 ## How to use it
 
-After installing the CoGuard CLI, you can run a scan on your local images
+Any of the following options requires you to create a CoGuard account.
+After completion, this image check will return the findings of CoGuard
+on this particular image. You can view the latest historical scan results
+when logging in to [https://portal.coguard.io](https://portal.coguard.io).
+
+### Scanning Docker images
+
+Using the CoGuard CLI, you can run a scan on your local Docker images
 using
 
 ```shell
-coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
+coguard docker-image [scan] [<YOUR-IMAGE-NAME-OR-ID>]
 ```
+
+### Scanning project repository folders
+
+Using the CoGuard CLI, you can run a scan on your local
+file repositories using
+
+```shell
+coguard folder [scan] [<PATH-TO-FOLDER>]
+```
+
+### Extracting and scanning cloud configurations (BETA)
+
+Using the CoGuard CLI, you can run a scan a current snapshot of your
+cloud configurations. This requires you to have the respective
+cloud CLI tools (`aws-cli` for AWS, `gcloud` for GCP or `az` for
+Azure) installed and authenticated on your device.
+
+```shell
+coguard cloud [scan] {aws, azure, gcp}
+```
+
+The extraction may take a couple of minutes, depending on your
+internet speed.
+
+### General scan
+
+To get a general scan, which includes all locally installed Docker
+images, anything in the current-working directory (recursive) and any
+installed cloud provider authentication, simply run
+
+```shell
+coguard scan
+```
+
+## Screenshot and further information
+
+Here is a screenshot of a sample scan:
+
+![](./screenshot.png)
+
+As you can see, CoGuard also analyzes the last Dockerfile used.
+
+The checks are gathered from different security benchmarks, such as CIS, but also
+directly from the user manuals of these software projects. At times, known issues for
+certain versions and security remediations specific to a certain version are being taken
+into account as well.
+
+## Installation remarks
 
 **Remark 1**: It may happen that the folder where `pip` is installing packages is not
 in included in `PATH`. We have observed it on some Ubuntu installations, and on
@@ -130,6 +212,9 @@ For the Mac case, it is often installed under `~/Library/Python/<YOUR_PYTHON_VER
 ```shell
 ~/Library/Python/<YOUR_PYTHON_VERSION>/bin/coguard docker-image [<YOUR-IMAGE-NAME-OR-ID>]
 ```
+
+If you omit the image ID parameter, CoGuard will scan all the images currently
+stored on your device.
 
 **Remark 2**: Windows users need to be allowed to create and read symbolic links.
 This can be achieved using three options:
@@ -159,30 +244,11 @@ This can be achieved using three options:
 </details>
 
 
-If you omit the image ID parameter, CoGuard will scan all the images currently
-stored on your device.
-
-This step requires you to create a CoGuard account.
-After completion, this image check will return the findings of CoGuard
-on this particular image. You can view the latest historical scan results
-when logging in to [https://portal.coguard.io](https://portal.coguard.io).
-
-Here is a screenshot of a sample scan:
-
-![](./screenshot.png)
-
-As you can see, CoGuard also analyzes the last Dockerfile used.
-
-The checks are gathered from different security benchmarks, such as CIS, but also
-directly from the user manuals of these software projects. At times, known issues for
-certain versions and security remediations specific to a certain version are being taken
-into account as well.
-
 ## Current support and future plans
 
 The currently supported auto-discovery of configuration files inside
-Docker containers is limited to the finders
-[in this folder](https://github.com/coguardio/coguard-cli/tree/master/src/coguard_cli/image_check/config_file_finders).
+Docker containers, folders and cloud configuration exports is limited to the finders
+[in this folder](https://github.com/coguardio/coguard-cli/tree/master/src/coguard_cli/discovery/config_file_finders).
 The list includes, among others,
 
 - Apache Kafka
@@ -195,6 +261,8 @@ The list includes, among others,
 - NGINX
 - OpenTelemetry Collector
 - PostgreSQL
+- TerraForm
+- Kubernetes
 
 This list
 will expand in the future. In addition, we are scanning the
