@@ -2,3 +2,5 @@
 disable=
         duplicate-code,
         too-many-arguments
+[BASIC]
+max-locals=17

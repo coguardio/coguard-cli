@@ -151,9 +151,10 @@ def extract_image_to_file_system(
     temp_image_name = docker_dao.create_docker_image(image_name)
     if temp_image_name is None:
         print(
-            f"{COLOR_RED}Unable to extract image name. Make sure you "
+            f"{COLOR_RED}Unable to extract image name {image_name}. Make sure you "
             "have provided the correct tag "
-            f"and/or the image digest.{COLOR_TERMINATION}"
+            f"and/or the image digest, or that you have the permission "
+            f"to pull this specific image.{COLOR_TERMINATION}"
         )
         return None
     inspect_result = docker_dao.get_inspect_result(temp_image_name)
