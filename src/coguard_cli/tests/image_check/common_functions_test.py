@@ -53,36 +53,6 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
             self.assertIsNotNone(result)
             self.assertEqual(result, "bar")
 
-            # unittest.mock.patch(
-            #    "coguard_cli.docker_dao.create_docker_image",
-            #    new_callable = lambda: lambda x, y: "fooImage"), \
-            # unittest.mock.patch(
-            #    "coguard_cli.docker_dao.get_inspect_result",
-            #     new_callable = lambda: lambda x: {"foo": "bar"}), \
-            # unittest.mock.patch(
-            #    "coguard_cli.docker_dao.store_image_file_system",
-            #     new_callable = lambda: lambda x: "/foo/bar"), \
-            # unittest.mock.patch(
-            #    "coguard_cli.image_check.find_configuration_files_and_collect",
-            #     new_callable = lambda: lambda x, y, z, a: ("/foo/bar/baz", {})), \
-            # unittest.mock.patch(
-            #     "os.walk",
-            #     new_callable=lambda: lambda x: [("/etc/foo/bar", [], ['foo.conf'])]), \
-            # unittest.mock.patch(
-            #     "os.chmod",
-            #     new_callable=lambda: lambda x, y: x), \
-            # unittest.mock.patch(
-            #     "os.stat",
-            #     new_callable=lambda: lambda x: unittest.mock.Mock(st_mode=256)), \
-            # unittest.mock.patch(
-            #     "os.close",
-            #     new_callable=lambda: lambda x: x), \
-            # unittest.mock.patch(
-            #     "shutil.rmtree"
-            # ), \
-            # unittest.mock.patch(
-            #     "coguard_cli.docker_dao.rm_temporary_container_name"
-            # )
 
     def test_extract_image_to_filesystem_docker_inspect_failed(self):
         """
@@ -91,13 +61,12 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         """
         with unittest.mock.patch(
                 "coguard_cli.docker_dao.create_docker_image",
-                new_callable = lambda: lambda x, y: "fooImage"), \
+                new_callable = lambda: lambda x: "fooImage"), \
              unittest.mock.patch(
                 "coguard_cli.docker_dao.get_inspect_result",
                  new_callable = lambda: lambda x: None):
             result = image_check.extract_image_to_file_system(
-                "foo",
-                DealEnum.ENTERPRISE
+                "foo"
             )
             self.assertIsNone(result)
 
@@ -108,7 +77,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         """
         with unittest.mock.patch(
                 "coguard_cli.docker_dao.create_docker_image",
-                new_callable = lambda: lambda x, y: "fooImage"), \
+                new_callable = lambda: lambda x: "fooImage"), \
              unittest.mock.patch(
                 "coguard_cli.docker_dao.get_inspect_result",
                  new_callable = lambda: lambda x: {"foo": "bar"}), \
@@ -116,8 +85,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                 "coguard_cli.docker_dao.store_image_file_system",
                  new_callable = lambda: lambda x: None):
             result = image_check.extract_image_to_file_system(
-                "foo",
-                DealEnum.ENTERPRISE
+                "foo"
             )
             self.assertIsNone(result)
 
@@ -128,7 +96,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         """
         with unittest.mock.patch(
                 "coguard_cli.docker_dao.create_docker_image",
-                new_callable = lambda: lambda x, y: "fooImage"), \
+                new_callable = lambda: lambda x: "fooImage"), \
              unittest.mock.patch(
                 "coguard_cli.docker_dao.get_inspect_result",
                  new_callable = lambda: lambda x: {"foo": "bar"}), \
@@ -136,8 +104,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                 "coguard_cli.docker_dao.store_image_file_system",
                  new_callable = lambda: lambda x: "/foo/bar"):
             result = image_check.extract_image_to_file_system(
-                "foo",
-                DealEnum.ENTERPRISE
+                "foo"
             )
             self.assertEqual(
                 result,
