@@ -469,8 +469,12 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.fail_level
         )
     elif args.subparsers_location == SubParserNames.FOLDER_SCAN.value:
-        folder_name = args.folder_name or args.scan or None # args.scan is a trick to
-                                                            # think there is a positional argument
+        folder_name = args.folder_name or \
+            args.scan or \
+            None # args.scan is a trick to
+                 # think there is a positional argument
+        if folder_name is not None:
+            folder_name = os.path.abspath(folder_name)
         perform_folder_scan(
             folder_name,
             deal_type,
