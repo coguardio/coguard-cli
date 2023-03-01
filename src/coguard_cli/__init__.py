@@ -9,6 +9,7 @@ import os
 import sys
 import textwrap
 import logging
+from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 from coguard_cli import image_check
@@ -16,6 +17,7 @@ from coguard_cli import folder_scan
 from coguard_cli import docker_dao
 from coguard_cli import util
 from coguard_cli.discovery.cloud_discovery.cloud_provider_factory import cloud_provider_factory
+from coguard_cli.ci_cd.ci_cd_provider_factory import ci_cd_provider_factory
 from coguard_cli import auth
 from coguard_cli import api_connection
 from coguard_cli.print_colors import COLOR_TERMINATION, \
@@ -134,6 +136,7 @@ class SubParserNames(Enum):
     DOCKER_IMAGE = "docker-image"
     FOLDER_SCAN = "folder"
     CLOUD_SCAN = "cloud"
+    CI_CD_GEN = "cicd"
     SCAN = "scan"
 
 def auth_token_retrieval(
@@ -414,6 +417,35 @@ def perform_cloud_provider_scan(
         organization
     )
 
+def perform_ci_cd_action(
+        ci_cd_provider,
+        ci_cd_command,
+        repository_folder):
+    """
+    The function to perform a ci_cd_action.
+    """
+    if repository_folder is not None:
+        if not Path(repository_folder).exists():
+            print(f"{COLOR_RED}The path you specified did not exist.{COLOR_TERMINATION}")
+            sys.exit(1)
+    ci_cd_provider_instance = None
+    for ci_cd_provider_cls in ci_cd_provider_factory():
+        if ci_cd_provider_cls.get_identifier() == ci_cd_provider:
+            ci_cd_provider_instance = ci_cd_provider_cls
+            break
+    if ci_cd_provider_instance is None:
+        print(f"{COLOR_RED}Invalid Ci/CD provider given.{COLOR_TERMINATION}")
+        sys.exit(1)
+    if ci_cd_command == 'generate':
+        ret_val = ci_cd_provider_instance.generate(repository_folder)
+        if ret_val is None:
+            sys.exit(1)
+    else:
+        print(f"Invalid command: {ci_cd_command}.")
+        sys.exit(1)
+    print(ci_cd_provider_instance.post_string())
+
+
 def entrypoint(args):
     """
     The main entrypoint for the CLI. Takes the :mod:`argparse` parsing
@@ -498,6 +530,18 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.coguard_api_url,
             args.output_format,
             args.fail_level
+        )
+    elif args.subparsers_location == SubParserNames.CI_CD_GEN.value:
+        ci_cd_provider = args.ci_cd_provider_name
+        ci_cd_command = args.ci_cd_command
+        if ci_cd_command is None:
+            print("No command specified")
+            sys.exit(1)
+        repository_folder = os.path.abspath(args.repository_folder)
+        perform_ci_cd_action(
+            ci_cd_provider,
+            ci_cd_command,
+            repository_folder
         )
     elif args.subparsers_location == SubParserNames.SCAN.value:
         perform_docker_image_scan(

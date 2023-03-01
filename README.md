@@ -133,6 +133,18 @@ pip3 install coguard-cli
 
 Keep in mind that it is a requirement to have Docker installed locally.
 
+### Inclusion into your CI/CD pipeline
+
+We have ready scripts which can be generated to be included into your CI/CD pipeline.
+The list of supported providers is growing.
+
+To generate e.g. a GitHub Actions YAML which automatically scans your repository on
+pull request/push, simply type
+
+```shell
+coguard cicd github generate <PATH_TO_YOUR_REPOSITORY>
+```
+
 ## How to use it
 
 Any of the following options requires you to create a CoGuard account.

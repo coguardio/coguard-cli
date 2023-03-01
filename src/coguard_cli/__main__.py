@@ -7,6 +7,7 @@ import argparse
 import logging
 import pkg_resources
 from coguard_cli import entrypoint, SubParserNames
+from coguard_cli.util import CiCdProviderNames
 from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL
 
 def set_logging_config(level):
@@ -155,7 +156,35 @@ def main():
         help=("The name of the cloud providers. The choices are \"gcp\", "
               "\"aws\" and \"azure\". Defaults to \"aws.\"")
     )
-    docker_image_parser = subparsers.add_parser(
+    ci_cd_parser = subparsers.add_parser(
+        SubParserNames.CI_CD_GEN.value,
+        help="The sub-command to generate CI-CD-files to add to your pipeline."
+    )
+    ci_cd_parser.add_argument(
+        'ci_cd_provider_name',
+        metavar="ci_cd_provider_name",
+        type=str,
+        choices=[ci_cd_provider.value for ci_cd_provider in CiCdProviderNames],
+        nargs='?',
+        help=("The name of the CI/CD provider.")
+    )
+    ci_cd_parser.add_argument(
+        'ci_cd_command',
+        metavar="ci_cd_command",
+        type=str,
+        choices=["generate"],
+        nargs='?',
+        help=("The action you would like to take.")
+    )
+    ci_cd_parser.add_argument(
+        'repository_folder',
+        metavar="repository_folder",
+        default=".",
+        type=str,
+        nargs='?',
+        help=("The action you would like to take.")
+    )
+    subparsers.add_parser(
         SubParserNames.SCAN.value,
         help="The sub-command to scan everything, using default parameters.",
     )
