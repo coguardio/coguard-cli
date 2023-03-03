@@ -149,7 +149,7 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
             )
             append_candidate = self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
-                result_file
+                os.path.join(path_to_file_system, result_file)
             )
             if append_candidate is None:
                 continue
