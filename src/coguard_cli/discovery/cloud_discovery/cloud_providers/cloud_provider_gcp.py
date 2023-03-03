@@ -114,7 +114,7 @@ class CloudProviderGCP(CloudProvider):
         """
         extracted_credentials = self.extract_credentials()
         if not extracted_credentials:
-            logging.error("Could not extract the credentials for GCP.")
+            logging.info("Could not extract the credentials for GCP.")
             return None
         temp_location = tempfile.mkdtemp(prefix="gcp_cloud_extraction")
         all_regions = self.get_all_regions()
