@@ -113,7 +113,7 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
             if not os.path.exists(to_copy):
                 logging.error("Could not find the file or resolve the symlink at `%s`",
                               web_context_xml_path)
-                return None
+                continue
             new_location = os.path.join(temp_location_tuple[1], subdir)
             os.makedirs(new_location, exist_ok=True)
             shutil.copy(
