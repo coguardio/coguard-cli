@@ -279,7 +279,7 @@ def terraformer_wrapper(location_to_mount: str,
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=DOCKER_CALL_TIMEOUT_S * 10
+            timeout=DOCKER_CALL_TIMEOUT_S * 100
         )
         return True
     except subprocess.CalledProcessError as exception:

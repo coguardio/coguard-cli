@@ -175,6 +175,10 @@ def copy_and_populate(
                     path_to_file_system,
                     abs_path_file
                 )
+                if not os.path.exists(to_copy):
+                    logging.error("Could not find the file or resolve the symlink at `%s`",
+                                  abs_path_file)
+                    continue
                 shutil.copy(
                     to_copy,
                     tmp_file_location
@@ -483,6 +487,9 @@ def create_grouped_temp_locations_and_manifest_entries(
                 path_to_file_system,
                 location_on_current_machine
             )
+            if not os.path.exists(to_copy):
+                logging.info("The file was a symlink did not lead to a proper file. Ignoring")
+                continue
             # The reason we added os.sep at the end is because the file location may be
             # at the root of the path_to_file_system. In this case, if there is a separation
             # character at the end of path_to_file_system, the replace may not work.
@@ -520,7 +527,7 @@ def create_temp_location_and_manifest_entry(
             location_on_current_machine: str,
             service_name: str,
             default_file_name: str,
-            config_file_type: str) -> Tuple[Dict, str]:
+            config_file_type: str) -> Optional[Tuple[Dict, str]]:
     """
     Common helper function which creates a temporary folder location for the
     configuration files. It returns
@@ -544,6 +551,10 @@ def create_temp_location_and_manifest_entry(
         if loc_within_machine.startswith(os.sep) \
            else loc_within_machine
     os.makedirs(os.path.join(temp_location, loc_within_machine), exist_ok=True)
+    if not os.path.exists(to_copy):
+        logging.error("Could not find the file or resolve the symlink at `%s`",
+                      location_on_current_machine)
+        return None
     shutil.copy(
         to_copy,
         os.path.join(

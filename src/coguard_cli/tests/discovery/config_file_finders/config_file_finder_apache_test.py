@@ -107,6 +107,10 @@ class TestConfigFileFinderApache(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
+             ), \
+             unittest.mock.patch(
+                 'os.path.exists',
+                 new_callable=lambda: lambda x: True
              ):
             config_file_finder_apache = ConfigFileFinderApache()
             result = config_file_finder_apache._create_temp_location_and_manifest_entry(

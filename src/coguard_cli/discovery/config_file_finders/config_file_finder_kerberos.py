@@ -6,6 +6,7 @@ inside a folder structure.
 import os
 import shutil
 import tempfile
+import logging
 from typing import Dict, List, Optional, Tuple
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 import coguard_cli.discovery.config_file_finders as cff_util
@@ -19,7 +20,7 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
     def _create_temp_location_and_manifest_entry(
             self,
             path_to_file_system: str,
-            location_on_current_machine: str) -> Tuple[Dict, str]:
+            location_on_current_machine: str) -> Optional[Tuple[Dict, str]]:
         """
         Common helper function which creates a temporary folder location for the
         configuration files, and then analyzes include directives. It returns
@@ -31,6 +32,10 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
             path_to_file_system,
             location_on_current_machine
         )
+        if not os.path.exists(to_copy):
+            logging.error("Could not resolve path to `%s`. There might be symlink.",
+                          location_on_current_machine)
+            return None
         # The reason we added os.sep at the end is because the file location may be
         # at the root of the path_to_file_system. In this case, if there is a separation
         # character at the end of path_to_file_system, the replace may not work.
@@ -114,10 +119,13 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_manifest_entry(
+            append_candidate = self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 result_file
-            ))
+            )
+            if append_candidate is None:
+                continue
+            results.append(append_candidate)
         return results
 
     def check_call_command_in_container(
@@ -139,10 +147,13 @@ class ConfigFileFinderKerberos(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_manifest_entry(
+            append_candidate = self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
-                os.path.join(path_to_file_system, result_file)
-            ))
+                result_file
+            )
+            if append_candidate is None:
+                continue
+            results.append(append_candidate)
         return results
 
     def get_service_name(self) -> str:

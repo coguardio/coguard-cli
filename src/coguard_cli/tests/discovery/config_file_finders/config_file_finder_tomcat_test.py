@@ -213,6 +213,10 @@ class TestConfigFileFinderTomcat(unittest.TestCase):
                  new_callable=lambda: lambda location, exist_ok: None), \
              unittest.mock.patch(
                 "shutil.copy"
+             ), \
+             unittest.mock.patch(
+                 'os.path.exists',
+                 new_callable=lambda: lambda x: True
              ):
             temp_location_tuple = ({
                 "configFileList": []

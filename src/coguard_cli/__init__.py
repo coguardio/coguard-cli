@@ -274,7 +274,7 @@ def perform_docker_image_scan(
             deal_type,
             token,
             coguard_api_url,
-            docker_image,
+            image,
             output_format,
             fail_level,
             organization
