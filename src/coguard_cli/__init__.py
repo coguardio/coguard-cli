@@ -248,7 +248,10 @@ def perform_docker_image_scan(
         print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
         temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
             image
-        )
+        ) or (None, None, None)
+        if temp_folder is None or temp_inspection is None or temp_image is None:
+            logging.error("Could not extract files from image %s", docker_image)
+            continue
         collected_config_file_tuple = image_check.find_configuration_files_and_collect(
             image,
             auth_config.get_username(),

@@ -155,7 +155,7 @@ class ConfigFileFinder(ABC):
         """
         if path_to_file_system is None:
             logging.error("Unexpectedly, the folder where the filesystem was located is None")
-            return None
+            return []
         configuration_in_standard_location = self.check_for_config_files_in_standard_location(
             path_to_file_system
         )
