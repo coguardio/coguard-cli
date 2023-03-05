@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 unit-test:
 # In order to have the tests run as expected, I need to set read/write rights here properly
 	chmod 0400 ./src/coguard_cli/tests/auth/resources/sample_config
