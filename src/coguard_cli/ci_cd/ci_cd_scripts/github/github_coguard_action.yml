@@ -1,0 +1,16 @@
+name: CoGuard Scanning for infrastructure related files
+run-name: Pull request ${{github.event.number}} is being scanned for misconfigurations.
+on:
+  - push
+  - pull_request
+jobs:
+  run_coguard_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run the CoGuard CLI Action
+        uses: coguardio/coguard-scan-action@v0.2.2
+        with:
+          username: ${{ secrets.COGUARD_USER_NAME }}
+          password: ${{ secrets.COGUARD_PASSWORD }}

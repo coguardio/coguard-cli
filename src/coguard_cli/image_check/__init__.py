@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import stat
+import logging
 import tempfile
 from typing import Optional, Dict, Tuple
 import zipfile
@@ -159,9 +160,13 @@ def extract_image_to_file_system(
         return None
     inspect_result = docker_dao.get_inspect_result(temp_image_name)
     if inspect_result is None:
+        logging.debug("The docker inspect result was empty for %s (%s)",
+                      temp_image_name, image_name)
         return None
     file_system_store_location = docker_dao.store_image_file_system(temp_image_name)
     if file_system_store_location is None:
+        logging.debug("Could not extract file system location for %s (%s)",
+                      temp_image_name, image_name)
         return None
     for (dir_loc, _, _) in os.walk(file_system_store_location):
         # This is to ensure that all folders can be written. We noticed some issues there

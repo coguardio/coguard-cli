@@ -39,7 +39,7 @@ class CloudProviderAzure(CloudProvider):
         """
         extracted_credentials = self.extract_credentials()
         if not extracted_credentials:
-            logging.error("Could not extract the credentials for Azure.")
+            logging.info("Could not extract the credentials for Azure.")
             return None
         temp_location = tempfile.mkdtemp(prefix="azure_cloud_extraction")
         environment_variables = {

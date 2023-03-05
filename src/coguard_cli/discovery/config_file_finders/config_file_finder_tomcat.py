@@ -24,7 +24,7 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
             path_to_file_system: str,
             file_name_and_current_location: Tuple[str, str],
             input_temp_location = None,
-            current_manifest_entry = None) -> Tuple[Dict, str]:
+            current_manifest_entry = None) -> Optional[Tuple[Dict, str]]:
         """
         Common helper function which creates a temporary folder location for the
         configuration files, if not yest existent. It returns
@@ -38,6 +38,10 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
             path_to_file_system,
             location_on_current_machine
         )
+        if not os.path.exists(to_copy):
+            logging.error("Could not find the file or resolve the symlink at `%s`",
+                          location_on_current_machine)
+            return None
         # The reason we added os.sep at the end is because the file location may be
         # at the root of the path_to_file_system. In this case, if there is a separation
         # character at the end of path_to_file_system, the replace may not work.
@@ -106,6 +110,10 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
                 path_to_file_system,
                 web_context_xml_path
             )
+            if not os.path.exists(to_copy):
+                logging.error("Could not find the file or resolve the symlink at `%s`",
+                              web_context_xml_path)
+                continue
             new_location = os.path.join(temp_location_tuple[1], subdir)
             os.makedirs(new_location, exist_ok=True)
             shutil.copy(
@@ -208,10 +216,13 @@ class ConfigFileFinderTomcat(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_manifest_entry(
+            append_candidate = self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 (os.path.basename(result_file), result_file)
-            ))
+            )
+            if append_candidate is None:
+                continue
+            results.append(append_candidate)
         return results
 
     def check_call_command_in_container(

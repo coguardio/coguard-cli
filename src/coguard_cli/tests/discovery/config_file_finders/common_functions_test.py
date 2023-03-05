@@ -28,6 +28,10 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
              unittest.mock.patch(
                  "tempfile.mkstemp",
                  new_callable=lambda: lambda dir: ("foo", "bar")
+             ), \
+             unittest.mock.patch(
+                 'os.path.exists',
+                 new_callable=lambda: lambda x: True
              ):
             current_manifest = {'complimentaryFileList': []}
             cff_util.copy_and_populate(
@@ -66,6 +70,10 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
              unittest.mock.patch(
                  "tempfile.mkstemp",
                  new_callable=lambda: lambda dir: ("foo", "bar")
+             ), \
+             unittest.mock.patch(
+                 'os.path.exists',
+                 new_callable=lambda: lambda x: True
              ):
             current_manifest = {'complimentaryFileList': []}
             cff_util.copy_and_populate(
@@ -230,6 +238,10 @@ class TestCommonFunctionsConfigFileFinders(unittest.TestCase):
              ), \
              unittest.mock.patch(
                  'shutil.copy'
+             ), \
+             unittest.mock.patch(
+                 'os.path.exists',
+                 new_callable=lambda: lambda x: True
              ):
             result = cff_util.create_temp_location_and_manifest_entry(
                 '/',

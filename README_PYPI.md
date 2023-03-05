@@ -1,9 +1,4 @@
-<p align="center">
-  <picture>
-    <source srcset="https://github.com/coguardio/coguard-cli/raw/master/logo_dark_mode.png" media="(prefers-color-scheme: dark)">
-    <img src="https://github.com/coguardio/coguard-cli/raw/master/logo.png" alt="Light mode logo" width="500">
-  </picture>
-</p>
+<img src="https://github.com/coguardio/coguard-cli/raw/master/logo.png" alt="Light mode logo" width="500">
 
 # CoGuard
 

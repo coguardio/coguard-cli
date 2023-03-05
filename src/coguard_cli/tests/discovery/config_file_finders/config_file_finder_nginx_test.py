@@ -107,6 +107,10 @@ class TestConfigFileFinderNginx(unittest.TestCase):
              unittest.mock.patch(
                  ("coguard_cli.discovery.config_file_finders."
                   "extract_include_directives")
+             ), \
+             unittest.mock.patch(
+                 'os.path.exists',
+                 new_callable=lambda: lambda x: True
              ):
             config_file_finder_nginx = ConfigFileFinderNginx()
             result = config_file_finder_nginx._create_temp_location_and_manifest_entry(

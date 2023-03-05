@@ -16,7 +16,7 @@ from coguard_cli.discovery.cloud_discovery.cloud_provider_abc import CloudProvid
 
 def cloud_provider_factory() -> Generator[CloudProvider, None, None]:
     """
-    The factory to get different instances to find configuration files.
+    The factory to get different instances to repesent cloud providers.
     """
     for cls in CloudProvider.__subclasses__():
         yield cls()

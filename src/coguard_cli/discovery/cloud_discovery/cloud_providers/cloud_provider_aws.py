@@ -92,7 +92,7 @@ class CloudProviderAWS(CloudProvider):
         """
         extracted_credentials = self.extract_credentials()
         if not extracted_credentials:
-            logging.error("Could not extract the credentials for AWS.")
+            logging.info("Could not extract the credentials for AWS.")
             return None
         temp_location = tempfile.mkdtemp(prefix="aws_cloud_extraction")
         all_regions = self.get_all_regions()

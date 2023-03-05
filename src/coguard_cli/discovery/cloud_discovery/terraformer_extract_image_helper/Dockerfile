@@ -35,7 +35,9 @@ RUN dnf install -y azure-cli
 
 # Install Terraformer
 
-ENV CURRENT_TERRAFORMER_VERSION=0.8.22
+# Using an older version until https://github.com/GoogleCloudPlatform/terraformer/issues/1648 is fixed.
+# Do not use 0.8.22
+ENV CURRENT_TERRAFORMER_VERSION=0.8.21
 # For now, we assume the provider to be AWS only; we would need to
 # check for adjustments for other providers, and maybe need to create
 # extra Docker files for that.

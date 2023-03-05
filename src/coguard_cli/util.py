@@ -6,9 +6,16 @@ import os
 import json
 import logging
 import re
+from enum import Enum
 
 import shutil
 from typing import Set, Dict, Optional, Tuple
+
+class CiCdProviderNames(Enum):
+    """
+    The enumeration capturing the different CI/CD Provider Names.
+    """
+    GITHUB = "github"
 
 def replace_special_chars_with_underscore(string: str) -> str:
     """

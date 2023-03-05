@@ -22,7 +22,7 @@ class ConfigFileFinderNetlify(ConfigFileFinder):
             self,
             path_to_file_system: str,
             file_name: str,
-            location_on_current_machine: str) -> Tuple[Dict, str]:
+            location_on_current_machine: str) -> Optional[Tuple[Dict, str]]:
         """
         Common helper function which creates a temporary folder location for the
         configuration files. It returns
@@ -34,6 +34,10 @@ class ConfigFileFinderNetlify(ConfigFileFinder):
             path_to_file_system,
             location_on_current_machine
         )
+        if not os.path.exists(to_copy):
+            logging.error("Could not find the file or resolve the symlink at `%s`",
+                          location_on_current_machine)
+            return None
         # The reason we added os.sep at the end is because the file location may be
         # at the root of the path_to_file_system. In this case, if there is a separation
         # character at the end of path_to_file_system, the replace may not work.
@@ -142,11 +146,14 @@ class ConfigFileFinderNetlify(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-            results.append(self._create_temp_location_and_manifest_entry(
+            append_candidate = self._create_temp_location_and_manifest_entry(
                 path_to_file_system,
                 os.path.basename(result_file),
                 result_file
-            ))
+            )
+            if append_candidate is None:
+                continue
+            results.append(append_candidate)
         return results
 
     def check_call_command_in_container(
