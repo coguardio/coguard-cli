@@ -172,7 +172,7 @@ def main():
         'ci_cd_command',
         metavar="ci_cd_command",
         type=str,
-        choices=["generate"],
+        choices=["add"],
         nargs='?',
         help=("The action you would like to take.")
     )

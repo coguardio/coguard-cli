@@ -14,7 +14,7 @@ class CiCdProviderGitHub(CiCdProvider):
     The class to represent GitHub as a CI/CD provider.
     """
 
-    def generate(self, location: str) -> Optional[str]:
+    def add(self, location: str) -> Optional[str]:
         """
         Generates the subfolders and the CI/CD file.
         """

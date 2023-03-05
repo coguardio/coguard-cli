@@ -136,7 +136,7 @@ class SubParserNames(Enum):
     DOCKER_IMAGE = "docker-image"
     FOLDER_SCAN = "folder"
     CLOUD_SCAN = "cloud"
-    CI_CD_GEN = "cicd"
+    CI_CD_GEN = "pipeline"
     SCAN = "scan"
 
 def auth_token_retrieval(
@@ -439,8 +439,8 @@ def perform_ci_cd_action(
     if ci_cd_provider_instance is None:
         print(f"{COLOR_RED}Invalid Ci/CD provider given.{COLOR_TERMINATION}")
         sys.exit(1)
-    if ci_cd_command == 'generate':
-        ret_val = ci_cd_provider_instance.generate(repository_folder)
+    if ci_cd_command == 'add':
+        ret_val = ci_cd_provider_instance.add(repository_folder)
         if ret_val is None:
             sys.exit(1)
     else:

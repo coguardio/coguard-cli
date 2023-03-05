@@ -12,7 +12,7 @@ class CiCdProvider(ABC):
     """
 
     @abstractmethod
-    def generate(self, location: str) -> Optional[str]:
+    def add(self, location: str) -> Optional[str]:
         """
         This function generates the CI/CD script for the specific CI/CD provider.
         It would put it into the `location`, which is the input parameter.

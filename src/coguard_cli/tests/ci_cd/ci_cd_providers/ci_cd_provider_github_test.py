@@ -10,7 +10,7 @@ class TestCiCdProviderGitHub(unittest.TestCase):
     The test class for the CloudProviderFactory
     """
 
-    def test_generate_not_existent(self):
+    def test_add_not_existent(self):
         """
         The generation of the CI/CD script.
         """
@@ -22,11 +22,11 @@ class TestCiCdProviderGitHub(unittest.TestCase):
             new_callable=lambda: lambda y: True
         ):
             provider = CiCdProviderGitHub()
-            return_val = provider.generate("foo")
+            return_val = provider.add("foo")
             self.assertIsNone(return_val)
             mkdir_path.assert_called_once()
 
-    def test_generate_existent(self):
+    def test_add_existent(self):
         """
         The generation of the CI/CD script.
         """
@@ -44,7 +44,7 @@ class TestCiCdProviderGitHub(unittest.TestCase):
             'pathlib.Path.read_bytes'
         ) as reader:
             provider = CiCdProviderGitHub()
-            return_val = provider.generate("foo")
+            return_val = provider.add("foo")
             self.assertEqual(return_val, "foo/.github/workflows")
             self.assertIsNotNone(return_val)
             mkdir_path.assert_called_once()

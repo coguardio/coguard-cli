@@ -142,7 +142,7 @@ To generate e.g. a GitHub Actions YAML which automatically scans your repository
 pull request/push, simply type
 
 ```shell
-coguard cicd github generate <PATH_TO_YOUR_REPOSITORY>
+coguard pipeline github add <PATH_TO_YOUR_REPOSITORY>
 ```
 
 ## How to use it
