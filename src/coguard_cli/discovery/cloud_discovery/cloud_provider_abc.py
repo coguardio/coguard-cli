@@ -21,7 +21,8 @@ class CloudProvider(ABC):
         """
 
     @abstractmethod
-    def extract_credentials(self) -> Optional[Dict]:
+    def extract_credentials(self,
+                            credentials_file: Optional[str] = None) -> Optional[Dict]:
         """
         The implementation of the function to get the credentials and return
         them as a dictionary. If no credentials could be extracted, None is being returned.
@@ -30,7 +31,8 @@ class CloudProvider(ABC):
     @abstractmethod
     def extract_iac_files_for_account(
             self,
-            cli_config: CoGuardCliConfig) -> Optional[str]:
+            cli_config: CoGuardCliConfig,
+            credentials_file: Optional[str] = None) -> Optional[str]:
         """
         The main function which creates a temporary folder,
         and then extracts all cloud information in IaC. If the process

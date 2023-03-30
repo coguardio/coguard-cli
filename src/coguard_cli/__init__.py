@@ -366,6 +366,7 @@ def perform_folder_scan(
 
 def perform_cloud_provider_scan(
         cloud_provider_name: Optional[str],
+        credentials_file: Optional[str],
         deal_type: auth.util.DealEnum,
         auth_config: auth.CoGuardCliConfig,
         token: auth.token.Token,
@@ -389,6 +390,7 @@ def perform_cloud_provider_scan(
         return
     folder_name = cloud_provider.extract_iac_files_for_account(
         auth_config,
+        credentials_file
     )
     if not folder_name:
         logging.error("Unable to extract the requested cloud provider %s.",
@@ -526,6 +528,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         # think there is a positional argument
         perform_cloud_provider_scan(
             cloud_provider_name,
+            args.credentials_file,
             deal_type,
             auth_config,
             token,
@@ -570,6 +573,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         for cloud_provider in ["aws", "azure", "gcp"]:
             perform_cloud_provider_scan(
                 cloud_provider,
+                args.credentials_file,
                 deal_type,
                 auth_config,
                 token,

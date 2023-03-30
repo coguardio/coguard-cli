@@ -50,10 +50,17 @@ class CloudProviderGCP(CloudProvider):
         return inp
 
 
-    def extract_credentials(self) -> Optional[Dict]:
+    def extract_credentials(self,
+                            credentials_file: Optional[str] = None) -> Optional[Dict]:
         """
         Overriding the abstract base class function.
         """
+        if credentials_file:
+            with open(credentials_file, 'r', encoding='utf-8') as auth_json:
+                result = json.load(auth_json)
+                if "project_id" in result:
+                    self._projects.append(result.get("project_id"))
+            return None if not self._projects else result
         gcloud_config_path = Path(Path.home(), ".config", "gcloud")
         if not gcloud_config_path.exists():
             return None
@@ -108,11 +115,12 @@ class CloudProviderGCP(CloudProvider):
         return result
 
     def extract_iac_files_for_account(self,
-                                      cli_config: CoGuardCliConfig) -> Optional[str]:
+                                      cli_config: CoGuardCliConfig,
+                                      credentials_file: Optional[str] = None) -> Optional[str]:
         """
         Consider the abstract base class for documentation.
         """
-        extracted_credentials = self.extract_credentials()
+        extracted_credentials = self.extract_credentials(credentials_file)
         if not extracted_credentials:
             logging.info("Could not extract the credentials for GCP.")
             return None

@@ -156,6 +156,13 @@ def main():
         help=("The name of the cloud providers. The choices are \"gcp\", "
               "\"aws\" and \"azure\". Defaults to \"aws.\"")
     )
+    cloud_scanning_parser.add_argument(
+        '--credentials-file',
+        type=str,
+        dest='credentials_file',
+        required=False,
+        help=("A credentials file, if it is available.")
+    )
     ci_cd_parser = subparsers.add_parser(
         SubParserNames.CI_CD_GEN.value,
         help="The sub-command to generate CI-CD-files to add to your pipeline."
