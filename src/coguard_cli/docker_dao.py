@@ -273,7 +273,7 @@ def terraformer_wrapper(location_to_mount: str,
             f"docker run --name={terraformer_container_name} " + \
             f"-v \"{location_to_mount}\":/opt/terraformer_export_data " + \
             " ".join(f"-v \"{k}\":\"{v}\"" for k, v in mounts) + \
-            " ".join(f"-e \"{k}\"=\"{v}\"" for k, v in environment_variables.items()) + \
+            " ".join(f"-e \"{k}\"='{v}'" for k, v in environment_variables.items()) + \
             f" {terraformer_wrapper_image_name}",
             check=True,
             shell=True,

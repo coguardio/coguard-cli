@@ -21,7 +21,8 @@ class CloudProviderAzure(CloudProvider):
         """
         return "azure"
 
-    def extract_credentials(self) -> Optional[Dict]:
+    def extract_credentials(self,
+                            credentials_file: Optional[str] = None) -> Optional[Dict]:
         """
         Overriding the abstract base class function.
         """
@@ -33,7 +34,8 @@ class CloudProviderAzure(CloudProvider):
         }
 
     def extract_iac_files_for_account(self,
-                                      cli_config: CoGuardCliConfig) -> Optional[str]:
+                                      cli_config: CoGuardCliConfig,
+                                      credentials_file: Optional[str] = None) -> Optional[str]:
         """
         Consider the abstract base class for documentation.
         """
