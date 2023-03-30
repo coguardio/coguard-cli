@@ -16,8 +16,8 @@ ARG USER_ID=1000
 ARG GROUP_ID=1000
 
 # Creating a separate user
-RUN groupadd -g "$GROUP_ID" terraformerUser
-RUN useradd -u "$USER_ID" -g terraformerUser -s /bin/bash terraformerUser
+RUN groupadd -f -g "$GROUP_ID" terraformerUser
+RUN id -u "$USER_ID" || useradd -u "$USER_ID" -g "$GROUP_ID" -s /bin/bash terraformerUser
 
 # INSTALL Terraform
 RUN cd /etc/yum.repos.d/
@@ -55,15 +55,15 @@ COPY data/versions.tf /opt/tmp
 
 VOLUME /var/log
 
-RUN mkdir -p /home/terraformerUser/.aws
+RUN mkdir -p /home/"$(id -un $USER_ID)"/.aws
 
-RUN chown -R terraformerUser:terraformerUser /opt/tmp "$TERRAFORMER_EXPORT_DATA"
-RUN chown -R terraformerUser:terraformerUser /home/terraformerUser/.aws
+RUN chown -R "$(id -un $USER_ID)":"$(id -gn $GROUP_ID)" /opt/tmp "$TERRAFORMER_EXPORT_DATA"
+RUN chown -R "$(id -un $USER_ID)":"$(id -gn $GROUP_ID)" /home/"$(id -un $USER_ID)"/.aws
 
 COPY scripts/cmd_for_dfile /usr/bin/
 RUN chmod a+x /usr/bin/cmd_for_dfile
 
-USER terraformerUser
+USER $USER_ID
 
 WORKDIR "$TERRAFORMER_EXPORT_DATA"
 
