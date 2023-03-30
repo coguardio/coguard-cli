@@ -573,6 +573,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         for cloud_provider in ["aws", "azure", "gcp"]:
             perform_cloud_provider_scan(
                 cloud_provider,
+                args.credentials_file,
                 deal_type,
                 auth_config,
                 token,

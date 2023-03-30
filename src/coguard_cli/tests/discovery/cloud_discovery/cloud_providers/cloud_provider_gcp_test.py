@@ -210,7 +210,7 @@ class TestCloudProviderGCP(unittest.TestCase):
         with unittest.mock.patch(
             "coguard_cli.discovery.cloud_discovery.cloud_providers." + \
             "cloud_provider_gcp.CloudProviderGCP.extract_credentials",
-            new_callable = lambda: lambda a: None):
+                new_callable = lambda: lambda a, b: None):
             self.assertIsNone(
                 gcp_provider.extract_iac_files_for_account(unittest.mock.Mock())
             )
@@ -228,7 +228,7 @@ class TestCloudProviderGCP(unittest.TestCase):
         with unittest.mock.patch(
             "coguard_cli.discovery.cloud_discovery.cloud_providers." + \
             "cloud_provider_gcp.CloudProviderGCP.extract_credentials",
-            new_callable = lambda: lambda a: "foo"), \
+                new_callable = lambda: lambda a, b: "foo"), \
             unittest.mock.patch(
             "coguard_cli.discovery.cloud_discovery.cloud_providers." + \
             "cloud_provider_gcp.CloudProviderGCP.get_all_regions",
@@ -258,7 +258,7 @@ class TestCloudProviderGCP(unittest.TestCase):
         with unittest.mock.patch(
             "coguard_cli.discovery.cloud_discovery.cloud_providers." + \
             "cloud_provider_gcp.CloudProviderGCP.extract_credentials",
-            new_callable = lambda: lambda a: "foo"), \
+                new_callable = lambda: lambda a, b: "foo"), \
             unittest.mock.patch(
             "coguard_cli.discovery.cloud_discovery.cloud_providers." + \
             "cloud_provider_gcp.CloudProviderGCP.get_all_regions",
