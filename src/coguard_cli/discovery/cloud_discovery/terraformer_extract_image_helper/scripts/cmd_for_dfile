@@ -16,7 +16,7 @@ then
     # Comment here: Normally, any AWS SDK is using primarily the environment variables.
     # Terraformer seems to insist on that credentials file, and we are writing it here
     # using the environment variables.
-    echo -e "[default]\naws_access_key_id=$AWS_ACCESS_KEY_ID\naws_secret_access_key=$AWS_SECRET_ACCESS_KEY" > /home/terraformerUser/.aws/credentials
+    echo -e "[default]\naws_access_key_id=$AWS_ACCESS_KEY_ID\naws_secret_access_key=$AWS_SECRET_ACCESS_KEY" > /home/"$(whoami)"/.aws/credentials
 elif [ "$PROVIDER" = "gcp" ]
 then
     test -n "$PROJECTS";

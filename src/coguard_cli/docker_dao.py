@@ -253,7 +253,7 @@ def terraformer_wrapper(location_to_mount: str,
     try:
         logging.info("Creating cloud extraction image on this machine.")
         subprocess.run(
-            f"docker build -t {terraformer_wrapper_image_name} " + \
+            f"docker build --platform linux/amd64 -t {terraformer_wrapper_image_name} " + \
             os.path.join(working_dir_of_this_file,
                          "discovery",
                          "cloud_discovery",
