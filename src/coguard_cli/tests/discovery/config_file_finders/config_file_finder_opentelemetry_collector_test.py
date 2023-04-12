@@ -87,7 +87,13 @@ class TestConfigFileFinderOpenTelemetryCollector(unittest.TestCase):
         """
         with unittest.mock.patch(
                 "os.walk",
-                new_callable=lambda: lambda location: [("etc", [], ["server.yaml"])]), \
+                new_callable=lambda: lambda location: [("foo/etc", [], ["server.yaml"])]), \
+                unittest.mock.patch(
+                "os.path.exists",
+                new_callable=lambda: lambda location: True), \
+                unittest.mock.patch(
+                "coguard_cli.discovery.config_file_finders.get_path_behind_symlinks",
+                new_callable = lambda: lambda p, q: q), \
                 unittest.mock.patch(
                 'builtins.open',
                 unittest.mock.mock_open(
