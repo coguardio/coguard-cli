@@ -158,10 +158,19 @@ class ConfigFileFinderOpenTelemetryCollector(ConfigFileFinder):
         ]
         results = []
         for file_candidate in file_candidates:
-            with open(file_candidate, 'r', encoding='utf-8') as f_handle:
+            file_candidate_without_symlink = cff_util.get_path_behind_symlinks(
+                '',
+                file_candidate
+            )
+            if not os.path.exists(file_candidate_without_symlink) or \
+               not file_candidate_without_symlink.startswith(path_to_file_system):
+                logging.error("The symlink of `%s` did not lead to a valid file inside the folder",
+                              file_candidate)
+                continue
+            with open(file_candidate_without_symlink, 'r', encoding='utf-8') as f_handle:
                 f_content = f_handle.read()
             if all(key in f_content for key in keys_to_look_for):
-                result_files.append(file_candidate)
+                result_files.append(file_candidate_without_symlink)
         for result_file in result_files:
             print(
                 f"{COLOR_CYAN}Found file "

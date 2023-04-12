@@ -283,6 +283,7 @@ def perform_docker_image_scan(
             organization
         )
 
+# pylint: disable=bare-except
 def _find_and_merge_included_docker_images(
         collected_config_file_tuple: Tuple[str, Dict],
         auth_config: auth.CoGuardCliConfig):
@@ -295,27 +296,30 @@ def _find_and_merge_included_docker_images(
             f"{image} in configuration file {location}."
             f"{COLOR_TERMINATION}"
         )
-        temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
-            image
-        ) or (None, None, None)
-        if temp_folder is None or temp_inspection is None or temp_image is None:
-            continue
-        collected_docker_config_file_tuple = image_check.find_configuration_files_and_collect(
-            image,
-            auth_config.get_username(),
-            temp_folder,
-            temp_inspection
-        )
-        util.merge_coguard_infrastructure_description_folders(
-            "included_docker_image",
-            collected_config_file_tuple,
-            collected_docker_config_file_tuple
-        )
-        # cleanup
-        collected_location, _ = collected_docker_config_file_tuple
-        shutil.rmtree(collected_location, ignore_errors=True)
-        shutil.rmtree(temp_folder, ignore_errors=True)
-        docker_dao.rm_temporary_container_name(temp_image)
+        try:
+            temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
+                image
+            ) or (None, None, None)
+            if temp_folder is None or temp_inspection is None or temp_image is None:
+                continue
+            collected_docker_config_file_tuple = image_check.find_configuration_files_and_collect(
+                image,
+                auth_config.get_username(),
+                temp_folder,
+                temp_inspection
+            )
+            util.merge_coguard_infrastructure_description_folders(
+                "included_docker_image",
+                collected_config_file_tuple,
+                collected_docker_config_file_tuple
+            )
+            # cleanup
+            collected_location, _ = collected_docker_config_file_tuple
+            shutil.rmtree(collected_location, ignore_errors=True)
+            shutil.rmtree(temp_folder, ignore_errors=True)
+            docker_dao.rm_temporary_container_name(temp_image)
+        except:
+            logging.error("Failed to extract the referenced Docker image.")
 
 def perform_folder_scan(
         folder_name: Optional[str],
