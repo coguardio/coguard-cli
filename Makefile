@@ -5,7 +5,7 @@ unit-test:
 	chmod 0400 ./src/coguard_cli/tests/auth/resources/sample_config
 	chmod 0400 ./src/coguard_cli/tests/auth/resources/sample_config_not_json
 # And now to the actual tests
-	cd src && nosetests --exe --with-coverage --cover-inclusive --cover-package=coguard_cli -v
+	cd src && coverage run --source=coguard_cli -m pytest --capture=sys -x
 	cd src && coverage html -i --directory=coverage_output --fail-under=80
 # Testing that the PyPi and GitHub READMEs do not differ except for the logo at the top
 	diff <(tail -n +8 README.md) <(tail -n +3 README_PYPI.md)

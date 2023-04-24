@@ -263,3 +263,284 @@ class TestCommonFunctions(unittest.TestCase):
                 }
             }
         ), " (affected files: bar/foo.txt for service foo)")
+
+    def test_apply_fixes_to_folder(self):
+        """
+        Tests the apply_fixes_to_folder function.
+        """
+        inp_manifest = {
+            "clusterServices": {
+                "foo": {
+                    "configFileList": [
+                        {
+                            "subPath": "bar",
+                            "fileName": "foo.txt"
+                        }
+                    ]
+                }
+            },
+            "machines": {
+                "testMachine": {
+                    "services": {
+                        "testService": {
+                            "configFileList": [
+                                {
+                                    "subPath": "./tmp",
+                                    "fileName": "foo.ini"
+                                }
+                            ],
+                            "complimentaryFileList": [
+                                {
+                                    "subPath": "./tmp",
+                                    "fileName": "foo_c.ini"
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        rm_tree = unittest.mock.Mock()
+        copy_file = unittest.mock.Mock()
+        with unittest.mock.patch(
+                'os.path.exists',
+                new_callable=lambda: lambda x: True
+        ), \
+        unittest.mock.patch(
+            'shutil.copyfile',
+            new_callable=lambda: copy_file
+        ), \
+        unittest.mock.patch(
+            'shutil.rmtree',
+            new_callable=lambda: rm_tree
+        ):
+            coguard_cli.apply_fixes_to_folder("foo", "bar", inp_manifest)
+            rm_tree.assert_called_once()
+            self.assertEqual(copy_file.call_count, 3)
+            copy_file.assert_any_call("foo/clusterServices/foo/bar/foo.txt", "bar/bar/foo.txt")
+
+    def test_apply_fixes_to_folder_files_not_existing(self):
+        """
+        Tests the apply_fixes_to_folder function, but none of the files exist.
+        """
+        inp_manifest = {
+            "clusterServices": {
+                "foo": {
+                    "configFileList": [
+                        {
+                            "subPath": "bar",
+                            "fileName": "foo.txt"
+                        }
+                    ]
+                }
+            },
+            "machines": {
+                "testMachine": {
+                    "services": {
+                        "testService": {
+                            "configFileList": [
+                                {
+                                    "subPath": "./tmp",
+                                    "fileName": "foo.ini"
+                                }
+                            ],
+                            "complimentaryFileList": [
+                                {
+                                    "subPath": "./tmp",
+                                    "fileName": "foo_c.ini"
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        rm_tree = unittest.mock.Mock()
+        copy_file = unittest.mock.Mock()
+        with unittest.mock.patch(
+                'os.path.exists',
+                new_callable=lambda: lambda x: False
+        ), \
+        unittest.mock.patch(
+            'shutil.copyfile',
+            new_callable=lambda: copy_file
+        ), \
+        unittest.mock.patch(
+            'shutil.rmtree',
+            new_callable=lambda: rm_tree
+        ):
+            coguard_cli.apply_fixes_to_folder("foo", "bar", inp_manifest)
+            self.assertEqual(rm_tree.call_count, 0)
+            self.assertEqual(copy_file.call_count, 0)
+            self.assertEqual(copy_file.call_count, 0)
+
+    def test_apply_fixes_to_folder_os_error_copy(self):
+        """
+        Tests the apply_fixes_to_folder function.
+        """
+        inp_manifest = {
+            "clusterServices": {
+                "foo": {
+                    "configFileList": [
+                        {
+                            "subPath": "bar",
+                            "fileName": "foo.txt"
+                        }
+                    ]
+                }
+            },
+            "machines": {
+                "testMachine": {
+                    "services": {
+                        "testService": {
+                            "configFileList": [
+                                {
+                                    "subPath": "./tmp",
+                                    "fileName": "foo.ini"
+                                }
+                            ],
+                            "complimentaryFileList": [
+                                {
+                                    "subPath": "./tmp",
+                                    "fileName": "foo_c.ini"
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        rm_tree = unittest.mock.Mock()
+        def copy_file(x, y):
+            raise OSError("foo")
+        with unittest.mock.patch(
+                'os.path.exists',
+                new_callable=lambda: lambda x: True
+        ), \
+        unittest.mock.patch(
+            'shutil.copyfile',
+            new_callable=lambda: copy_file
+        ), \
+        unittest.mock.patch(
+            'shutil.rmtree',
+            new_callable=lambda: rm_tree
+        ):
+            coguard_cli.apply_fixes_to_folder("foo", "bar", inp_manifest)
+            self.assertEqual(rm_tree.call_count, 0)
+
+    def test_upload_zip_candidate_fix_none(self):
+        """
+        Tests the and fix upload_zip_candidate function where the zip candidate is None
+        """
+        api_send = unittest.mock.Mock()
+        mkdtemp = unittest.mock.Mock()
+        apply_fixes_to_folder = unittest.mock.Mock()
+        remove = unittest.mock.Mock()
+        zipfile = unittest.mock.Mock(extractall=lambda x: None)
+        with unittest.mock.patch(
+                'coguard_cli.api_connection.send_zip_file_for_fixing',
+                new_callable=api_send), \
+             unittest.mock.patch(
+                'coguard_cli.apply_fixes_to_folder',
+                 new_callable=lambda: apply_fixes_to_folder), \
+             unittest.mock.patch(
+                'tempfile.mkdtemp',
+                 new_callable=lambda: mkdtemp), \
+             unittest.mock.patch(
+                 'os.remove',
+                 new_callable=lambda: remove), \
+             unittest.mock.patch(
+                'zipfile.ZipFile',
+                 new_callable=lambda: zipfile):
+            coguard_cli.upload_and_fix_zip_candidate(
+                None,
+                "foo",
+                "token",
+                "portal.coguard.io",
+                "coguard"
+            )
+            self.assertEqual(mkdtemp.call_count, 0)
+            self.assertEqual(remove.call_count, 0)
+            self.assertEqual(zipfile.call_count, 0)
+            self.assertEqual(apply_fixes_to_folder.call_count, 0)
+
+    def test_upload_zip_candidate_fix_api_call_None(self):
+        """
+        Tests the upload and fix zip_candidate function
+        """
+        def api_send(a, b, c, d):
+            return None
+        mkdtemp = unittest.mock.Mock()
+        remove = unittest.mock.Mock()
+        apply_fixes_to_folder = unittest.mock.Mock()
+        zipfile = unittest.mock.Mock(extractall=lambda x: None)
+        zip_file_path = "foo"
+        manifest = {"manifest": "rules"}
+        with unittest.mock.patch(
+                'coguard_cli.api_connection.send_zip_file_for_fixing',
+                new_callable=lambda: api_send), \
+             unittest.mock.patch(
+                'coguard_cli.apply_fixes_to_folder',
+                 new_callable=lambda: apply_fixes_to_folder), \
+             unittest.mock.patch(
+                'tempfile.mkdtemp',
+                 new_callable=lambda: mkdtemp), \
+             unittest.mock.patch(
+                 'os.remove',
+                 new_callable=lambda: remove), \
+             unittest.mock.patch(
+                'zipfile.ZipFile',
+                 new_callable=lambda: zipfile):
+            coguard_cli.upload_and_fix_zip_candidate(
+                (zip_file_path, manifest),
+                "foo",
+                "token",
+                "portal.coguard.io",
+                "coguard"
+            )
+            self.assertEqual(mkdtemp.call_count, 0)
+            self.assertEqual(remove.call_count, 1)
+            self.assertEqual(zipfile.call_count, 0)
+            self.assertEqual(apply_fixes_to_folder.call_count, 0)
+
+    def test_upload_zip_candidate_fix(self):
+        """
+        Tests the upload and fix zip_candidate function
+        """
+        def api_send(a, b, c, d):
+            return "result.zip"
+        mkdtemp = unittest.mock.Mock()
+        remove = unittest.mock.Mock()
+        zip_file_path = "foo"
+        extract_all = unittest.mock.Mock()
+        apply_fixes_to_folder = unittest.mock.Mock()
+        manifest = {"manifest": "rules"}
+        with unittest.mock.patch(
+                'coguard_cli.api_connection.send_zip_file_for_fixing',
+                new_callable=lambda: api_send), \
+             unittest.mock.patch(
+                'coguard_cli.apply_fixes_to_folder',
+                 new_callable=lambda: apply_fixes_to_folder), \
+             unittest.mock.patch(
+                'tempfile.mkdtemp',
+                 new_callable=lambda: mkdtemp), \
+             unittest.mock.patch(
+                 'os.remove',
+                 new_callable=lambda: remove), \
+             unittest.mock.patch(
+                 'zipfile.ZipFile.__init__',
+                 new_callable = lambda: lambda x, y, z: None), \
+            unittest.mock.patch(
+                'zipfile.ZipFile.extractall',
+                new_callable=lambda: extract_all):
+            coguard_cli.upload_and_fix_zip_candidate(
+                (zip_file_path, manifest),
+                "foo",
+                "token",
+                "portal.coguard.io",
+                "coguard"
+            )
+            self.assertEqual(mkdtemp.call_count, 1)
+            self.assertEqual(remove.call_count, 2)
+            self.assertEqual(extract_all.call_count, 1)
+            self.assertEqual(apply_fixes_to_folder.call_count, 1)
