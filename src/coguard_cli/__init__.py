@@ -479,7 +479,6 @@ def perform_folder_scan(
 def perform_folder_fix(
         folder_name: Optional[str],
         deal_type: auth.util.DealEnum,
-        auth_config: auth.CoGuardCliConfig,
         token: auth.token.Token,
         organization: str,
         coguard_api_url: Optional[str]):
@@ -490,6 +489,7 @@ def perform_folder_fix(
     if deal_type != auth.util.DealEnum.ENTERPRISE:
         print(f"{COLOR_RED} AUTO-REMEDIATION is only available for Enterprise "
               f"subscriptions {COLOR_TERMINATION}")
+        return
     folder_name = folder_name or "."
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
@@ -500,10 +500,6 @@ def perform_folder_fix(
     if collected_config_file_tuple is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
         return
-    # _find_and_merge_included_docker_images(
-    #     collected_config_file_tuple,
-    #     auth_config
-    # )
     zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
         collected_config_file_tuple
     )
@@ -607,6 +603,7 @@ def perform_ci_cd_action(
     print(ci_cd_provider_instance.post_string())
 
 
+#pylint: disable=too-many-branches
 def entrypoint(args):
     """
     The main entrypoint for the CLI. Takes the :mod:`argparse` parsing
@@ -672,7 +669,6 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             perform_folder_fix(
                 folder_name,
                 deal_type,
-                auth_config,
                 token,
                 organization,
                 args.coguard_api_url
