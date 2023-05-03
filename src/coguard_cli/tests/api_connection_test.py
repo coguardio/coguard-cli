@@ -186,6 +186,56 @@ class TestApiConnection(unittest.TestCase):
                 "org"
             ), {"foo": "bar"})
 
+    def test_send_zip_file_for_fixing_non_200_status(self):
+        """
+        Testing the function and send a non 200 code.
+        """
+        mock_response = unittest.mock.Mock(status_code = 200)
+        with unittest.mock.patch(
+                'builtins.open',
+                unittest.mock.mock_open()), \
+                unittest.mock.patch(
+                    'requests.post',
+                    new_callable=lambda: lambda url, headers, data, timeout: mock_response
+                ), \
+            unittest.mock.patch(
+                'tempfile.mkstemp',
+                new_callable = lambda: lambda prefix, suffix: (0, "temp_zip")
+            ), \
+            unittest.mock.patch(
+                'os.close'
+            ):
+            self.assertEqual(
+                api_connection.send_zip_file_for_fixing(
+                    "foo",
+                    unittest.mock.Mock(
+                        return_value = lambda: "token"),
+                    "portal.coguard.io",
+                    "ma_org"
+                ),
+                "temp_zip"
+            )
+
+    def test_send_zip_file_for_fixing(self):
+        """
+        Testing the function and send a non 200 code.
+        """
+        mock_response = unittest.mock.Mock(status_code = 404)
+        with unittest.mock.patch(
+                'builtins.open',
+                unittest.mock.mock_open()), \
+                unittest.mock.patch(
+                    'requests.post',
+                    new_callable=lambda: lambda url, headers, data, timeout: mock_response
+                ):
+            self.assertIsNone(api_connection.send_zip_file_for_fixing(
+                "foo",
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
+                "portal.coguard.io",
+                "ma_org"
+            ))
+
     def test_does_user_with_email_already_exist_200_status(self):
         """
         Checks the existence of the user function

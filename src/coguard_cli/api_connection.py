@@ -4,6 +4,8 @@ logic, so that it is modularized.
 """
 
 import logging
+import tempfile
+import os
 from typing import Dict, Optional
 import requests
 
@@ -143,6 +145,48 @@ def send_zip_file_for_scanning(
                       resp.reason)
         return None
     return resp.json()
+
+def send_zip_file_for_fixing(
+        zip_file: str,
+        auth_token: Token,
+        coguard_api_url: str,
+        organization: Optional[str]) -> Optional[str]:
+    """
+    The helper function to send a zip file for scanning to the back-end.
+    The return value will be an optional dictionary value as per the
+    result jsons produced by the coguard engine.
+
+    :param zip_file: The path to the zip file.
+    :param user_name: The user name associated.
+    :param auth_token: The authentication token to be used.
+    :param coguard_api_url: The url to be used to contact CoGuard.
+    :param organization: The optional organization string, indicating that
+                         we want to upload it to an org instead of the free account.
+    :returns: Either `None`, or a dictionary as returned by CoGuard after
+              scanning.
+    """
+    with open(zip_file, 'rb') as file_to_send:
+        resp_upload = requests.post(
+            (f"{coguard_api_url}/cluster/"
+             f"fix-cluster-zip?organizationName={organization}"),
+            headers={
+                "Authorization": f'Bearer {auth_token.get_token()}',
+                "Content-Type": "application/octet-stream"
+            },
+            data=file_to_send.read(),
+            timeout=300)
+        if resp_upload.status_code != 200:
+            logging.debug("There was an issue uploading the zip file")
+            logging.debug("Reason %s", resp_upload.reason)
+            return None
+        (file_handle, temp_zip) = tempfile.mkstemp(
+            prefix="coguard_cli_zip_to_fix", suffix=".zip"
+        )
+        os.close(file_handle)
+        with open(temp_zip, 'wb') as zip_to_write:
+            zip_to_write.write(resp_upload.content)
+    return temp_zip
+
 
 def does_user_with_email_already_exist(
         user_name: str,

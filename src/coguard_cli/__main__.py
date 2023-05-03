@@ -120,6 +120,14 @@ def main():
         help="The sub-command to find configuration files within a folder and scan them."
     )
     folder_scanning_parser.add_argument(
+        "--fix",
+        type=bool,
+        dest='fix_flag',
+        default=False,
+        required=False,
+        help="Upload the configuration files inside this folder and retrieve a fixed version."
+    )
+    folder_scanning_parser.add_argument(
         SubParserNames.SCAN.value,
         type=str,
         default="",
