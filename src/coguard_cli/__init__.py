@@ -422,10 +422,12 @@ def perform_docker_image_scan(
 # pylint: disable=bare-except
 def _find_and_merge_included_docker_images(
         collected_config_file_tuple: Tuple[str, Dict],
-        auth_config: auth.CoGuardCliConfig):
+        auth_config: auth.CoGuardCliConfig,
+        additional_failed_rules: List[str]):
     docker_images_extracted = folder_scan.extract_included_docker_images(
         collected_config_file_tuple
     )
+    to_add = False
     for image, location in docker_images_extracted:
         print(
             f"{COLOR_CYAN}Found referenced docker image "
@@ -433,6 +435,7 @@ def _find_and_merge_included_docker_images(
             f"{COLOR_TERMINATION}"
         )
         try:
+            to_add = True
             temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
                 image
             ) or (None, None, None)
@@ -455,7 +458,10 @@ def _find_and_merge_included_docker_images(
             shutil.rmtree(temp_folder, ignore_errors=True)
             docker_dao.rm_temporary_container_name(temp_image)
         except:
+            to_add = True
             logging.error("Failed to extract the referenced Docker image.")
+    if to_add:
+        additional_failed_rules.append("cluster_docker_images_with_failed_checks_included")
 
 def perform_folder_scan(
         folder_name: Optional[str],
@@ -480,12 +486,15 @@ def perform_folder_scan(
     if collected_config_file_tuple is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
         return
+    additional_failed_rules = []
     _find_and_merge_included_docker_images(
         collected_config_file_tuple,
-        auth_config
+        auth_config,
+        additional_failed_rules
     )
     zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
-        collected_config_file_tuple
+        collected_config_file_tuple,
+        additional_failed_rules
     )
     collected_location, _ = collected_config_file_tuple
     shutil.rmtree(collected_location, ignore_errors=True)
