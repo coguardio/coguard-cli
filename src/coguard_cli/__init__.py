@@ -131,22 +131,27 @@ def output_result_json_from_coguard(
     medium_checks.sort(key = lambda x: x["rule"]["severity"], reverse=True)
     low_checks = [entry for entry in result_json.get("failed", []) if entry["rule"]["severity"] < 3]
     low_checks.sort(key = lambda x: x["rule"]["severity"], reverse=True)
-    fixable_checks = api_connection.get_fixable_rule_list(
+    fixable_check_list = api_connection.get_fixable_rule_list(
         token,
         coguard_api_url,
         user_name,
         organization
     )
-    print(f'Scan result_jsons: {len(result_json.get("failed", []))} checks failed, '
-          f"{COLOR_RED}{len(high_checks)} High{COLOR_TERMINATION}/"
-          f"{COLOR_YELLOW}{len(medium_checks)} Medium{COLOR_TERMINATION}/"
-          f"{COLOR_GRAY}{len(low_checks)} Low{COLOR_TERMINATION}")
+    fixable_checks = [entry for entry in result_json.get("failed", []) \
+                      if entry["rule"]["name"] in fixable_check_list]
+    summary = (f'Scan result: {len(result_json.get("failed", []))} checks failed, '
+               f"{COLOR_RED}{len(high_checks)} High{COLOR_TERMINATION}/"
+               f"{COLOR_YELLOW}{len(medium_checks)} Medium{COLOR_TERMINATION}/"
+               f"{COLOR_GRAY}{len(low_checks)} Low{COLOR_TERMINATION} "
+               f"(🔧 {len(fixable_checks)} candidates for auto-remediation)")
+    print(summary)
     for entry in high_checks:
-        print_failed_check(COLOR_RED, entry, manifest_dict, fixable_checks)
+        print_failed_check(COLOR_RED, entry, manifest_dict, fixable_check_list)
     for entry in medium_checks:
-        print_failed_check(COLOR_YELLOW, entry, manifest_dict, fixable_checks)
+        print_failed_check(COLOR_YELLOW, entry, manifest_dict, fixable_check_list)
     for entry in low_checks:
-        print_failed_check(COLOR_GRAY, entry, manifest_dict, fixable_checks)
+        print_failed_check(COLOR_GRAY, entry, manifest_dict, fixable_check_list)
+    print(summary)
 
 class SubParserNames(Enum):
     """
@@ -214,6 +219,12 @@ def upload_and_evaluate_zip_candidate(
         scan_identifier,
         organization
     )
+    if result is None:
+        print(
+            f"{COLOR_RED} An error occurred while scanning. Please file a "
+            f"bug report, and include the file located at {zip_file}, if possible. "
+            f"{COLOR_TERMINATION}"
+        )
     logging.debug("The result from the api is: %s",
                   str(result))
     print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {scan_identifier}"
@@ -233,11 +244,6 @@ def upload_and_evaluate_zip_candidate(
         print("""
         🔧 Save time. Automatically find and fix vulnerabilities.
            Upgrade to auto-remediate issues.
-        """)
-    else:
-        print("""
-        The symbol 🔧 next to a failed rule indicates that auto-remediation
-        may be possible.
         """)
     os.remove(zip_file)
     max_fail_severity = max(
