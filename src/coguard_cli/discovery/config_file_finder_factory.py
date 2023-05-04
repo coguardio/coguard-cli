@@ -40,6 +40,8 @@ from coguard_cli.discovery.config_file_finders.config_file_finder_helm \
     import ConfigFileFinderHelm
 from coguard_cli.discovery.config_file_finders.config_file_finder_terraform \
     import ConfigFileFinderTerraform
+from coguard_cli.discovery.config_file_finders.config_file_finder_aws_cfn \
+    import ConfigFileFinderCloudformation
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 
 def config_file_finder_factory() -> Generator[ConfigFileFinder, None, None]:
