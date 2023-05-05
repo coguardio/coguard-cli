@@ -487,7 +487,7 @@ def perform_folder_scan(
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
     collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
         folder_name,
-        organization
+        organization or auth_config.get_username()
     )
     if collected_config_file_tuple is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
@@ -593,7 +593,7 @@ def perform_cloud_provider_scan(
         return
     collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
         folder_name,
-        organization,
+        organization or auth_config.get_username(),
         f"{provider_name}_extraction"
     )
     zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
