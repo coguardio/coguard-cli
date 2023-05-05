@@ -251,3 +251,37 @@ def mention_referrer(
     )
     if resp.status_code != 204:
         logging.error("Could not capture referrer. Please send this error to info@coguard.io")
+
+def get_fixable_rule_list(
+        token: Token,
+        coguard_api_url: str,
+        user_name: Optional[str],
+        organization: Optional[str]):
+    """
+    The call to the endpoint to determine a list of fixable rule identifiers.
+    """
+    if organization:
+        resp = requests.get(
+            f"{coguard_api_url}/cluster/get-fixable-list?organizationName={organization}",
+            headers={
+                "Authorization": f'Bearer {token.get_token()}'
+            },
+            timeout=300
+        )
+        if resp.status_code != 200:
+            logging.error("There was an issue getting the fixable list. ")
+            logging.debug("Reason %s", resp.reason)
+            return []
+        return resp.json()
+    resp = requests.get(
+        f"{coguard_api_url}/coguard-cli/get-fixable-list?userName={user_name}",
+        headers={
+            "Authorization": f'Bearer {token.get_token()}'
+        },
+        timeout=300
+    )
+    if resp.status_code != 200:
+        logging.error("There was an issue getting the fixable list. ")
+        logging.debug("Reason %s", resp.reason)
+        return []
+    return resp.json()

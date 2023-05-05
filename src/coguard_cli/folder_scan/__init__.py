@@ -110,8 +110,8 @@ def find_configuration_files_and_collect(
     return (final_location, manifest_blueprint)
 
 def create_zip_to_upload_from_file_system(
-        collected_location_manifest_tuple: Optional[Tuple[str, Dict]]
-) -> Optional[Tuple[str, Dict]]:
+        collected_location_manifest_tuple: Optional[Tuple[str, Dict]],
+        additional_failed_rules: List[str] = None) -> Optional[Tuple[str, Dict]]:
     """
     This function creates a zip file from the tuple provided as input, which
     comes from the `find_configuration_files_and_collect` function.
@@ -129,6 +129,8 @@ def create_zip_to_upload_from_file_system(
             for file_name in file_names:
                 file_path = os.path.join(dir_path, file_name)
                 upload_zip.write(file_path, arcname=file_path[len(collected_location):])
+        if additional_failed_rules:
+            upload_zip.writestr("failed_rules.json", json.dumps(additional_failed_rules))
     return (temp_zip, manifest_dict)
 
 def _find_images_recursively(

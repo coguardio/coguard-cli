@@ -424,3 +424,102 @@ class TestApiConnection(unittest.TestCase):
                 "organization"
             )
             self.assertEqual(result, mock_result)
+
+    def test_get_latest_report_bad_response(self):
+        """
+        Checks the retrieval of the latest report with bad response.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 420
+        )
+        with unittest.mock.patch(
+                'requests.get',
+                new_callable=lambda: lambda url, headers, timeout: mock_response):
+            result = api_connection.get_latest_report(
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
+                "https://portal.coguard.io",
+                "scan_identifier",
+                "organization"
+            )
+            self.assertIsNone(result)
+
+    def test_get_fixable_rule_list_bad_response_ogranization(self):
+        """
+        Checks the retrieval of the latest report with bad response.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 420,
+            json = lambda: []
+        )
+        with unittest.mock.patch(
+                'requests.get',
+                new_callable=lambda: lambda url, headers, timeout: mock_response):
+            result = api_connection.get_fixable_rule_list(
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
+                "https://portal.coguard.io",
+                None,
+                'organization'
+            )
+            self.assertListEqual(result, [])
+
+    def test_get_fixable_rule_list_ogranization(self):
+        """
+        Checks the retrieval of the latest report with bad response.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 200,
+            json = lambda: ["foo"]
+        )
+        with unittest.mock.patch(
+                'requests.get',
+                new_callable=lambda: lambda url, headers, timeout: mock_response):
+            result = api_connection.get_fixable_rule_list(
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
+                "https://portal.coguard.io",
+                None,
+                'organization'
+            )
+            self.assertListEqual(result, ["foo"])
+
+    def test_get_fixable_rule_list_bad_response_user_name(self):
+        """
+        Checks the retrieval of the latest report with bad response.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 420,
+            json = lambda: []
+        )
+        with unittest.mock.patch(
+                'requests.get',
+                new_callable=lambda: lambda url, headers, timeout: mock_response):
+            result = api_connection.get_fixable_rule_list(
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
+                "https://portal.coguard.io",
+                'user_name',
+                None
+            )
+            self.assertListEqual(result, [])
+
+    def test_get_fixable_rule_list_user_name(self):
+        """
+        Checks the retrieval of the latest report with bad response.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 200,
+            json = lambda: ["foo"]
+        )
+        with unittest.mock.patch(
+                'requests.get',
+                new_callable=lambda: lambda url, headers, timeout: mock_response):
+            result = api_connection.get_fixable_rule_list(
+                unittest.mock.Mock(
+                    return_value = lambda: "token"),
+                "https://portal.coguard.io",
+                'user_name',
+                None
+            )
+            self.assertListEqual(result, ["foo"])
