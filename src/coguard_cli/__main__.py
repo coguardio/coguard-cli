@@ -90,6 +90,14 @@ def main():
         help=("The format of the output. It is either `formatted` (default), "
               "i.e. human readable, or `json`.")
     )
+    parser.add_argument(
+        '--ruleset',
+        type=str,
+        dest='ruleset',
+        choices=["soc2", ""],
+        default='',
+        help=("The non-default rule-set to use.")
+    )
     subparsers = parser.add_subparsers(
         required=True,
         #Do not remove the next line. This is a workaround for https://bugs.python.org/issue29298
