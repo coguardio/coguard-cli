@@ -134,7 +134,27 @@ class Token():
         if not public_key:
             return None
         jwt_decoded = self.get_decoded_jwt_token(public_key)
-        return jwt_decoded.get("organization", None)
+        org_result = jwt_decoded.get("organization", None)
+        if isinstance(org_result, str):
+            return org_result
+        if isinstance(org_result, list) and len(org_result) > 0:
+            if len(org_result) == 1:
+                return org_result[0]
+            input_val = None
+            print("Multiple organizations detected:")
+            print("\n".join(org for org in org_result))
+            while input_val not in org_result:
+                input_val = input(
+                    f"Please type the organization you wish to use (default: {org_result[0]})"
+                )
+                if not input_val.strip():
+                    input_val = org_result[0]
+                if input_val not in org_result:
+                    print("You typed in an invalid organization. Please repeat.")
+            if input_val not in org_result:
+                return None
+            return input_val
+        return None
 
     def extract_deal_type_from_token(
             self

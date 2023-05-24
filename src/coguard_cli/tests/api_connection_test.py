@@ -30,7 +30,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "baz"),
                 "biz",
                 "zip",
-                None
+                None,
+                ''
             ))
 
     def test_send_zip_file_for_scanning_200_status(self):
@@ -55,7 +56,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "baz"),
                 "biz",
                 "zip",
-                None
+                None,
+                ''
             ), {"foo": "bar"})
 
     def test_send_zip_file_for_scanning_with_org_non_204_status(self):
@@ -80,7 +82,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "baz"),
                 "biz",
                 "zip",
-                "org"
+                "org",
+                ''
             ))
 
     def test_send_zip_file_for_scanning_with_org_204_failed_run(self):
@@ -109,7 +112,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "token"),
                 "biz",
                 "zip",
-                "org"
+                "org",
+                ''
             ))
 
     def test_send_zip_file_for_scanning_with_org_204_failed_latest_report(self):
@@ -142,7 +146,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "token"),
                 "biz",
                 "zip",
-                "org"
+                "org",
+                ''
             ))
 
     def test_send_zip_file_for_scanning_with_org_204_not_failed_latest_report(self):
@@ -183,7 +188,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "token"),
                 "biz",
                 "zip",
-                "org"
+                "org",
+                ''
             ), {"foo": "bar"})
 
     def test_send_zip_file_for_fixing_non_200_status(self):

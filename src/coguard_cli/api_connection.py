@@ -70,7 +70,8 @@ def send_zip_file_for_scanning(
         auth_token: Token,
         coguard_api_url: str,
         scan_identifier: str,
-        organization: Optional[str]) -> Optional[Dict]:
+        organization: Optional[str],
+        ruleset: str) -> Optional[Dict]:
     """
     The helper function to send a zip file for scanning to the back-end.
     The return value will be an optional dictionary value as per the
@@ -90,7 +91,7 @@ def send_zip_file_for_scanning(
             resp_upload = requests.post(
                 (f"{coguard_api_url}/cluster/"
                  f"upload-cluster-zip?organizationName={organization}&"
-                 "overwrite=true"),
+                 f"overwrite=true&compliance={ruleset}"),
                 headers={
                     "Authorization": f'Bearer {auth_token.get_token()}',
                     "Content-Type": "application/octet-stream"
@@ -133,7 +134,7 @@ def send_zip_file_for_scanning(
         else:
             resp = requests.post(
                 (f"{coguard_api_url}/coguard-cli/"
-                 f"upload-cluster-zip?userName={user_name}"),
+                 f"upload-cluster-zip?userName={user_name}&compliance={ruleset}"),
                 headers={
                     "Authorization": f'Bearer {auth_token.get_token()}',
                     "Content-Type": "application/octet-stream"
