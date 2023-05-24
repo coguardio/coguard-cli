@@ -99,10 +99,17 @@ def print_failed_check(color: str,
         description = documentation_candidate["documentation"]
         remediation = documentation_candidate["remediation"]
         sources = ",\n".join(documentation_candidate["sources"])
+        if "scenarios" in documentation_candidate:
+            scenario_string = "\nReferences for the specific ruleset: " + ",\n".join(
+                documentation_candidate["scenarios"]
+            )
+        else:
+            scenario_string = ''
         documentation_string = f"""
         {description}
 
         Remediation: {remediation}
+        {scenario_string}
 
         Source:
         {sources}
