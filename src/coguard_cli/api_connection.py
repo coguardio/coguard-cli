@@ -11,6 +11,8 @@ import requests
 
 from coguard_cli.auth.token import Token
 from coguard_cli.util import replace_special_chars_with_underscore
+from coguard_cli.print_colors import COLOR_TERMINATION, \
+    COLOR_RED
 
 def run_report(
         auth_token: Token,
@@ -179,6 +181,11 @@ def send_zip_file_for_fixing(
         if resp_upload.status_code != 200:
             logging.debug("There was an issue uploading the zip file")
             logging.debug("Reason %s", resp_upload.reason)
+            if resp_upload.status_code == 403:
+                print(
+                    f"{COLOR_RED}Your account has the fixing feature "
+                    f"not enabled.{COLOR_TERMINATION}"
+                )
             return None
         (file_handle, temp_zip) = tempfile.mkstemp(
             prefix="coguard_cli_zip_to_fix", suffix=".zip"
