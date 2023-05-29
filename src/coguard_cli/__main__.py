@@ -94,7 +94,7 @@ def main():
         '--ruleset',
         type=str,
         dest='ruleset',
-        choices=["soc2", ""],
+        choices=["soc2", "hipaa", ""],
         default='',
         help=("The non-default rule-set to use.")
     )
