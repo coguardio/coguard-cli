@@ -152,7 +152,7 @@ def main():
     )
     cloud_scanning_parser = subparsers.add_parser(
         SubParserNames.CLOUD_SCAN.value,
-        help="The sub-command to find configuration files within a folder and scan them."
+        help="The sub-command to extract a cloud snapshot as Terraform files and scan them."
     )
     cloud_scanning_parser.add_argument(
         SubParserNames.SCAN.value,
