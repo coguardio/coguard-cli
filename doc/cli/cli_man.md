@@ -2,7 +2,7 @@
 
 # Version
 
-0.2.10
+0.2.11
 
 # Installation
 
@@ -23,16 +23,17 @@ coguard [-h] [--coguard-api-url COGUARD_API_URL]
 
 ### Options
 
-| Option               | Parameter        | Documentation                                                                                       |
-|----------------------|------------------|-----------------------------------------------------------------------------------------------------|
-| -h, --help           | N/A              | show help message and exit                                                                          |
-| --coguard-api-url    | COGUARD_API_URL  | The url of the coguard api to call                                                                  |
-| --coguard-auth-url   | COGUARD_AUTH_URL | The url of the authentication server                                                                |
-| --logging-level      | LOGGING_LEVEL    | The logging level of this call. Can be one of the following: DEBUG, INFO, WARNING, ERRROR, CRITICAL |
-| --minimum-fail-level | FAIL_LEVEL       | The minimum severity level of failed checks for this program to not give a non-zero exit code.      |
-| --output-format      | OUTPUT_FORMAT    | The format of the output. It is either `formatted` (default), i.e. human readable, or `json`.       |
-| --ruleset            | RULE_SET         | The non-default rule-set to use. The current options are `soc2` or `hipaa`                          |
-| -v, --version        |                  | Show the CLI's version number and exit
+| Option               | Parameter        | Documentation                                                                                                  |
+|----------------------|------------------|----------------------------------------------------------------------------------------------------------------|
+| -h, --help           | N/A              | show help message and exit                                                                                     |
+| --coguard-api-url    | COGUARD_API_URL  | The url of the coguard api to call                                                                             |
+| --coguard-auth-url   | COGUARD_AUTH_URL | The url of the authentication server                                                                           |
+| --logging-level      | LOGGING_LEVEL    | The logging level of this call. Can be one of the following: DEBUG, INFO, WARNING, ERRROR, CRITICAL            |
+| --minimum-fail-level | FAIL_LEVEL       | The minimum severity level of failed checks for this program to not give a non-zero exit code.                 |
+| --output-format      | OUTPUT_FORMAT    | The format of the output. It is either `formatted` (default), i.e. human readable, or `json`.                  |
+| --ruleset            | RULE_SET         | The non-default rule-set to use. The current options are `soc2` or `hipaa`                                     |
+| --dry-run            | DRY_RUN          | When set to `true`, the CLI will generate a .zip file, but not upload it to the back-end for scanning/fixing.  |
+| -v, --version        |                  | Show the CLI's version number and exit                                                                         |
 
 
 ## CLI usage
@@ -45,7 +46,7 @@ All the scan types described below are run with default parameters by running
 coguard scan
 ```
 
-CoGurad needs to be authenticated towards the back-end. That is why,
+CoGuard needs to be authenticated towards the back-end. That is why,
 upon first run, it will ask you for your email address and for setting
 up a password. In a pipeline scenario, these can be set by the
 following environment variables:
@@ -53,7 +54,7 @@ following environment variables:
 - `COGUARD_USER_NAME`
 - `COGUARD_PASSWORD`
 
-Every scan produces an output, containing the following information:
+Unless the dry-run option is chosen, every scan produces an output, containing the following information:
 
 - A short description of the failed policy.
 - A remediation instruction.
@@ -66,6 +67,10 @@ code. By default, any failed scan result will cause the script to
 fail. The `--minimum-fail-level` parameter sets the minimum fail
 level, i.e. if one wishes to only fail the script (and subsequently
 the pipeline job) for levels 4 or higher, one can set it here.
+
+if the `--dry-run` option is set, the output will be a local location
+of a Zip file containing all detected configuration files which can be
+scanned by the back-end.
 
 
 ### Scanning of Docker images
