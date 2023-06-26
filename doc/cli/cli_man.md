@@ -37,6 +37,37 @@ coguard [-h] [--coguard-api-url COGUARD_API_URL]
 
 ## CLI usage
 
+### General scanning information
+
+All the scan types described below are run with default parameters by running
+
+```
+coguard scan
+```
+
+CoGurad needs to be authenticated towards the back-end. That is why,
+upon first run, it will ask you for your email address and for setting
+up a password. In a pipeline scenario, these can be set by the
+following environment variables:
+
+- `COGUARD_USER_NAME`
+- `COGUARD_PASSWORD`
+
+Every scan produces an output, containing the following information:
+
+- A short description of the failed policy.
+- A remediation instruction.
+- A list of sources.
+- Sometimes, references to compliance frameworks (if specific rulesets are chosen).
+
+Since the CLI can be used within a pipeline job, it is possible to set
+the severity level for which the CLI exits with a non-zero exit
+code. By default, any failed scan result will cause the script to
+fail. The `--minimum-fail-level` parameter sets the minimum fail
+level, i.e. if one wishes to only fail the script (and subsequently
+the pipeline job) for levels 4 or higher, one can set it here.
+
+
 ### Scanning of Docker images
 
 Docker images are being scanned by running the command

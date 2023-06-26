@@ -83,6 +83,14 @@ def main():
               "to not give a non-zero exit code.")
     )
     parser.add_argument(
+        '--dry-run',
+        type=bool,
+        dest='dry_run',
+        default=False,
+        help=("When set to `true`, the CLI will generate a .zip file, but ."
+              "not upload it to the back-end for scanning/fixing.")
+    )
+    parser.add_argument(
         '--output-format',
         type=str,
         dest='output_format',

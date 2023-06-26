@@ -377,7 +377,8 @@ def perform_docker_image_scan(
         coguard_api_url: Optional[str],
         output_format: str,
         fail_level: int,
-        ruleset: str):
+        ruleset: str,
+        dry_run: bool = False):
     """
     The helper function to run a Docker image scan. It takes in all necessary parameters.
     If the docker-image is None, then all Docker images found on the host system are being
@@ -424,18 +425,21 @@ def perform_docker_image_scan(
         if zip_candidate is None:
             print(f"{COLOR_YELLOW}Image {image} - NO CONFIGURATION FILES FOUND.")
             return
-        upload_and_evaluate_zip_candidate(
-            zip_candidate,
-            auth_config,
-            deal_type,
-            token,
-            coguard_api_url,
-            image,
-            output_format,
-            fail_level,
-            organization,
-            ruleset
-        )
+        if dry_run:
+            dry_run_outp(zip_candidate)
+        else:
+            upload_and_evaluate_zip_candidate(
+                zip_candidate,
+                auth_config,
+                deal_type,
+                token,
+                coguard_api_url,
+                image,
+                output_format,
+                fail_level,
+                organization,
+                ruleset
+            )
 
 # pylint: disable=bare-except
 def _find_and_merge_included_docker_images(
@@ -490,7 +494,8 @@ def perform_folder_scan(
         coguard_api_url: Optional[str],
         output_format: str,
         fail_level: int,
-        ruleset: str):
+        ruleset: str,
+        dry_run: bool = False):
     """
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
@@ -520,25 +525,29 @@ def perform_folder_scan(
     if zip_candidate is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
         return
-    upload_and_evaluate_zip_candidate(
-        zip_candidate,
-        auth_config,
-        deal_type,
-        token,
-        coguard_api_url,
-        printed_folder_name,
-        output_format,
-        fail_level,
-        organization,
-        ruleset
-    )
+    if dry_run:
+        dry_run_outp(zip_candidate)
+    else:
+        upload_and_evaluate_zip_candidate(
+            zip_candidate,
+            auth_config,
+            deal_type,
+            token,
+            coguard_api_url,
+            printed_folder_name,
+            output_format,
+            fail_level,
+            organization,
+            ruleset
+        )
 
 def perform_folder_fix(
         folder_name: Optional[str],
         deal_type: auth.util.DealEnum,
         token: auth.token.Token,
         organization: str,
-        coguard_api_url: Optional[str]):
+        coguard_api_url: Optional[str],
+        dry_run: bool = False):
     """
     Helper function to run a fix on a folder. If the folder_name parameter is None,
     the current working directory is being used.
@@ -565,13 +574,16 @@ def perform_folder_fix(
     if zip_candidate is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
         return
-    upload_and_fix_zip_candidate(
-        zip_candidate,
-        folder_name,
-        token,
-        coguard_api_url,
-        organization
-    )
+    if dry_run:
+        dry_run_outp(zip_candidate)
+    else:
+        upload_and_fix_zip_candidate(
+            zip_candidate,
+            folder_name,
+            token,
+            coguard_api_url,
+            organization
+        )
 
 def perform_cloud_provider_scan(
         cloud_provider_name: Optional[str],
@@ -583,7 +595,8 @@ def perform_cloud_provider_scan(
         coguard_api_url: Optional[str],
         output_format: str,
         fail_level: int,
-        ruleset: str):
+        ruleset: str,
+        dry_run: bool = False):
     """
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
@@ -620,18 +633,21 @@ def perform_cloud_provider_scan(
     if zip_candidate is None:
         print(f"{COLOR_YELLOW}Cloud Provider {provider_name} - NO CONFIGURATION FILES FOUND.")
         return
-    upload_and_evaluate_zip_candidate(
-        zip_candidate,
-        auth_config,
-        deal_type,
-        token,
-        coguard_api_url,
-        f"{provider_name}_extraction",
-        output_format,
-        fail_level,
-        organization,
-        ruleset
-    )
+    if dry_run:
+        dry_run_outp(zip_candidate)
+    else:
+        upload_and_evaluate_zip_candidate(
+            zip_candidate,
+            auth_config,
+            deal_type,
+            token,
+            coguard_api_url,
+            f"{provider_name}_extraction",
+            output_format,
+            fail_level,
+            organization,
+            ruleset
+        )
 
 def perform_ci_cd_action(
         ci_cd_provider,
@@ -660,6 +676,18 @@ def perform_ci_cd_action(
         print(f"Invalid command: {ci_cd_command}.")
         sys.exit(1)
     print(ci_cd_provider_instance.post_string())
+
+def dry_run_outp(zip_candidate: Tuple[str, Dict]):
+    """
+    The function to output the location of the zip for the
+    dry-run to the user.
+    """
+    if zip_candidate is None:
+        print("No file generated")
+        return
+    zip_location, _ = zip_candidate
+    print("Dry-run complete. You can find the upload-candidate "
+          f"in the following location: {zip_location}")
 
 
 #pylint: disable=too-many-branches
@@ -698,6 +726,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
     deal_type = token.extract_deal_type_from_token()
     organization = token.extract_organization_from_token()
     ruleset = args.ruleset
+    dry_run = args.dry_run
     logging.debug("Extracted deal type: %s", deal_type)
     logging.debug("Extracted organization: %s", organization)
     if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:
@@ -717,7 +746,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.coguard_api_url,
             args.output_format,
             args.fail_level,
-            ruleset
+            ruleset,
+            dry_run
         )
     elif args.subparsers_location == SubParserNames.FOLDER_SCAN.value:
         folder_name = args.folder_name or \
@@ -732,7 +762,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
                 deal_type,
                 token,
                 organization,
-                args.coguard_api_url
+                args.coguard_api_url,
+                dry_run
             )
         else:
             perform_folder_scan(
@@ -744,7 +775,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
                 args.coguard_api_url,
                 args.output_format,
                 args.fail_level,
-                ruleset
+                ruleset,
+                dry_run
             )
     elif args.subparsers_location == SubParserNames.CLOUD_SCAN.value:
         cloud_provider_name = args.cloud_provider_name or args.scan or None
@@ -760,7 +792,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.coguard_api_url,
             args.output_format,
             args.fail_level,
-            ruleset
+            ruleset,
+            dry_run
         )
     elif args.subparsers_location == SubParserNames.CI_CD_GEN.value:
         ci_cd_provider = args.ci_cd_provider_name
@@ -784,7 +817,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.coguard_api_url,
             args.output_format,
             args.fail_level,
-            ruleset
+            ruleset,
+            dry_run
         )
         perform_folder_scan(
             None,
@@ -795,7 +829,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.coguard_api_url,
             args.output_format,
             args.fail_level,
-            ruleset
+            ruleset,
+            dry_run
         )
         for cloud_provider in ["aws", "azure", "gcp"]:
             perform_cloud_provider_scan(
@@ -808,5 +843,6 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
                 args.coguard_api_url,
                 args.output_format,
                 args.fail_level,
-                ruleset
+                ruleset,
+                dry_run
             )
