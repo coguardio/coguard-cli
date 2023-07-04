@@ -15,7 +15,7 @@ configurations (cloud and on-premise).
 Finding and 
 fixing misconfigurations and security vulnerabilities for IaC, devices, 
 containers, cloud settings, and applications. Reduce the noise of CVE
-notifications and focus identifying and fixing vulnerabilities. 
+notifications and focus on small improvements for big wins. 
 
 ## Table of Contents
 
