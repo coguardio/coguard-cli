@@ -23,7 +23,7 @@ notifications and focus on small improvements for big wins.
 - [Introduction to the CLI](#introduction)
 - [Installation](#installation-instructions)
     - [Pre-Requisites](#pre-requisites)
-    - [Repository or PIP](#installation)
+    - [Install from repository or PIP](#installation)
     - [Installation Tips](#installation-remarks)
 - [Usage](#how-to-use-it)
     - [Scan local Docker images](#docker-scan)
@@ -90,9 +90,9 @@ It searches for known [configuration files](#supported-technologies) of differen
 software packages (like webservers, databases, etc.), and scans these
 configurations for configuration errors and security best practices. 
 
-## Installation Instructions
+## <a id="installation-instructions"></a>Installation Instructions
 
-### Pre-Requisites
+### <a id="pre-requisites"></a>Pre-Requisites
 
 You need to have `python3`, `pip3` and `docker` installed on your system.
 Instructions for different operating systems and commands to be used for Python and Pip are provided below.
@@ -155,7 +155,7 @@ directly, or installed via `pip`:
 pip3 install coguard-cli
 ```
 
-Keep in mind that it is a requirement to have Docker installed locally.
+This is a reminder that it is a requirement to have [Docker[(https://docker.com) installed locally.
 
 
 ### <a id="installation-remarks"></a>Installation remarks
@@ -319,6 +319,7 @@ can be found
     - OpenAPI
     - Puppet
     - BitBucket Pipelines
+    - [Contact us](https://coguard.io/contact) for full list or to add a specific request or custom rules
   
 This list
 will expand in the future. In addition, we are scanning the
@@ -327,5 +328,6 @@ configuration files in the near future.
 
 ## <a id="learn-more"></a>Learn more
 
-- [CoGuard Website](https://www.coguard.io)
-- [CoGuard Blog](https://www.coguard.io/blog)
+- [CoGuard](https://www.coguard.io)
+- [Blog](https://www.coguard.io/blog)
+- [Contact Us](https://coguard.io/contact
