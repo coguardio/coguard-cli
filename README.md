@@ -9,7 +9,10 @@
 
 # CoGuard
 
-CoGuard is SAST for infrastructure configuration files. Finding and 
+CoGuard is a comprehensive static analysis tool for IT infrastructure
+configurations (cloud and on-premise).
+
+Finding and 
 fixing misconfigurations and security vulnerabilities for IaC, devices, 
 containers, cloud settings, and applications. Reduce the noise of CVE
 notifications and focus identifying and fixing vulnerabilities. 
@@ -21,14 +24,16 @@ notifications and focus identifying and fixing vulnerabilities.
 - [Installation](#installation-instructions)
     - [Pre-Requisites](#pre-requisites)
     - [Repository or PIP](#installation)
-    - [Add to CI/CD Pipeline](#add-to-cicd-pipeline)
     - [Installation Tips](#installation-remarks)
 - [Usage](#how-to-use-it)
     - [Scan local Docker images](#docker-scan)
     - [Scan local project repositories](#repo-scan)
     - [Extract &amp; scan cloud configurations](#cloud-scan)
     - [General Scan](#general-scan)
-
+    - [Add to CI/CD Pipeline](#add-to-cicd-pipeline)
+- [Screenshots](#screenshots)
+- [Supported Technologies &amp; Roadmap](#supported-technologies)
+- [Learn More](#learn-more)
 
 ## <a id="why-coguard"></a>Why CoGuard
 
@@ -73,28 +78,24 @@ files.
 
 ## <a id="introduction"></a> Introduction to the CoGuard CLI
 
-CoGuard is a comprehensive static analysis tool for IT infrastructure
-configurations (cloud and on-premise).
+This project is the command line interface to CoGuard, with additional 
+functionality for the auto-discovery of configuration files.
 
-This project is the command line interface to CoGuard, with additional
-auto-discovery functionality.
-
-In its current release, it scans
+The current release scans for:
 1. Docker images and its contents,
-2. Project folders (such as GitHub Repositories) and
-3. automatically extracted cloud configurations from the three major
-   cloud providers
+2. project folders (such as GitHub Repositories) and
+3. will automatically extracted cloud configurations from the AWS, Azure and GCP
 
-In particular, it searches for known configuration files of different
+It searches for known [configuration files](#supported-technologies) of different
 software packages (like webservers, databases, etc.), and scans these
-configurations for security and best practice.
+configurations for configuration errors and security best practices. 
 
 ## Installation Instructions
 
 ### Pre-Requisites
 
 You need to have `python3`, `pip3` and `docker` installed on your system.
-Here are the different operating systems and commands to be used for Python and Pip.
+Instructions for different operating systems and commands to be used for Python and Pip are provided below.
 
 <details>
 <summary>Ubuntu/Debian</summary>
@@ -156,17 +157,7 @@ pip3 install coguard-cli
 
 Keep in mind that it is a requirement to have Docker installed locally.
 
-### <a id="add-to-cicd-pipeline"></a>Inclusion into CI/CD pipeline
 
-We have ready scripts which can be generated to be included into your CI/CD pipeline.
-The list of supported providers is growing.
-
-To generate e.g. a GitHub Actions YAML which automatically scans your repository on
-pull request/push, simply type
-
-```shell
-coguard pipeline github add <PATH_TO_YOUR_REPOSITORY>
-```
 ### <a id="installation-remarks"></a>Installation remarks
 
 **Remark 1**: It may happen that the folder where `pip` is installing packages is not
@@ -261,6 +252,20 @@ installed cloud provider authentication, simply run
 coguard scan
 ```
 
+### <a id="add-to-cicd-pipeline"></a>Inclusion into CI/CD pipeline
+
+CoGuard can be included as a step in your CI/CD pipeline. CoGuard generates the
+necessary templates and scripts. 
+
+GitHub Actions is available in the current release. To generate e.g. a GitHub Actions 
+YAML which automatically scans your repository on
+pull request/push, simply type
+
+```shell
+coguard pipeline github add <PATH_TO_YOUR_REPOSITORY>
+```
+[Future support is planned](#support-roadmap) for GitLab CI/CD, Jenkins, Bamboo, CircleCI, etc.  
+
 ## Screenshot and further information
 
 Here is a screenshot of a sample scan:
@@ -275,7 +280,7 @@ certain versions and security remediations specific to a certain version are bei
 into account as well.
 
 
-## Supported Technologies and Roadmap
+## <a id="supported-technologies"></a>Supported Technologies and Roadmap
 
 CoGuard currently supports the the auto-discovery of configuration files inside
 Docker containers, folders and cloud configuration exports. The full list of configurations files 
@@ -305,7 +310,7 @@ can be found
     - Azure
     - GCP
     - OVH Cloud
-- Roadmap (Future Support Planned)
+- <a id="supported-roadmap"></a>Roadmap (Future Support Planned)
     - Ansible
     - Jenkins
     - Bamboo
@@ -313,13 +318,14 @@ can be found
     - Pulumi
     - OpenAPI
     - Puppet
+    - BitBucket Pipelines
   
 This list
 will expand in the future. In addition, we are scanning the
 Dockerfile used to create the images, and will add some Linux
 configuration files in the near future.
 
-## Learn more
+## <a id="learn-more"></a>Learn more
 
 - [CoGuard Website](https://www.coguard.io)
 - [CoGuard Blog](https://www.coguard.io/blog)
