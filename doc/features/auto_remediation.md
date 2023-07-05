@@ -4,17 +4,18 @@
 
 The CoGuard CLI comes with the ability to perform auto-remediation
 steps on scanned folders. Rules which are candidates for
-auto-remediation are marked on the CLI formatted scan output with the
+auto-remediation are identified on the CLI formatted scan output with the
 symbol 🔧.
 
-The changes are applied using the CLI in-place. This means, ensure
-that you are **backing up any data before running the CLI** with the
-`--fix=true` instruction. The general assumption is that the folder
-where the fixes are performed is version controlled (e.g. by
-[Git](https://git-scm.com)).
+Auto-remediation changes are applied by the CLI are in-place. This means,
+that changes are executed live in the filesystem. We assume that the folder
+being scanned and where the changes are performed is version controlled (e.g. by
+[Git](https://git-scm.com)). Please ensure you have **backed up any files before 
+running the CLI** with the `--fix=true` instruction. 
 
-The changes are not meant to be used right away for production, but to
-be reviewed e.g. via a [pull
+The changes are meant to be reviewed before being deployed, i.e., they are not meant
+to be used immediately in production. Changes can be reviewed as part of the IaC develop review 
+process, e.g. via a [pull
 request](https://www.git-scm.com/docs/git-request-pull).
 
 In many cases, the desired value is right away filled in. For other
@@ -29,12 +30,12 @@ HEALTHCHECK USER_INSERT_VALUE
 ```
 to instruct the user to add some basic parameter there.
 
-# Current level of auto-remediation
+# Current state of auto-remediation
 
-Currently, auto-remediation can only be applied to folder scans.
+Auto-remediation can be applied only to folder scans.
 
-From our current rule-set, about 70% do have the possibility to be
-auto-remediated. However, depending on the project, the distribution
-of failed rules may lead to different percentages.
-
-We are aiming to increase this number as part of our roadmap.
+The current rule-set does not have 100% coverage for auto-remediation, we have auto-remediation 
+coverage for about 70% of our existing rules. Depending
+on the project, the distribution of failed rules with auto-remediation fixes will 
+vary. The product roadmap has increase coverage in future releases to address the current rule
+set. 
