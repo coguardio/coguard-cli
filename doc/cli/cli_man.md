@@ -46,31 +46,33 @@ All the scan types described below are run with default parameters by running
 coguard scan
 ```
 
-CoGuard needs to be authenticated towards the back-end. That is why,
-upon first run, it will ask you for your email address and for setting
-up a password. In a pipeline scenario, these can be set by the
+CoGuard requires that users to be authenticated using their CoGuard credentials. On 
+first run, it will prompt users to sign in or to set up an account requiring both
+an email address and a password. 
+
+In a CI/CD pipeline scenario, user credentials can be set by the
 following environment variables:
 
 - `COGUARD_USER_NAME`
 - `COGUARD_PASSWORD`
 
-Unless the dry-run option is chosen, every scan produces an output, containing the following information:
+Every scan produces an output, unless the dry-run option is selected, containing the following information:
 
 - A short description of the failed policy.
 - A remediation instruction.
 - A list of sources.
 - Sometimes, references to compliance frameworks (if specific rulesets are chosen).
 
-Since the CLI can be used within a pipeline job, it is possible to set
+For CI/CD pipelines, it is possible to set
 the severity level for which the CLI exits with a non-zero exit
 code. By default, any failed scan result will cause the script to
 fail. The `--minimum-fail-level` parameter sets the minimum fail
 level, i.e. if one wishes to only fail the script (and subsequently
 the pipeline job) for levels 4 or higher, one can set it here.
 
-if the `--dry-run` option is set, the output will be a local location
-of a Zip file containing all detected configuration files which can be
-scanned by the back-end.
+The `--dry-run` option can be used to create a Zip file that contains a manifest 
+with the local ocation of all detected configuration files identified by the CLI. 
+These configuration files will be uploaded ans scanned by the back-end. 
 
 
 ### Scanning of Docker images
@@ -122,10 +124,10 @@ report.
 #### Auto-remediation
 
 The folder scan can be instructed to perform automated fixes to errors
-found. for more details on the current state of what is auto-fixable,
-we refer to the page on [Auto-remediation](../features/auto_remediation.md).
+found. Additional details on the current state of what is auto-fixable,
+please refer to [Auto-remediation](../features/auto_remediation.md).
 
-One can run the command
+To run auto-remediation, use the following command:
 
 ```
 coguard folder <PATH_TO_FOLDER> --fix=true
@@ -134,18 +136,21 @@ coguard folder <PATH_TO_FOLDER> --fix=true
 The parameter `<PATH_TO_FOLDER>` specifies the folder whose contents
 will be scanned for known configuration files. The fixes will be
 applied directly to the configuration files. Our general
-user-assumption is that the folder represents a repository, and that
+assumption is that the folder represents a IaC code repository, and that
 the user can than review the changes by typing `git diff` or
 equivalent commands.
 
 **Remark:** The fixes are currently only applied to the files in the
 file system, not to the referenced Docker images.
 
-### Scanning of cloud snapshots
+### Scanning of cloud setups
 
 Using the CLI, snapshots of your current cloud setup can be extracted
-as Terraform files and subsequently scanned. Currently, out of the
-box, AWS, Azure and GCP are supported.
+as Terraform files and subsequently scanned. Currently, AWS, Azure and GCP are 
+supported.
+
+Authentication and credentials access vary for each service. Please see details below
+for your service configuration. 
 
 #### AWS
 
@@ -154,6 +159,8 @@ To scan AWS, type
 ```
 coguard cloud aws
 ```
+
+##### AWS Credentials 
 
 This command assumes that the system where this command is run has the
 credentials stored in one of the standard locations. For more details,
@@ -175,8 +182,10 @@ To scan GCP, type
 coguard cloud gcp
 ```
 
+###### GCP Credentials 
+
 This command assumes that you either are already logged in using the
-`gcloud` command on your machine
+`gcloud auth` command on your machine
 ([reference](https://cloud.google.com/sdk/gcloud/reference/auth/login)),
 or you can supply the service account credentials using the option `--credentials-file
 <YOUR_CREDS_FILE>`
@@ -197,16 +206,18 @@ To scan Azure, type
 coguard cloud azure
 ```
 
+##### Azure Credentials 
+
 This command assumes that you are logged in to your azure account
 using the
-[CLI](https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli).
+[Azure CLI](https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli).
 
 The minimum requirement for the chosen account is the
 [`Reader`](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader)
 role.
 
 
-### Creating pipelines
+### Adding to CI/CD pipelines
 
 The best way to integrate CoGuard into your workflow is by adding it
 to your preferred CI/CD tool. A basic pipeline configuration can be
