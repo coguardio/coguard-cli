@@ -8,7 +8,7 @@ unit-test:
 	cd src && coverage run --source=coguard_cli -m pytest --capture=sys -x
 	cd src && coverage html -i --directory=coverage_output --fail-under=80
 # Testing that the PyPi and GitHub READMEs do not differ except for the logo at the top
-	diff <(tail -n +8 README.md) <(tail -n +3 README_PYPI.md)
+	diff <(tail -n +10 README.md) <(tail -n +3 README_PYPI.md)
 
 integration-test:
 # Consistency test with older versions
