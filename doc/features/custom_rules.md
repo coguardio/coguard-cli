@@ -161,20 +161,26 @@ Now take as an example a rule, `kerberos_default_tkt_enctypes`. In this schema, 
 {
   "identifier": "kerberos_default_tkt_enctypes",
   "severity": 3,
-  "documentation": "libdefaults has a key called \"default_tkt_enctypes\".
-                    If this value is set, custom cryptographic mechanisms are set
-                    instead of default secure ones. The value should only be set for legacy systems.
-                    Source: https://web.mit.edu/kerberos/krb5-1.12/doc/admin/conf_files/krb5_conf.html",
+  "documentation": {
+    "documentation": "One should not use the legacy TKT enctypes configuration.",
+    "remediation": "`libdefaults` has a key called \"default_tkt_enctypes\". If this value is set, custom cryptographic mechanisms are set instead of default secure ones. The value should only be set for legacy systems.",
+    "sources": [
+      "https://web.mit.edu/kerberos/krb5-1.12/doc/admin/conf_files/krb5_conf.html"
+    ]
+  },
   "clauses": [
     {
-    	"literals": [
-          {
-              "service": "kerberos",
-              "configurationFile": "krb5.conf",
-              "keyPath": ["libdefaults", "default_tkt_enctypes"],
-              "operator": "keyShouldNotExist"
-          }
-        ]
+      "literals": [
+        {
+          "service": "kerberos",
+          "configurationFile": "krb5.conf",
+          "keyPath": [
+            "libdefaults",
+            "default_tkt_enctypes"
+          ],
+          "operator": "keyShouldNotExist"
+        }
+      ]
     }
   ]
 }
