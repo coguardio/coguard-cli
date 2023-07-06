@@ -1,8 +1,8 @@
-% CoGuard Documentation
+# CoGuard Documentation
 
 This folder contains several documentation items of CoGuard.
 
-# Table of contents
+## Table of contents
 
 - [CLI Manual](./cli/cli_man.md)
 - Features

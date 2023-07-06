@@ -1,4 +1,4 @@
-% Disabling rules
+# Disabling rules
 
 In some cases, a failed check may be chosen to be ignored by the
 respective DevOps team. One of the many possible reasons would be

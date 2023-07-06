@@ -1,6 +1,6 @@
-% Frequently asked Questions (FAQ)
+# Frequently asked Questions (FAQ)
 
-# Why is the CLI tool not published as a Docker image?
+## Why is the CLI tool not published as a Docker image?
 
 Since much of our scanning is performed on Docker images, the
 execution of the CoGuard CLI inside a container would require for the

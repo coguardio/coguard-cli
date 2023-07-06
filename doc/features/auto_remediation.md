@@ -1,6 +1,6 @@
-% Feature Highlight: Auto-Remediation
+# Feature Highlight: Auto-Remediation
 
-# General overview
+## General overview
 
 The CoGuard CLI comes with the ability to perform auto-remediation
 steps on scanned folders. Rules which are candidates for
@@ -10,11 +10,11 @@ symbol 🔧.
 Auto-remediation changes are applied by the CLI are in-place. This means,
 that changes are executed live in the filesystem. We assume that the folder
 being scanned and where the changes are performed is version controlled (e.g. by
-[Git](https://git-scm.com)). Please ensure you have **backed up any files before 
-running the CLI** with the `--fix=true` instruction. 
+[Git](https://git-scm.com)). Please ensure you have **backed up any files before
+running the CLI** with the `--fix=true` instruction.
 
 The changes are meant to be reviewed before being deployed, i.e., they are not meant
-to be used immediately in production. Changes can be reviewed as part of the IaC develop review 
+to be used immediately in production. Changes can be reviewed as part of the IaC develop review
 process, e.g. via a [pull
 request](https://www.git-scm.com/docs/git-request-pull).
 
@@ -30,12 +30,12 @@ HEALTHCHECK USER_INSERT_VALUE
 ```
 to instruct the user to add some basic parameter there.
 
-# Current state of auto-remediation
+## Current state of auto-remediation
 
 Auto-remediation can be applied only to folder scans.
 
-The current rule-set does not have 100% coverage for auto-remediation, we have auto-remediation 
+The current rule-set does not have 100% coverage for auto-remediation, we have auto-remediation
 coverage for about 70% of our existing rules. Depending
-on the project, the distribution of failed rules with auto-remediation fixes will 
+on the project, the distribution of failed rules with auto-remediation fixes will
 vary. The product roadmap has increase coverage in future releases to address the current rule
-set. 
+set.

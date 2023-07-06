@@ -1,16 +1,16 @@
-% CLI Manual
+# CLI Manual
 
-# Version
+## Version
 
 0.2.11
 
-# Installation
+## Installation
 
 For installation instructions, please refer to this repositorie's [README page](../../README.md).
 
-# Usage
+## Usage
 
-## General CLI reference
+### General CLI reference
 
 ```
 coguard [-h] [--coguard-api-url COGUARD_API_URL]
@@ -36,9 +36,9 @@ coguard [-h] [--coguard-api-url COGUARD_API_URL]
 | -v, --version        |                  | Show the CLI's version number and exit                                                                         |
 
 
-## CLI usage
+### CLI usage
 
-### General scanning information
+#### General scanning information
 
 All the scan types described below are run with default parameters by running
 
@@ -46,9 +46,9 @@ All the scan types described below are run with default parameters by running
 coguard scan
 ```
 
-CoGuard requires that users to be authenticated using their CoGuard credentials. On 
+CoGuard requires that users to be authenticated using their CoGuard credentials. On
 first run, it will prompt users to sign in or to set up an account requiring both
-an email address and a password. 
+an email address and a password.
 
 In a CI/CD pipeline scenario, user credentials can be set by the
 following environment variables:
@@ -70,12 +70,12 @@ fail. The `--minimum-fail-level` parameter sets the minimum fail
 level, i.e. if one wishes to only fail the script (and subsequently
 the pipeline job) for levels 4 or higher, one can set it here.
 
-The `--dry-run` option can be used to create a Zip file that contains a manifest 
-with the local ocation of all detected configuration files identified by the CLI. 
-These configuration files will be uploaded ans scanned by the back-end. 
+The `--dry-run` option can be used to create a Zip file that contains a manifest
+with the location of all detected configuration files identified by the CLI.
+These configuration files will be uploaded and scanned by the back-end.
 
 
-### Scanning of Docker images
+#### Scanning of Docker images
 
 Docker images are being scanned by running the command
 
@@ -94,7 +94,7 @@ generated.
 For more details on the output format, consider the [subsection on the
 output-formats](#output-format)
 
-### Scanning of folders
+#### Scanning of folders
 
 Given a folder (e.g. your project's repository), a scan can be
 performed by typing
@@ -121,7 +121,7 @@ services:
 Here, the image `postgres` is referenced and will be included in the
 report.
 
-#### Auto-remediation
+##### Auto-remediation
 
 The folder scan can be instructed to perform automated fixes to errors
 found. Additional details on the current state of what is auto-fixable,
@@ -143,16 +143,16 @@ equivalent commands.
 **Remark:** The fixes are currently only applied to the files in the
 file system, not to the referenced Docker images.
 
-### Scanning of cloud setups
+#### Scanning of cloud setups
 
 Using the CLI, snapshots of your current cloud setup can be extracted
-as Terraform files and subsequently scanned. Currently, AWS, Azure and GCP are 
+as Terraform files and subsequently scanned. Currently, AWS, Azure and GCP are
 supported.
 
 Authentication and credentials access vary for each service. Please see details below
-for your service configuration. 
+for your service configuration.
 
-#### AWS
+##### AWS
 
 To scan AWS, type
 
@@ -160,7 +160,7 @@ To scan AWS, type
 coguard cloud aws
 ```
 
-##### AWS Credentials 
+###### AWS Credentials
 
 This command assumes that the system where this command is run has the
 credentials stored in one of the standard locations. For more details,
@@ -174,7 +174,7 @@ The minimum requirements for the chosen account is read-only-access to
 the cloud resources, as referenced e.g. by [this
 policy](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/ReadOnlyAccess.html).
 
-#### GCP
+##### GCP
 
 To scan GCP, type
 
@@ -182,7 +182,7 @@ To scan GCP, type
 coguard cloud gcp
 ```
 
-###### GCP Credentials 
+####### GCP Credentials
 
 This command assumes that you either are already logged in using the
 `gcloud auth` command on your machine
@@ -198,7 +198,7 @@ The minimum requirements for the chosen account is read-only-access to
 the cloud resources, as referenced e.g. by [the viewer
 role](https://cloud.google.com/iam/docs/understanding-roles).
 
-#### Azure
+##### Azure
 
 To scan Azure, type
 
@@ -206,7 +206,7 @@ To scan Azure, type
 coguard cloud azure
 ```
 
-##### Azure Credentials 
+###### Azure Credentials
 
 This command assumes that you are logged in to your azure account
 using the
@@ -217,7 +217,7 @@ The minimum requirement for the chosen account is the
 role.
 
 
-### Adding to CI/CD pipelines
+#### Adding to CI/CD pipelines
 
 The best way to integrate CoGuard into your workflow is by adding it
 to your preferred CI/CD tool. A basic pipeline configuration can be
@@ -231,7 +231,7 @@ The `CI_CD_PROVIDER` is the pipeline provider to be used, and the
 `<PATH_TO_YOUR_FOLDER` is the path to the repository. Currently, only
 GitHub Actions are supported here.
 
-## Supported rule-sets
+### Supported rule-sets
 
 If activated for your account, you can specify a specific rule set for
 your scan. For a folder and a SOC2 ruleset, this is e.g. achieved by the following
@@ -248,7 +248,7 @@ frameworks, some checks are used that are
 unique to the compliance framework and would not appear in the normal
 ruleset.
 
-## Output format
+### Output format
 
 You can specify the output format of the CLI. The current choices are
 

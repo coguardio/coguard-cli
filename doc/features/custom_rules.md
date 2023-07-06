@@ -1,11 +1,11 @@
-% Custom Rules in CoGuard
+# Custom Rules in CoGuard
 
 Customers with the "Custom" Enterprise subscription can define custom
 rules for their own software, or for existing software pieces. This
 section describes the easiest way to create custom rules in CoGuard,
 namely the predicate driven rules.
 
-# Predicate driven rules
+## Predicate driven rules
 
 For each rule, one will create a separate JSON file. The JSON file
 will have the following schema ([JSON-schema](http://json-schema.org)).
