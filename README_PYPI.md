@@ -308,7 +308,6 @@ can be found
     - Jenkins
     - Bamboo
     - CircleCI
-    - Pulumi
     - OpenAPI
     - Puppet
     - BitBucket Pipelines

@@ -715,18 +715,24 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
       oXXXXXXXXXXXXXXXXXX:
           OXXXXXXXXXXd
     """)
-    token = auth_token_retrieval(args.coguard_api_url, args.coguard_auth_url)
-    if token is None:
-        print(f"{COLOR_RED}Failed to authenticate.{COLOR_TERMINATION}")
-        return
-    auth_config = auth.retrieve_configuration_object(
-        arg_coguard_url = args.coguard_api_url,
-        arg_auth_url = args.coguard_auth_url
-    )
-    deal_type = token.extract_deal_type_from_token()
-    organization = token.extract_organization_from_token()
-    ruleset = args.ruleset
     dry_run = args.dry_run
+    if not dry_run:
+        token = auth_token_retrieval(args.coguard_api_url, args.coguard_auth_url)
+        if token is None:
+            print(f"{COLOR_RED}Failed to authenticate.{COLOR_TERMINATION}")
+            return
+        auth_config = auth.retrieve_configuration_object(
+            arg_coguard_url = args.coguard_api_url,
+            arg_auth_url = args.coguard_auth_url
+        )
+        deal_type = token.extract_deal_type_from_token()
+        organization = token.extract_organization_from_token()
+    else:
+        token=None
+        auth_config = auth.auth_config.CoGuardCliConfig("dry-run-user", None, None, None)
+        deal_type = auth.util.DealEnum.ENTERPRISE
+        organization = None
+    ruleset = args.ruleset
     logging.debug("Extracted deal type: %s", deal_type)
     logging.debug("Extracted organization: %s", organization)
     if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:
