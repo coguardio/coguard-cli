@@ -715,8 +715,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
       oXXXXXXXXXXXXXXXXXX:
           OXXXXXXXXXXd
     """)
-    dry_run = args.dry_run
-    if not dry_run:
+    if not args.dry_run:
         token = auth_token_retrieval(args.coguard_api_url, args.coguard_auth_url)
         if token is None:
             print(f"{COLOR_RED}Failed to authenticate.{COLOR_TERMINATION}")
@@ -757,7 +756,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.output_format,
             args.fail_level,
             ruleset,
-            dry_run
+            args.dry_run
         )
     elif args.subparsers_location == SubParserNames.FOLDER_SCAN.value:
         folder_name = args.folder_name or \
@@ -773,7 +772,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
                 token,
                 organization,
                 args.coguard_api_url,
-                dry_run
+                args.dry_run
             )
         else:
             perform_folder_scan(
@@ -786,7 +785,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
                 args.output_format,
                 args.fail_level,
                 ruleset,
-                dry_run
+                args.dry_run
             )
     elif args.subparsers_location == SubParserNames.CLOUD_SCAN.value:
         cloud_provider_name = args.cloud_provider_name or args.scan or None
@@ -803,7 +802,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.output_format,
             args.fail_level,
             ruleset,
-            dry_run
+            args.dry_run
         )
     elif args.subparsers_location == SubParserNames.CI_CD_GEN.value:
         ci_cd_provider = args.ci_cd_provider_name
@@ -828,7 +827,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.output_format,
             args.fail_level,
             ruleset,
-            dry_run
+            args.dry_run
         )
         perform_folder_scan(
             None,
@@ -840,7 +839,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.output_format,
             args.fail_level,
             ruleset,
-            dry_run
+            args.dry_run
         )
         for cloud_provider in ["aws", "azure", "gcp"]:
             perform_cloud_provider_scan(
@@ -854,5 +853,5 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
                 args.output_format,
                 args.fail_level,
                 ruleset,
-                dry_run
+                args.dry_run
             )
