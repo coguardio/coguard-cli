@@ -83,6 +83,14 @@ def main():
               "to not give a non-zero exit code.")
     )
     parser.add_argument(
+        '--dry-run',
+        type=bool,
+        dest='dry_run',
+        default=False,
+        help=("When set to `true`, the CLI will generate a .zip file, but "
+              "not upload it to the back-end for scanning/fixing.")
+    )
+    parser.add_argument(
         '--output-format',
         type=str,
         dest='output_format',
@@ -152,7 +160,7 @@ def main():
     )
     cloud_scanning_parser = subparsers.add_parser(
         SubParserNames.CLOUD_SCAN.value,
-        help="The sub-command to find configuration files within a folder and scan them."
+        help="The sub-command to extract a cloud snapshot as Terraform files and scan them."
     )
     cloud_scanning_parser.add_argument(
         SubParserNames.SCAN.value,

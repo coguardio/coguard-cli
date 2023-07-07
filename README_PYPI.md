@@ -2,7 +2,33 @@
 
 # CoGuard
 
-## Why CoGuard
+CoGuard is a comprehensive static analysis tool for IT infrastructure
+configurations (cloud and on-premise).
+
+Finding and
+fixing misconfigurations and security vulnerabilities for IaC, devices,
+containers, cloud settings, and applications. Reduce the noise of CVE
+notifications and focus on small improvements for big wins.
+
+## Table of Contents
+
+- [Why CoGuard](#why-coguard)
+- [Introduction to the CLI](#introduction)
+- [Installation](#installation-instructions)
+    - [Pre-Requisites](#pre-requisites)
+    - [Install from repository or PIP](#installation)
+    - [Installation Tips](#installation-remarks)
+- [Usage](#how-to-use-it)
+    - [Scan local Docker images](#docker-scan)
+    - [Scan local project repositories](#repo-scan)
+    - [Extract &amp; scan cloud configurations](#cloud-scan)
+    - [General Scan](#general-scan)
+    - [Add to CI/CD Pipeline](#add-to-cicd-pipeline)
+- [Screenshots](#screenshots)
+- [Supported Technologies &amp; Roadmap](#supported-technologies)
+- [Learn More](#learn-more)
+
+## <a id="why-coguard"></a>Why CoGuard
 
 Infrastructure as Code (IaC) is here to stay. The versioning and
 continuous scanning of every layer of your IT (on premise and cloud)
@@ -43,30 +69,26 @@ files.
    extract cloud configurations for AWS, Azure or GCP, and scan them
    as well.
 
-## Introduction to the CoGuard CLI
-
-CoGuard is a comprehensive static analysis tool for IT infrastructure
-configurations (cloud and on-premise).
+## <a id="introduction"></a> Introduction to the CoGuard CLI
 
 This project is the command line interface to CoGuard, with additional
-auto-discovery functionality.
+functionality for the auto-discovery of configuration files.
 
-In its current release, it scans
+The current release scans for:
 1. Docker images and its contents,
-2. Project folders (such as GitHub Repositories) and
-3. automatically extracted cloud configurations from the three major
-   cloud providers
+2. project folders (such as GitHub Repositories) and
+3. will automatically extracted cloud configurations from the AWS, Azure and GCP
 
-In particular, it searches for known configuration files of different
+It searches for known [configuration files](#supported-technologies) of different
 software packages (like webservers, databases, etc.), and scans these
-configurations for security and best practice.
+configurations for configuration errors and security best practices.
 
-## How to install it
+## <a id="installation-instructions"></a>Installation Instructions
 
-### Pre-Requisites
+### <a id="pre-requisites"></a>Pre-Requisites
 
 You need to have `python3`, `pip3` and `docker` installed on your system.
-Here are the different operating systems and commands to be used for Python and Pip.
+Instructions for different operating systems and commands to be used for Python and Pip are provided below.
 
 <details>
 <summary>Ubuntu/Debian</summary>
@@ -126,83 +148,10 @@ directly, or installed via `pip`:
 pip3 install coguard-cli
 ```
 
-Keep in mind that it is a requirement to have Docker installed locally.
+This is a reminder that it is a requirement to have [Docker[(https://docker.com) installed locally.
 
-### Inclusion into your CI/CD pipeline
 
-We have ready scripts which can be generated to be included into your CI/CD pipeline.
-The list of supported providers is growing.
-
-To generate e.g. a GitHub Actions YAML which automatically scans your repository on
-pull request/push, simply type
-
-```shell
-coguard pipeline github add <PATH_TO_YOUR_REPOSITORY>
-```
-
-## How to use it
-
-Any of the following options requires you to create a CoGuard account.
-After completion, this image check will return the findings of CoGuard
-on this particular image. You can view the latest historical scan results
-when logging in to [https://portal.coguard.io](https://portal.coguard.io).
-
-### Scanning Docker images
-
-Using the CoGuard CLI, you can run a scan on your local Docker images
-using
-
-```shell
-coguard docker-image [scan] [<YOUR-IMAGE-NAME-OR-ID>]
-```
-
-### Scanning project repository folders
-
-Using the CoGuard CLI, you can run a scan on your local
-file repositories using
-
-```shell
-coguard folder [scan] [<PATH-TO-FOLDER>]
-```
-
-### Extracting and scanning cloud configurations (BETA)
-
-Using the CoGuard CLI, you can run a scan a current snapshot of your
-cloud configurations. This requires you to have the respective
-cloud CLI tools (`aws-cli` for AWS, `gcloud` for GCP or `az` for
-Azure) installed and authenticated on your device.
-
-```shell
-coguard cloud [scan] {aws, azure, gcp}
-```
-
-The extraction may take a couple of minutes, depending on your
-internet speed.
-
-### General scan
-
-To get a general scan, which includes all locally installed Docker
-images, anything in the current-working directory (recursive) and any
-installed cloud provider authentication, simply run
-
-```shell
-coguard scan
-```
-
-## Screenshot and further information
-
-Here is a screenshot of a sample scan:
-
-![](./screenshot.png)
-
-As you can see, CoGuard also analyzes the last Dockerfile used.
-
-The checks are gathered from different security benchmarks, such as CIS, but also
-directly from the user manuals of these software projects. At times, known issues for
-certain versions and security remediations specific to a certain version are being taken
-into account as well.
-
-## Installation remarks
+### <a id="installation-remarks"></a>Installation remarks
 
 **Remark 1**: It may happen that the folder where `pip` is installing packages is not
 in included in `PATH`. We have observed it on some Ubuntu installations, and on
@@ -247,32 +196,130 @@ This can be achieved using three options:
 </details>
 
 
-## Current support and future plans
+## How to use it
 
-The currently supported auto-discovery of configuration files inside
-Docker containers, folders and cloud configuration exports is limited to the finders
+Any of the following options requires you to create a CoGuard account.
+After completion, this image check will return the findings of CoGuard
+on this particular image. You can view the latest historical scan results
+when logging in to [https://portal.coguard.io](https://portal.coguard.io).
+
+### <a id="docker-scan"></a>Scanning Docker images
+
+Using the CoGuard CLI, you can run a scan on your local Docker images
+using
+
+```shell
+coguard docker-image [scan] [<YOUR-IMAGE-NAME-OR-ID>]
+```
+
+### <a id="repo-scan"></a>Scanning project repository folders
+
+Using the CoGuard CLI, you can run a scan on your local
+file repositories using
+
+```shell
+coguard folder [scan] [<PATH-TO-FOLDER>]
+```
+
+### <a id="cloud-scan"></a>Extracting and scanning cloud configurations (BETA)
+
+Using the CoGuard CLI, you can run a scan a current snapshot of your
+cloud configurations. This requires you to have the respective
+cloud CLI tools (`aws-cli` for AWS, `gcloud` for GCP or `az` for
+Azure) installed and authenticated on your device.
+
+```shell
+coguard cloud [scan] {aws, azure, gcp}
+```
+
+The extraction may take a couple of minutes, depending on your
+internet speed.
+
+### <a id="general-scan"></a>General scan
+
+To get a general scan, which includes all locally installed Docker
+images, anything in the current-working directory (recursive) and any
+installed cloud provider authentication, simply run
+
+```shell
+coguard scan
+```
+
+### <a id="add-to-cicd-pipeline"></a>Inclusion into CI/CD pipeline
+
+CoGuard can be included as a step in your CI/CD pipeline. CoGuard generates the
+necessary templates and scripts.
+
+GitHub Actions is available in the current release. To generate e.g. a GitHub Actions
+YAML which automatically scans your repository on
+pull request/push, simply type
+
+```shell
+coguard pipeline github add <PATH_TO_YOUR_REPOSITORY>
+```
+[Future support is planned](#support-roadmap) for GitLab CI/CD, Jenkins, Bamboo, CircleCI, etc.
+
+## Screenshot and further information
+
+Here is a screenshot of a sample scan:
+
+![](./screenshot.png)
+
+As you can see, CoGuard also analyzes the last Dockerfile used.
+
+The checks are gathered from different security benchmarks, such as CIS, but also
+directly from the user manuals of these software projects. At times, known issues for
+certain versions and security remediations specific to a certain version are being taken
+into account as well.
+
+
+## <a id="supported-technologies"></a>Supported Technologies and Roadmap
+
+CoGuard currently supports the the auto-discovery of configuration files inside
+Docker containers, folders and cloud configuration exports. The full list of configurations files
+can be found
 [in this folder](https://github.com/coguardio/coguard-cli/tree/master/src/coguard_cli/discovery/config_file_finders).
-The list includes, among others,
 
-- Apache Kafka
-- Apache Tomcat
-- Apache WebServer
-- ElasticSearch
-- Kerberos
-- MongoDB
-- MySQL
-- NGINX
-- OpenTelemetry Collector
-- PostgreSQL
-- TerraForm
-- Kubernetes
+- Supported Applications &amp; Infrastructure as Code
+    - Apache Kafka
+    - Apache Tomcat
+    - Apache WebServer
+    - CloudFormation
+    - Dockerfile
+    - ElasticSearch
+    - Helm
+    - Kerberos
+    - Kubernetes
+    - MongoDB
+    - MySQL
+    - Netlify
+    - NGINX
+    - OpenTelemetry Collector
+    - PostgreSQL
+    - Redis
+    - TerraForm
+- Supported Cloud Hosts
+    - AWS
+    - Azure
+    - GCP
+    - OVH Cloud
+- <a id="supported-roadmap"></a>Roadmap (Future Support Planned)
+    - Ansible
+    - Jenkins
+    - Bamboo
+    - CircleCI
+    - OpenAPI
+    - Puppet
+    - BitBucket Pipelines
+    - [Contact us](https://coguard.io/contact) for full list or to add a specific request or custom rules
 
 This list
 will expand in the future. In addition, we are scanning the
 Dockerfile used to create the images, and will add some Linux
 configuration files in the near future.
 
-## Learn more
+## <a id="learn-more"></a>Learn more
 
-- [CoGuard Website](https://www.coguard.io)
-- [CoGuard Blog](https://www.coguard.io/blog)
+- [CoGuard](https://www.coguard.io)
+- [Blog](https://www.coguard.io/blog)
+- [Contact Us](https://coguard.io/contact
