@@ -735,6 +735,10 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
     ruleset = args.ruleset
     logging.debug("Extracted deal type: %s", deal_type)
     logging.debug("Extracted organization: %s", organization)
+    if ruleset and deal_type != auth.util.DealEnum.ENTERPRISE:
+        print(f"{COLOR_RED} Ruleset specification is not available in free "
+              f"subscriptions {COLOR_TERMINATION}")
+        return
     if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:
         if args.image_name:
             docker_image = args.image_name
