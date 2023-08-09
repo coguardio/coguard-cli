@@ -6,7 +6,11 @@ inside a folder structure.
 import os
 import re
 import logging
+import json
 from typing import Dict, List, Optional, Tuple
+from flatten_dict import unflatten
+import yaml
+from cfn_tools import load_yaml, load_json, dump_yaml, dump_json
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
@@ -31,7 +35,7 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = [".*\\.ya?ml"]
+        standard_names = [".*\\.ya?ml", ".*\\.json", ".template"]
         result_files = []
         required_fields = [
             "Resources"
@@ -43,7 +47,7 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
                 matching_file_names = [file_name for file_name in file_names
                                        if re.match(standard_name, file_name)]
                 cloudformation_filter = [file_name for file_name in matching_file_names
-                                         if cff_util.does_config_yaml_contain_required_keys(
+                                         if self.does_config_contain_required_keys(
                                                  os.path.join(dir_path, file_name),
                                                  required_fields
                                      )]
@@ -71,7 +75,7 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
             grouped_result_files,
             self.get_service_name(),
             "aws_template.yaml",
-            "yaml"
+            "aws_cfn"
         ))
         return results
 
@@ -90,5 +94,44 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
         See the documentation of ConfigFileFinder for reference.
         """
         return 'cloudformation'
+
+    def does_config_contain_required_keys(
+            self,
+            file_path: str,
+            required_fields: List[str]
+    ) -> bool:
+        """
+        Helper function to check if a yaml/json file as defined by `file_path` contains a set of
+        mandatory keys as provided by `required_fields`.
+        """
+        logging.info("Parsing using the aws_cfn-file-type parser")
+        try:
+            with open(os.path.join(file_path), 'r', encoding='utf-8') as file_stream:
+                temp_dict = load_yaml(file_stream)
+                config_res = yaml.safe_load_all(dump_yaml(temp_dict))
+                config = [] if config_res is None else config_res
+                config = [unflatten(cfg, splitter='dot') for cfg in config]
+        # pylint: disable=bare-except
+        except:
+            try:
+                with open(os.path.join(file_path), 'r', encoding='utf-8') as file_stream:
+                    temp_dict = load_json(file_stream.read())
+                config_res = json.loads(dump_json(temp_dict))
+                config = {} if config_res is None else config_res
+                config = unflatten(config, splitter='dot')
+            # pylint: disable=bare-except
+            except:
+                logging.debug(
+                    "Failed to load %s",
+                    file_path
+                )
+                return False
+        # The next line is to recognize flattened values in aws_cfn files and expand them
+        if isinstance(config, dict):
+            config = [config]
+        return config and all(config_instance and required_field in config_instance
+                              for config_instance in config
+                              for required_field in required_fields)
+
 
 ConfigFileFinder.register(ConfigFileFinderCloudformation)
