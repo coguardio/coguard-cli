@@ -35,7 +35,7 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = [".*\\.ya?ml", ".*\\.json", ".template"]
+        standard_names = [".*\\.ya?ml", ".*\\.json", ".*\\.template"]
         result_files = []
         required_fields = [
             "Resources"
@@ -104,7 +104,7 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
         Helper function to check if a yaml/json file as defined by `file_path` contains a set of
         mandatory keys as provided by `required_fields`.
         """
-        logging.info("Parsing using the aws_cfn-file-type parser")
+        logging.debug("Parsing using the aws_cfn-file-type parser")
         try:
             with open(os.path.join(file_path), 'r', encoding='utf-8') as file_stream:
                 temp_dict = load_yaml(file_stream)
