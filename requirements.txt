@@ -4,3 +4,4 @@ pyyaml==6.0
 flatten-dict==0.3.0
 python-hcl2==2.0.3
 boto3==1.22.8
+cfn-flip==1.3.0
