@@ -66,15 +66,36 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
                 f"{result_file.replace(path_to_file_system, '')}"
                 f"{COLOR_TERMINATION}"
             )
-        grouped_result_files = cff_util.group_found_files_by_subpath(
+        yaml_result_files = [
+            result_file for result_file in result_files
+            if result_file.endswith('.yaml') or
+            result_file.endswith('.yml')
+        ]
+        other_result_files = [
+            result_file for result_file in result_files
+            if not (result_file.endswith('.yaml') or
+                    result_file.endswith('.yml'))
+        ]
+        grouped_yaml_result_files = cff_util.group_found_files_by_subpath(
             path_to_file_system,
-            result_files
+            yaml_result_files
+        )
+        grouped_other_result_files = cff_util.group_found_files_by_subpath(
+            path_to_file_system,
+            other_result_files
         )
         results.extend(cff_util.create_grouped_temp_locations_and_manifest_entries(
             path_to_file_system,
-            grouped_result_files,
+            grouped_yaml_result_files,
             self.get_service_name(),
             "aws_template.yaml",
+            "aws_cfn"
+        ))
+        results.extend(cff_util.create_grouped_temp_locations_and_manifest_entries(
+            path_to_file_system,
+            grouped_other_result_files,
+            self.get_service_name(),
+            "aws_template.json",
             "aws_cfn"
         ))
         return results
