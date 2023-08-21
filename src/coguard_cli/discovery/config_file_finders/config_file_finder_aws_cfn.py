@@ -154,5 +154,7 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
                               for config_instance in config
                               for required_field in required_fields)
 
+    def is_cluster_service(self):
+        return True
 
 ConfigFileFinder.register(ConfigFileFinderCloudformation)
