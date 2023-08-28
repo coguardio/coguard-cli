@@ -131,7 +131,7 @@ sudo pacman -S python python-pip
 
 <details>
 <summary>Mac OS</summary>
-Using [Homebrew](https://brew.sh), you have to run
+<a id="macos-install"></a>Using <a href="https://brew.sh">Homebrew</a>, run the following:
 
 ```shell
 brew install python3
@@ -141,7 +141,7 @@ brew install python3
 <details>
 <summary>Windows</summary>
 
-Download Python3 for Windows using [this link](https://www.python.org/downloads/windows/), and
+<a id="windows-install"></a>Download Python3 for Windows using [this link](https://www.python.org/downloads/windows/), and
 install it.
 
 </details>
