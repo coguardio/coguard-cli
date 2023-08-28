@@ -187,8 +187,8 @@ def auth_token_retrieval(
     if auth_config is None:
         print(f'{COLOR_YELLOW}Could not find authentication file. You can sign up right now '
               f'for your default account and continue with the requested scan.{COLOR_TERMINATION}')
-        token = auth.sign_in_or_sign_up(coguard_api_url, coguard_auth_url)
         api_connection.log("REGISTRATION_PROMPT", coguard_api_url)
+        token = auth.sign_in_or_sign_up(coguard_api_url, coguard_auth_url)
         # Here is where we insert the authentication logic.
         auth_config = auth.retrieve_configuration_object()
     else:

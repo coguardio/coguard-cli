@@ -305,4 +305,4 @@ def log(message: str, coguard_api_url: str):
         timeout=300
     )
     if resp.status_code != 204:
-        logging.info("Passing minimal debug logging failed.")
+        logging.debug("Passing minimal debug logging failed.")
