@@ -186,7 +186,8 @@ def auth_token_retrieval(
     )
     if auth_config is None:
         print(f'{COLOR_YELLOW}Could not find authentication file. You can sign up right now '
-              f'for your free account and continue with the requested scan.{COLOR_TERMINATION}')
+              f'for your default account and continue with the requested scan.{COLOR_TERMINATION}')
+        api_connection.log("REGISTRATION_PROMPT", coguard_api_url)
         token = auth.sign_in_or_sign_up(coguard_api_url, coguard_auth_url)
         # Here is where we insert the authentication logic.
         auth_config = auth.retrieve_configuration_object()
@@ -735,7 +736,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
     logging.debug("Extracted deal type: %s", deal_type)
     logging.debug("Extracted organization: %s", organization)
     if ruleset and deal_type != auth.util.DealEnum.ENTERPRISE:
-        print(f"{COLOR_RED} Ruleset specification is not available in free "
+        print(f"{COLOR_RED} Ruleset specification is not available in default "
               f"subscriptions {COLOR_TERMINATION}")
         return
     if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:

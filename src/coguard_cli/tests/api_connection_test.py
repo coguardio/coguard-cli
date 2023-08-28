@@ -529,3 +529,33 @@ class TestApiConnection(unittest.TestCase):
                 None
             )
             self.assertListEqual(result, ["foo"])
+
+    def test_log(self):
+        """
+        Checks the log endpoint.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 204
+        )
+        with unittest.mock.patch(
+                'requests.post',
+                new_callable=lambda: lambda url, headers, json, timeout: mock_response):
+            api_connection.log(
+                "foo",
+                "https://portal.coguard.io"
+            )
+
+    def test_log_with_error(self):
+        """
+        Checks the log endpoint.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 500
+        )
+        with unittest.mock.patch(
+                'requests.post',
+                new_callable=lambda: lambda url, headers, json, timeout: mock_response):
+            api_connection.log(
+                "foo",
+                "https://portal.coguard.io"
+            )
