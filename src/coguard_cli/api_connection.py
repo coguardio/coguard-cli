@@ -293,3 +293,16 @@ def get_fixable_rule_list(
         logging.debug("Reason %s", resp.reason)
         return []
     return resp.json()
+
+def log(message: str, coguard_api_url: str):
+    """
+    The call to the endpoint to determine a list of fixable rule identifiers.
+    """
+    resp = requests.post(
+        f"{coguard_api_url}/logging/log-message",
+        headers={"content-type": "application/json"},
+        json={"message": message},
+        timeout=300
+    )
+    if resp.status_code != 204:
+        logging.info("Passing minimal debug logging failed.")
