@@ -12,21 +12,29 @@ notifications and focus on small improvements for big wins.
 
 ## Table of Contents
 
-- [Why CoGuard](#why-coguard)
-- [Introduction to the CLI](#introduction)
-- [Installation](#installation-instructions)
-    - [Pre-Requisites](#pre-requisites)
-    - [Install from repository or PIP](#installation)
-    - [Installation Tips](#installation-remarks)
-- [Usage](#how-to-use-it)
-    - [Scan local Docker images](#docker-scan)
-    - [Scan local project repositories](#repo-scan)
-    - [Extract &amp; scan cloud configurations](#cloud-scan)
-    - [General Scan](#general-scan)
-    - [Add to CI/CD Pipeline](#add-to-cicd-pipeline)
-- [Screenshots](#screenshots)
-- [Supported Technologies &amp; Roadmap](#supported-technologies)
-- [Learn More](#learn-more)
+- [CoGuard](#coguard)
+  - [Table of Contents](#table-of-contents)
+  - [Why CoGuard](#why-coguard)
+  - [Overview](#overview)
+  - [CoGuard CLI install instructions](#coguard-cli-install-instructions)
+    - [Prerequisites](#prerequisites)
+  - [Install the CLI](#install-the-cli)
+    - [Supported Methods](#supported-methods)
+      - [pip](#pip)
+  - [ Troubleshooting](#-troubleshooting)
+    - [Make sure that Docker is running locally](#make-sure-that-docker-is-running-locally)
+    - [`pip` not included in the PATH](#pip-not-included-in-the-path)
+    - [Windows users and symbolic links](#windows-users-and-symbolic-links)
+  - [Usage](#usage)
+    - [Scanning Docker images](#scanning-docker-images)
+    - [Scanning project repository folders](#scanning-project-repository-folders)
+    - [Extracting and scanning cloud configurations (BETA)](#extracting-and-scanning-cloud-configurations-beta)
+    - [General scan](#general-scan)
+    - [Inclusion into CI/CD pipeline](#inclusion-into-cicd-pipeline)
+  - [Screenshot](#screenshot)
+  - [Security Benchmarks in CoGuard](#security-benchmarks-in-coguard)
+  - [Supported Technologies and Roadmap](#supported-technologies-and-roadmap)
+  - [Learn more](#learn-more)
 
 ## <a id="why-coguard"></a>Why CoGuard
 
@@ -69,26 +77,50 @@ files.
    extract cloud configurations for AWS, Azure or GCP, and scan them
    as well.
 
-## <a id="introduction"></a> Introduction to the CoGuard CLI
+## <a id="introduction"></a>Overview
 
-This project is the command line interface to CoGuard, with additional
-functionality for the auto-discovery of configuration files.
+This project is the command line interface to CoGuard. 
 
-The current release scans for:
-1. Docker images and its contents,
-2. project folders (such as GitHub Repositories) and
-3. will automatically extracted cloud configurations from the AWS, Azure and GCP
+The current release discovers configuration files in:
 
-It searches for known [configuration files](#supported-technologies) of different
-software packages (like webservers, databases, etc.), and scans these
-configurations for configuration errors and security best practices.
+1. project folders (such as GitHub Repositories) and
+2. Docker images and their contents,
+3. cloud configurations extracted from the AWS, Azure and GCP using their respective CLIs.
 
-## <a id="installation-instructions"></a>Installation Instructions
+CoGuard CLI is used to search the local file system for known 
+[configuration files](#supported-technologies). CoGuard CLI can also extract the cloud
+configurations from AWS, Azure and GCP using their respective CLI your credentials. The
+configuration files are stored in ./.coguard 
 
-### <a id="pre-requisites"></a>Pre-Requisites
 
-You need to have `python3`, `pip3` and `docker` installed on your system.
-Instructions for different operating systems and commands to be used for Python and Pip are provided below.
+## <a id="installation"></a>CoGuard CLI install instructions
+
+
+### <a id="pre-requisites"></a>Prerequisites
+
+* [Python3](https://www.python.org/downloads/)
+* [pip](https://pip.pypa.io/en/stable/installation/)
+* [Docker](https://docker.com/)
+* [CoGuard account](https://coguard.io/signup)
+
+The CoGuard CLI requires `python3`, `pip3` and `docker` installed on your system.
+
+Platform specific `python3` and `pip3` instructions:
+<details>
+<summary>Mac OS</summary>
+<a id="macos-install"></a>Using <a href="https://brew.sh">Homebrew</a>, run the following:
+
+```shell
+brew install python3
+```
+</details>
+<details>
+<summary>Windows</summary>
+
+<a id="windows-install"></a>Download Python3 for Windows using [this link](https://www.python.org/downloads/windows/), and
+install it.
+
+</details>
 
 <details>
 <summary>Ubuntu/Debian</summary>
@@ -122,38 +154,38 @@ sudo pacman -S python python-pip
 ```
 </details>
 
-<details>
-<summary>Mac OS</summary>
-Assuming you are using [Homebrew](https://brew.sh), you have to run
 
-```shell
-brew install python3
-```
-</details>
 
-<details>
-<summary>Windows</summary>
 
-Download Python3 for Windows using [this link](https://www.python.org/downloads/windows/), and
-install it.
+## <a id="installation-instructions"></a>Install the CLI 
 
-</details>
+### Supported Methods
 
-### Installation
+#### pip
 
-CoGuard CLI can either be pulled from this repository and used
-directly, or installed via `pip`:
+To install the CoGuard CLI can be installed using `pip`. 
 
 ```shell
 pip3 install coguard-cli
 ```
 
-This is a reminder that it is a requirement to have [Docker[(https://docker.com) installed locally.
+Once the CLI is successfully installed, you can use the `coguard` command from your terminal.
+The `coguard` CLI provides access to CoGuard's range of commands and functionalities. 
+
+The CoGuard CLI can be pulled from this repository and used
+directly. 
 
 
-### <a id="installation-remarks"></a>Installation remarks
+## <a id="troubleshooting"></a> Troubleshooting
 
-**Remark 1**: It may happen that the folder where `pip` is installing packages is not
+### Make sure that Docker is running locally
+
+In order for `coguard` CLI to operate properly, users are required to have 
+[Docker](https://docker.com/) installed and running locally.
+
+### `pip` not included in the PATH
+
+It may happen that the folder where `pip` is installing packages is not
 in included in `PATH`. We have observed it on some Ubuntu installations, and on
 Homebrew Mac installs. For the Linux case, such as Ubuntu,
 you can find the binary usually under `$HOME/.local/bin/coguard`, i.e. you run
@@ -168,10 +200,12 @@ For the Mac case, it is often installed under `~/Library/Python/<YOUR_PYTHON_VER
 If you omit the image ID parameter, CoGuard will scan all the images currently
 stored on your device.
 
-**Remark 2**: Windows users need to be allowed to create and read symbolic links.
+### Windows users and symbolic links
+
+Windows users need to be allowed to create and read symbolic links.
 This can be achieved using three options:
 <details>
-<summary>Option 1</summary>
+<summary>Option 1 - Run as Administrator</summary>
 1. Run the CoGuard execution as admin temporarily. This can be achieved by opening the
    PowerShell or command prompt as administrative user (right click on the icon),
    or by issuing the command
@@ -181,13 +215,13 @@ This can be achieved using three options:
    inside an already open command/Powershell window.
 </details>
 <details>
-<summary>Option 2</summary>
-2. Run Windows in Developer Mode (instructions on how to run Windows as a developer can
+<summary>Option 2 - Run in Developer Mode</summary>
+1. Run Windows in Developer Mode (instructions on how to run Windows as a developer can
    be found [here](https://docs.microsoft.com/en-us/gaming/game-bar/guide/developer-mode)).
 </details>
 <details>
-<summary>Option 3</summary>
-3. Run CoGuard on a Linux virtual machine, e.g. using the Windows subsystem for Linux.
+<summary>Option 3 - WSL and Docker</summary>
+1. Run CoGuard on a Linux virtual machine, e.g. using the Windows subsystem for Linux.
    This is commonly installed with Docker Desktop for Windows. If you do not have it installed,
    then installation instructions can be found
    [here](https://docs.microsoft.com/en-us/windows/wsl/install).
@@ -196,12 +230,22 @@ This can be achieved using three options:
 </details>
 
 
-## How to use it
+## <a id="usage"></a>Usage
 
 Any of the following options requires you to create a CoGuard account.
 After completion, this image check will return the findings of CoGuard
 on this particular image. You can view the latest historical scan results
 when logging in to [https://portal.coguard.io](https://portal.coguard.io).
+
+
+The following commands exist within the `coguard` command:
+
+* `docker-image` : scans a Docker image 
+* `folder` : find configuration files in a local folder and scan the files
+* `cloud` : extract a cloud snapshot as Terraform files and scan the Terraform files
+* `pipeline` : generate files for use in a specified CI/CD pipeline
+* `scan` : scan everything using default parameters
+
 
 ### <a id="docker-scan"></a>Scanning Docker images
 
@@ -232,8 +276,8 @@ Azure) installed and authenticated on your device.
 coguard cloud [scan] {aws, azure, gcp}
 ```
 
-The extraction may take a couple of minutes, depending on your
-internet speed.
+The extraction time may vary. Depending on the complexity of the configuration and 
+speed of your internet connection. CoGuard will timeout after 120 minutes. 
 
 ### <a id="general-scan"></a>General scan
 
@@ -259,13 +303,13 @@ coguard pipeline github add <PATH_TO_YOUR_REPOSITORY>
 ```
 [Future support is planned](#support-roadmap) for GitLab CI/CD, Jenkins, Bamboo, CircleCI, etc.
 
-## Screenshot and further information
-
-Here is a screenshot of a sample scan:
+## Screenshot
 
 ![](./screenshot.png)
 
-As you can see, CoGuard also analyzes the last Dockerfile used.
+Screenshot of a sample scan. CoGuard also analyzes the last Dockerfile used.
+
+## Security Benchmarks in CoGuard
 
 The checks are gathered from different security benchmarks, such as CIS, but also
 directly from the user manuals of these software projects. At times, known issues for
@@ -322,4 +366,5 @@ configuration files in the near future.
 
 - [CoGuard](https://www.coguard.io)
 - [Blog](https://www.coguard.io/blog)
-- [Contact Us](https://coguard.io/contact
+- [Contact Us](https://coguard.io/contact)
+
