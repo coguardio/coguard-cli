@@ -112,6 +112,7 @@ configuration files are stored in ./.coguard
 
 The CoGuard CLI requires `python3`, `pip3` and `docker` installed on your system.
 
+Platform specific `python3` and `pip3` instructions:
 <details>
 <summary>Mac OS</summary>
 <a id="macos-install"></a>Using <a href="https://brew.sh">Homebrew</a>, run the following:
@@ -373,3 +374,6 @@ configuration files in the near future.
 - [CoGuard](https://www.coguard.io)
 - [Blog](https://www.coguard.io/blog)
 - [Contact Us](https://coguard.io/contact)
+
+
+.
