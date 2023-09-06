@@ -86,7 +86,7 @@ files.
 
 ## <a id="introduction"></a>Overview
 
-This project is the command line interface to CoGuard. 
+This project is the command line interface to CoGuard.
 
 The current release discovers configuration files in:
 
@@ -94,10 +94,10 @@ The current release discovers configuration files in:
 2. Docker images and their contents,
 3. cloud configurations extracted from the AWS, Azure and GCP using their respective CLIs.
 
-CoGuard CLI is used to search the local file system for known 
+CoGuard CLI is used to search the local file system for known
 [configuration files](#supported-technologies). CoGuard CLI can also extract the cloud
 configurations from AWS, Azure and GCP using their respective CLI your credentials. The
-configuration files are stored in ./.coguard 
+configuration files are stored in ./.coguard
 
 
 ## <a id="installation"></a>CoGuard CLI install instructions
@@ -164,30 +164,30 @@ sudo pacman -S python python-pip
 
 
 
-## <a id="installation-instructions"></a>Install the CLI 
+## <a id="installation-instructions"></a>Install the CLI
 
 ### Supported Methods
 
 #### pip
 
-To install the CoGuard CLI can be installed using `pip`. 
+To install the CoGuard CLI can be installed using `pip`.
 
 ```shell
 pip3 install coguard-cli
 ```
 
 Once the CLI is successfully installed, you can use the `coguard` command from your terminal.
-The `coguard` CLI provides access to CoGuard's range of commands and functionalities. 
+The `coguard` CLI provides access to CoGuard's range of commands and functionalities.
 
 The CoGuard CLI can be pulled from this repository and used
-directly. 
+directly.
 
 
 ## <a id="troubleshooting"></a> Troubleshooting
 
 ### Make sure that Docker is running locally
 
-In order for `coguard` CLI to operate properly, users are required to have 
+In order for `coguard` CLI to operate properly, users are required to have
 [Docker](https://docker.com/) installed and running locally.
 
 ### `pip` not included in the PATH
@@ -247,7 +247,7 @@ when logging in to [https://portal.coguard.io](https://portal.coguard.io).
 
 The following commands exist within the `coguard` command:
 
-* `docker-image` : scans a Docker image 
+* `docker-image` : scans a Docker image
 * `folder` : find configuration files in a local folder and scan the files
 * `cloud` : extract a cloud snapshot as Terraform files and scan the Terraform files
 * `pipeline` : generate files for use in a specified CI/CD pipeline
@@ -283,8 +283,8 @@ Azure) installed and authenticated on your device.
 coguard cloud [scan] {aws, azure, gcp}
 ```
 
-The extraction time may vary. Depending on the complexity of the configuration and 
-speed of your internet connection. CoGuard will timeout after 120 minutes. 
+The extraction time may vary. Depending on the complexity of the configuration and
+speed of your internet connection. CoGuard will timeout after 120 minutes.
 
 ### <a id="general-scan"></a>General scan
 
