@@ -25,7 +25,7 @@ RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
 RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 RUN yum install -y yum-utils-4.0.21-3.el8
 RUN yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
-RUN yum -y install terraform-1.2.9-1
+RUN yum -y install terraform-1.5.6-1
 RUN yum -y install jq-1.5-12.el8
 
 # Install Azure CLI
@@ -35,9 +35,7 @@ RUN dnf install -y azure-cli
 
 # Install Terraformer
 
-# Using an older version until https://github.com/GoogleCloudPlatform/terraformer/issues/1648 is fixed.
-# Do not use 0.8.22
-ENV CURRENT_TERRAFORMER_VERSION=0.8.21
+ENV CURRENT_TERRAFORMER_VERSION=0.8.24
 # For now, we assume the provider to be AWS only; we would need to
 # check for adjustments for other providers, and maybe need to create
 # extra Docker files for that.

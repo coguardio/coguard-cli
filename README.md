@@ -161,8 +161,9 @@ sudo pacman -S python python-pip
 ```
 </details>
 
-
-
+<details>
+<summary>Mac OS</summary>
+Assuming you are using [Homebrew](https://brew.sh), you have to run
 
 ## <a id="installation-instructions"></a>Install the CLI
 
@@ -170,7 +171,7 @@ sudo pacman -S python python-pip
 
 #### pip
 
-To install the CoGuard CLI can be installed using `pip`.
+The CoGuard CLI can be installed using `pip`.
 
 ```shell
 pip3 install coguard-cli
@@ -181,6 +182,8 @@ The `coguard` CLI provides access to CoGuard's range of commands and functionali
 
 The CoGuard CLI can be pulled from this repository and used
 directly.
+
+This is a reminder that it is a requirement to have [Docker[(https://docker.com) installed locally.
 
 
 ## <a id="troubleshooting"></a> Troubleshooting
