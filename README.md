@@ -131,7 +131,7 @@ sudo pacman -S python python-pip
 
 <details>
 <summary>Mac OS</summary>
-<a id="macos-install"></a>Using <a href="https://brew.sh">Homebrew</a>, run the following:
+Assuming you are using [Homebrew](https://brew.sh), you have to run
 
 ```shell
 brew install python3
@@ -141,7 +141,7 @@ brew install python3
 <details>
 <summary>Windows</summary>
 
-<a id="windows-install"></a>Download Python3 for Windows using [this link](https://www.python.org/downloads/windows/), and
+Download Python3 for Windows using [this link](https://www.python.org/downloads/windows/), and
 install it.
 
 </details>
@@ -155,7 +155,7 @@ directly, or installed via `pip`:
 pip3 install coguard-cli
 ```
 
-_Reminder_: It is a requirement to have [Docker](https://docker.com) installed and running locally.
+This is a reminder that it is a requirement to have [Docker[(https://docker.com) installed locally.
 
 
 ### <a id="installation-remarks"></a>Installation remarks
@@ -329,4 +329,4 @@ configuration files in the near future.
 
 - [CoGuard](https://www.coguard.io)
 - [Blog](https://www.coguard.io/blog)
-- [Contact Us](https://coguard.io/contact)
+- [Contact Us](https://coguard.io/contact
