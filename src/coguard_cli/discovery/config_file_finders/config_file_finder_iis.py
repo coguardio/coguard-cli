@@ -1,5 +1,5 @@
 """
-This module contains the class to find Postgres configurations
+This module contains the class to find Microsoft IIS configurations
 inside a folder structure.
 """
 
@@ -13,9 +13,9 @@ from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
-class ConfigFileFinderPostgres(ConfigFileFinder):
+class ConfigFileFinderIis(ConfigFileFinder):
     """
-    The class to find postgres configuration files within a file system.
+    The class to find iis configuration files within a file system.
     """
 
     def _create_temp_location_and_manifest_entry(
@@ -26,10 +26,10 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
         """
         Common helper function which creates a temporary folder location for the
         configuration files, and then analyzes include directives. It returns
-        a tuple containing a manifest for a postgres service and the path to the
+        a tuple containing a manifest for a iis service and the path to the
         temporary location.
         """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-postgres")
+        temp_location = tempfile.mkdtemp(prefix="coguard-cli-iis")
         to_copy = cff_util.get_path_behind_symlinks(
             path_to_file_system,
             location_on_current_machine
@@ -58,27 +58,17 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
                     ))
         manifest_entry = {
             "version": "1.0",
-            "serviceName": "postgres",
+            "serviceName": "microsoft_iis",
             "configFileList": [
                 {
                     "fileName": file_name,
                     "defaultFileName": file_name,
                     "subPath": f".{os.sep}{loc_within_machine}",
-                    "configFileType": "properties" if file_name == "postgresql.conf" else "pg_hba"
+                    "configFileType": "xml"
                 }
             ],
             "complimentaryFileList": []
         }
-        cff_util.extract_include_directives(
-            path_to_file_system,
-            location_on_current_machine,
-            temp_location,
-            manifest_entry,
-            "properties" if file_name == "postgresql.conf" else "pg_hba",
-            r'include\s+"?\'?(.+)"?\'?\s*',
-            r'include_dir\s+"?\'?(.+)"?\'?\s*',
-            "\\.conf"
-        )
         return (
             manifest_entry,
             temp_location
@@ -88,24 +78,24 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
         """
         Helper function to create an empty file to check for default values.
         """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-postgres")
+        temp_location = tempfile.mkdtemp(prefix="coguard-cli-iis")
         with open(
                 os.path.join(
                     temp_location,
-                    "postgresql.conf"
+                    "ApplicationHost.config"
                 ),
                 'w',
                 encoding='utf-8') as empty_file:
             empty_file.write("# Empty config file to represent defaults")
         manifest_entry = {
             "version": "1.0",
-            "serviceName": "postgres",
+            "serviceName": "iis",
             "configFileList": [
                 {
-                    "fileName": "postgresql.conf",
-                    "defaultFileName": "postgresql.conf",
+                    "fileName": "ApplicationHost.config",
+                    "defaultFileName": "ApplicationHost.config",
                     "subPath": ".",
-                    "configFileType": "properties"
+                    "configFileType": "xml"
                 }
             ],
             "complimentaryFileList": []
@@ -121,42 +111,7 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        logging.debug("Attempting to find the postgresql.conf file in the standard location.")
-        standard_location = '/etc/postgresql/main/postgresql.conf'
-        location_on_current_machine = os.path.join(path_to_file_system, standard_location[1:])
-        temp_location_tuple = None
-        if os.path.lexists(location_on_current_machine):
-            file_name = os.path.basename(location_on_current_machine)
-            print(f"{COLOR_CYAN} Found configuration file {standard_location}{COLOR_TERMINATION}")
-            temp_location_tuple = self._create_temp_location_and_manifest_entry(
-                path_to_file_system,
-                file_name,
-                location_on_current_machine
-            )
-        if temp_location_tuple is not None:
-            pg_hba_location = '/etc/postgresql/main/pg_hba.conf'
-            pg_hba_on_current_machine = os.path.join(path_to_file_system, pg_hba_location[1:])
-            if os.path.lexists(pg_hba_on_current_machine):
-                print(f"{COLOR_CYAN} Found configuration file {pg_hba_location}{COLOR_TERMINATION}")
-                to_copy = cff_util.get_path_behind_symlinks(
-                    path_to_file_system,
-                    pg_hba_on_current_machine
-                )
-                shutil.copy(to_copy,
-                            os.path.join(
-                                temp_location_tuple[1],
-                                os.path.basename(pg_hba_on_current_machine)
-                            ))
-                temp_location_tuple[0]["configFileList"].append(
-                    {
-                        "fileName": "pg_hba.conf",
-                        "defaultFileName": "pg_hba.conf",
-                        "subPath": ".",
-                        "configFileType": "pg_hba"
-                    }
-                )
-            return temp_location_tuple
-        return None
+        logging.debug("There is no standard location for iis files.")
 
     def check_for_config_files_filesystem_search(
             self,
@@ -165,7 +120,13 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = ["postgresql.conf", "pg_hba.conf"]
+        standard_names = [
+            "ApplicationHost.config",
+            "administration.config",
+            "Redirection.config",
+            "machine.config",
+            "web.config"
+        ]
         result_files = []
         logging.debug("Attempting to find the standard names in the file system")
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
@@ -202,38 +163,12 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        result_files = cff_util.common_call_command_in_container(
-            docker_config,
-            r"postgres.*-c.*\s+config-file=([^\s]+)"
-        )
-        results = []
-        for result_file in result_files:
-            print(
-                f"{COLOR_CYAN}Found file "
-                f"{result_file.replace(path_to_file_system, '')}"
-                f"{COLOR_TERMINATION}"
-            )
-            results.append(self._create_temp_location_and_manifest_entry(
-                path_to_file_system,
-                os.path.basename(result_file),
-                os.path.join(path_to_file_system, result_file)
-            ))
-        empty_call_result = cff_util.common_call_command_in_container(
-            docker_config,
-            r"(postgres)"
-        )
-        if empty_call_result:
-            print(
-                f"{COLOR_CYAN}Found empty postgres call with no config parameter."
-                f" Assuming default values. {COLOR_TERMINATION}"
-            )
-            results.append(self.create_empty_file_for_default())
-        return results
+        return []
 
     def get_service_name(self) -> str:
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        return 'postgres'
+        return 'iis'
 
-ConfigFileFinder.register(ConfigFileFinderPostgres)
+ConfigFileFinder.register(ConfigFileFinderIis)
