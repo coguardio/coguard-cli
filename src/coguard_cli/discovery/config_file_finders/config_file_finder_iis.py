@@ -74,37 +74,6 @@ class ConfigFileFinderIis(ConfigFileFinder):
             temp_location
         )
 
-    def create_empty_file_for_default(self) -> Tuple[Dict, str]:
-        """
-        Helper function to create an empty file to check for default values.
-        """
-        temp_location = tempfile.mkdtemp(prefix="coguard-cli-iis")
-        with open(
-                os.path.join(
-                    temp_location,
-                    "ApplicationHost.config"
-                ),
-                'w',
-                encoding='utf-8') as empty_file:
-            empty_file.write("# Empty config file to represent defaults")
-        manifest_entry = {
-            "version": "1.0",
-            "serviceName": "iis",
-            "configFileList": [
-                {
-                    "fileName": "ApplicationHost.config",
-                    "defaultFileName": "ApplicationHost.config",
-                    "subPath": ".",
-                    "configFileType": "xml"
-                }
-            ],
-            "complimentaryFileList": []
-        }
-        return (
-            manifest_entry,
-            temp_location
-        )
-
     def check_for_config_files_in_standard_location(
             self, path_to_file_system: str
     ) -> Optional[Tuple[Dict, str]]:
