@@ -177,7 +177,7 @@ def send_zip_file_for_fixing(
                 "Content-Type": "application/octet-stream"
             },
             data=file_to_send.read(),
-            timeout=300)
+            timeout=1800)
         if resp_upload.status_code != 200:
             logging.debug("There was an issue uploading the zip file")
             logging.debug("Reason %s", resp_upload.reason)
