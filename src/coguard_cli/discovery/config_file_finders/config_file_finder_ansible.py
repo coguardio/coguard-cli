@@ -47,7 +47,7 @@ class ConfigFileFinderAnsible(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = [".*\\.ya?ml"]
+        standard_names = ["^.*\\.ya?ml$"]
         result_files = []
         logging.debug("Trying to find the file by searching"
                       " for the standard name in the filesystem.")
