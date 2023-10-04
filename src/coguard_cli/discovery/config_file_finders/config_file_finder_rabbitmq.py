@@ -3,7 +3,6 @@ This module contains the class to find Rabbitmq configurations
 inside a folder structure.
 """
 
-import json
 import os
 import shutil
 import tempfile
