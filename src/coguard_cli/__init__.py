@@ -22,6 +22,7 @@ from coguard_cli.discovery.cloud_discovery.cloud_provider_factory import cloud_p
 from coguard_cli.ci_cd.ci_cd_provider_factory import ci_cd_provider_factory
 from coguard_cli import auth
 from coguard_cli import api_connection
+from coguard_cli.cluster_rule_fail_util import is_ci_cd_there
 from coguard_cli.auth.token import Token
 from coguard_cli.print_colors import COLOR_TERMINATION, \
     COLOR_RED, COLOR_GRAY, COLOR_CYAN, COLOR_YELLOW
@@ -512,6 +513,7 @@ def perform_folder_scan(
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
         return
     additional_failed_rules = []
+    is_ci_cd_there(printed_folder_name, additional_failed_rules)
     _find_and_merge_included_docker_images(
         collected_config_file_tuple,
         auth_config,
