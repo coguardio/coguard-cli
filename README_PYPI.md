@@ -148,7 +148,7 @@ directly, or installed via `pip`:
 pip3 install coguard-cli
 ```
 
-This is a reminder that it is a requirement to have [Docker[(https://docker.com) installed locally.
+This is a reminder that it is a requirement to have [Docker](https://docker.com) installed locally.
 
 
 ### <a id="installation-remarks"></a>Installation remarks
