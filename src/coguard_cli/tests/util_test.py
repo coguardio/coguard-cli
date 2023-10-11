@@ -2,7 +2,6 @@
 Testing module for the util.py section
 """
 
-import json
 import unittest
 from coguard_cli import util
 
