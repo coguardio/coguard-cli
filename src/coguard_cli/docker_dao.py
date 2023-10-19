@@ -220,7 +220,7 @@ def extract_all_installed_docker_images() -> List[str]:
         return []
     return []
 
-def get_kubernetes_translation_from_helm(helm_dir: str) -> Optional[str]:
+def get_kubernetes_translation_from_helm(path_to_repo: str, helm_dir: str) -> Optional[str]:
     """
     Helper function to call HELM and translate the directory directives
     into kubernetes yamls. Returns the output of the command
@@ -228,7 +228,8 @@ def get_kubernetes_translation_from_helm(helm_dir: str) -> Optional[str]:
     """
     try:
         return subprocess.run(
-            f"docker run --rm -v \"{helm_dir}\":/opt/infra alpine/helm template /opt/infra/",
+            (f"docker run --rm -v \"{path_to_repo}\":/opt/infra "
+             f"alpine/helm template /opt/infra/{helm_dir} --dependency-update"),
             check=True,
             shell=True,
             capture_output=True,

@@ -8,6 +8,8 @@ import re
 import tempfile
 import logging
 from typing import Dict, List, Optional, Tuple
+import yaml
+from flatten_dict import unflatten
 import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
@@ -30,7 +32,8 @@ class ConfigFileFinderHelm(ConfigFileFinder):
                       path_to_file_system)
         temp_location = tempfile.mkdtemp(prefix="coguard-cli-helm")
         kubernetes_file_content = docker_dao.get_kubernetes_translation_from_helm(
-            os.path.dirname(helm_chart_file)
+            path_to_file_system,
+            os.path.dirname(os.path.relpath(helm_chart_file, path_to_file_system))
         )
         if not kubernetes_file_content:
             logging.error("Failed to extract helm template.")
@@ -77,6 +80,27 @@ class ConfigFileFinderHelm(ConfigFileFinder):
             temp_location
         )
 
+    def _is_library_type(self, helm_chart_file: str) -> bool:
+        """
+        Determines if the type of the chart is a library, which we cannot extract
+        right now.
+        """
+        try:
+            with open(helm_chart_file, 'r', encoding='utf-8') as file_stream:
+                config_res = yaml.safe_load_all(file_stream)
+                config = [] if config_res is None else [
+                    unflatten(config_part, splitter='dot') for config_part in config_res
+                ]
+                #pylint: disable=bare-except
+        except:
+            logging.debug(
+                "Failed to load %s",
+                helm_chart_file
+            )
+            return False
+        return config and any(config_instance and config_instance.get("type", "") == "library"
+                              for config_instance in config)
+
     def check_for_config_files_in_standard_location(
             self, path_to_file_system: str
     ) -> Optional[Tuple[Dict, str]]:
@@ -107,6 +131,8 @@ class ConfigFileFinderHelm(ConfigFileFinder):
                     if cff_util.does_config_yaml_contain_required_keys(
                         os.path.join(dir_path, file_name),
                         required_fields
+                    ) and not self._is_library_type(
+                        os.path.join(dir_path, file_name)
                     )]
                 if helm_filter:
                     mapped_file_names = [
