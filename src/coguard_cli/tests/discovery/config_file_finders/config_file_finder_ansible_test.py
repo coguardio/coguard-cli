@@ -134,8 +134,19 @@ class TestConfigFileFinderAnsible(unittest.TestCase):
         """
         with unittest.mock.patch(
                 'os.path.abspath',
-                new_callable=lambda: lambda location: "/foo/bar/tasks/main.yml"):
+                new_callable=lambda: lambda location: "/foo/bar/tasks/main.yml"), \
+                unittest.mock.patch(
+                    ('coguard_cli.discovery.config_file_finders.'
+                     'does_config_yaml_contain_required_keys'),
+                    new_callable=lambda: lambda location, lst: True):
             config_file_finder_ansible = ConfigFileFinderAnsible()
             self.assertTrue(config_file_finder_ansible.is_valid_ansible_file(
                 "foo.txt"
             ))
+
+    def test_is_cluster_service(self):
+        """
+        Testing the function to see if we can parse a tf file.
+        """
+        config_file_finder_ansible = ConfigFileFinderAnsible()
+        self.assertTrue(config_file_finder_ansible.is_cluster_service())

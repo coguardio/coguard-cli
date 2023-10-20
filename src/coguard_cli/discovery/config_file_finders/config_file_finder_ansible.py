@@ -38,7 +38,11 @@ class ConfigFileFinderAnsible(ConfigFileFinder):
             "meta"
         ]
         super_folder = os.path.basename(os.path.dirname(os.path.abspath(file_path)))
-        return super_folder in valid_super_folders
+        return super_folder in valid_super_folders and \
+            cff_util.does_config_yaml_contain_required_keys(
+                file_path,
+                []
+            ) # Just checking if it opens
 
     def check_for_config_files_filesystem_search(
             self,
