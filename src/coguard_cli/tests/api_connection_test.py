@@ -137,7 +137,7 @@ class TestApiConnection(unittest.TestCase):
                 ), \
                 unittest.mock.patch(
                     'coguard_cli.api_connection.get_latest_report',
-                    new_callable=lambda: lambda a, b, c, d: None
+                    new_callable=lambda: lambda a, b, c, d, e: None
                 ):
             self.assertIsNone(api_connection.send_zip_file_for_scanning(
                 "foo",
@@ -175,7 +175,7 @@ class TestApiConnection(unittest.TestCase):
                 ), \
                 unittest.mock.patch(
                     'coguard_cli.api_connection.get_latest_report',
-                    new_callable=lambda: lambda a, b, c, d: "BOOO"
+                    new_callable=lambda: lambda a, b, c, d, e: "BOOO"
                 ), \
                 unittest.mock.patch(
                     'requests.get',
@@ -386,7 +386,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
-                "organization"
+                "organization",
+                "username"
             )
             self.assertIsNone(result)
 
@@ -406,7 +407,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
-                "organization"
+                "organization",
+                "username"
             )
             self.assertIsNone(result)
 
@@ -427,7 +429,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
-                "organization"
+                "organization",
+                "username"
             )
             self.assertEqual(result, mock_result)
 
@@ -446,7 +449,8 @@ class TestApiConnection(unittest.TestCase):
                     return_value = lambda: "token"),
                 "https://portal.coguard.io",
                 "scan_identifier",
-                "organization"
+                "organization",
+                "username"
             )
             self.assertIsNone(result)
 

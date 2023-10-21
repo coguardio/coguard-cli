@@ -169,6 +169,7 @@ class SubParserNames(Enum):
     FOLDER_SCAN = "folder"
     CLOUD_SCAN = "cloud"
     CI_CD_GEN = "pipeline"
+    ACCOUNT = "account"
     SCAN = "scan"
 
 def auth_token_retrieval(
@@ -693,6 +694,110 @@ def dry_run_outp(zip_candidate: Tuple[str, Dict]):
           f"in the following location: {zip_location}")
 
 
+def docker_image_scan_handler(
+        args,
+        auth_config,
+        deal_type,
+        token,
+        organization,
+        ruleset
+):
+    """
+    The helper function for `entrypoint` for the docker image scan.
+    """
+    if args.image_name:
+        docker_image = args.image_name
+    elif args.scan:
+        # A small hack to keep scan an optional argument.
+        docker_image = args.scan
+    else:
+        docker_image = None
+    perform_docker_image_scan(
+        docker_image,
+        auth_config,
+        deal_type,
+        token,
+        organization,
+        args.coguard_api_url,
+        args.output_format,
+        args.fail_level,
+        ruleset,
+        args.dry_run
+    )
+
+def folder_scan_handler(
+        args,
+        auth_config,
+        deal_type,
+        token,
+        organization,
+        ruleset
+):
+    """
+    The helper function for `entrypoint` for the folder scan.
+    """
+    folder_name = args.folder_name or \
+        args.scan or \
+        None # args.scan is a trick to
+    # think there is a positional argument
+    if folder_name is not None:
+        folder_name = os.path.abspath(folder_name)
+    if args.fix_flag:
+        perform_folder_fix(
+            folder_name,
+            deal_type,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.dry_run
+        )
+    else:
+        perform_folder_scan(
+            folder_name,
+            deal_type,
+            auth_config,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.output_format,
+            args.fail_level,
+            ruleset,
+            args.dry_run
+        )
+
+def handle_account_action(args, token, username, organization):
+    """
+    The helper function for `entrypoint` to handle account actions.
+    """
+    if args.account_action == 'download-cluster-report':
+        if not args.cluster_name:
+            print(f"{COLOR_RED}No cluster name provided.{COLOR_TERMINATION}")
+            return
+        latest_report = api_connection.get_latest_report(
+            token,
+            args.coguard_api_url,
+            args.cluster_name,
+            organization,
+            username
+        )
+        if not latest_report:
+            print(
+                f"{COLOR_RED}Could not retrieve latest report for "
+                f"cluster {args.cluster_name}.{COLOR_TERMINATION}"
+            )
+            return
+        api_connection.download_latest_report(
+            token,
+            args.coguard_api_url,
+            organization,
+            username,
+            args.cluster_name,
+            latest_report,
+            args.download_location
+        )
+    else:
+        print(f"{COLOR_RED}No valid account action provided.{COLOR_TERMINATION}")
+
 #pylint: disable=too-many-branches
 def entrypoint(args):
     """
@@ -742,54 +847,23 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
               f"subscriptions {COLOR_TERMINATION}")
         return
     if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:
-        if args.image_name:
-            docker_image = args.image_name
-        elif args.scan:
-            # A small hack to keep scan an optional argument.
-            docker_image = args.scan
-        else:
-            docker_image = None
-        perform_docker_image_scan(
-            docker_image,
+        docker_image_scan_handler(
+            args,
             auth_config,
             deal_type,
             token,
             organization,
-            args.coguard_api_url,
-            args.output_format,
-            args.fail_level,
-            ruleset,
-            args.dry_run
+            ruleset
         )
     elif args.subparsers_location == SubParserNames.FOLDER_SCAN.value:
-        folder_name = args.folder_name or \
-            args.scan or \
-            None # args.scan is a trick to
-                 # think there is a positional argument
-        if folder_name is not None:
-            folder_name = os.path.abspath(folder_name)
-        if args.fix_flag:
-            perform_folder_fix(
-                folder_name,
-                deal_type,
-                token,
-                organization,
-                args.coguard_api_url,
-                args.dry_run
-            )
-        else:
-            perform_folder_scan(
-                folder_name,
-                deal_type,
-                auth_config,
-                token,
-                organization,
-                args.coguard_api_url,
-                args.output_format,
-                args.fail_level,
-                ruleset,
-                args.dry_run
-            )
+        folder_scan_handler(
+            args,
+            auth_config,
+            deal_type,
+            token,
+            organization,
+            ruleset
+        )
     elif args.subparsers_location == SubParserNames.CLOUD_SCAN.value:
         cloud_provider_name = args.cloud_provider_name or args.scan or None
         # args.scan is a trick to
@@ -818,6 +892,13 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             ci_cd_provider,
             ci_cd_command,
             repository_folder
+        )
+    elif args.subparsers_location == SubParserNames.ACCOUNT.value:
+        handle_account_action(
+            args,
+            token,
+            auth_config.get_username(),
+            organization
         )
     elif args.subparsers_location == SubParserNames.SCAN.value:
         perform_docker_image_scan(
