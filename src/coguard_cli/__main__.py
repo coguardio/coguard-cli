@@ -215,6 +215,34 @@ def main():
         nargs='?',
         help=("The action you would like to take.")
     )
+    account_parser = subparsers.add_parser(
+        SubParserNames.ACCOUNT.value,
+        help="The sub-command to obtain account information."
+    )
+    account_parser.add_argument(
+        'account_action',
+        metavar="account_action",
+        default="download-cluster-report",
+        choices=["download-cluster-report"],
+        type=str,
+        nargs='?',
+        help=("The account action you would like to perform.")
+    )
+    account_parser.add_argument(
+        'cluster_name',
+        metavar="cluster_name",
+        type=str,
+        nargs='?',
+        help=("The cluster name.")
+    )
+    account_parser.add_argument(
+        'download_location',
+        metavar="download_location",
+        type=str,
+        default='',
+        nargs='?',
+        help=("The download location.")
+    )
     subparsers.add_parser(
         SubParserNames.SCAN.value,
         help="The sub-command to scan everything, using default parameters.",

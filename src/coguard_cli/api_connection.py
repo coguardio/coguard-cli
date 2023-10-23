@@ -42,21 +42,35 @@ def get_latest_report(
         auth_token: Token,
         coguard_api_url: str,
         scan_identifier: str,
-        organization: str) -> Optional[str]:
+        organization: Optional[str],
+        username: str
+    ) -> Optional[str]:
     """
     Helper function to get the latest report for a specific cluster.
     Returns None if the latest report did not exist.
     """
-    resp = requests.get(
-        (f"{coguard_api_url}/cluster/reports/list?"
-         f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
-         f"organizationName={organization}"),
-         headers={
-            "Authorization": f'Bearer {auth_token.get_token()}',
-            "Content-Type": "application/json"
-        },
-        timeout=300
-    )
+    if organization:
+        resp = requests.get(
+            (f"{coguard_api_url}/cluster/reports/list?"
+             f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
+             f"organizationName={organization}"),
+             headers={
+                "Authorization": f'Bearer {auth_token.get_token()}',
+                "Content-Type": "application/json"
+            },
+            timeout=300
+        )
+    else:
+        resp = requests.get(
+            (f"{coguard_api_url}/coguard-cli/reports/list?"
+             f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
+             f"userName={username}"),
+             headers={
+                "Authorization": f'Bearer {auth_token.get_token()}',
+                "Content-Type": "application/json"
+            },
+            timeout=300
+        )
     if resp.status_code != 200:
         logging.error("Could not retrieve the latest report for cluster %s",
                       scan_identifier)
@@ -117,7 +131,8 @@ def send_zip_file_for_scanning(
                 auth_token,
                 coguard_api_url,
                 scan_identifier,
-                organization
+                organization,
+                user_name
             )
             logging.debug("The latest report is %s", latest_report)
             if not latest_report:
@@ -293,6 +308,58 @@ def get_fixable_rule_list(
         logging.debug("Reason %s", resp.reason)
         return []
     return resp.json()
+
+def download_report(
+        token,
+        coguard_api_url,
+        organization,
+        username,
+        cluster_name,
+        report_name,
+        location = ''
+):
+    """
+    The call to download the latest report from the server.
+    """
+    location_act = f"{cluster_name}_{report_name}_report.zip" if not location else location
+    if organization:
+        with requests.get(
+                (
+                    f"{coguard_api_url}/cluster/report-audit-zip?organizationName={organization}&"
+                    f"clusterName={cluster_name}&reportName={report_name}"
+                ),
+                headers={
+                    "Authorization": f'Bearer {token.get_token()}'
+                },
+                timeout=300,
+                stream=True
+        ) as request_stream:
+            request_stream.raise_for_status()
+            with open(
+                    location_act,
+                    'wb'
+            ) as write_stream:
+                for chunk in request_stream.iter_content(chunk_size=8192):
+                    write_stream.write(chunk)
+    else:
+        with requests.get(
+                (
+                    f"{coguard_api_url}/coguard-cli/report-audit-zip?userName={username}&"
+                    f"clusterName={cluster_name}&reportName={report_name}"
+                ),
+                headers={
+                    "Authorization": f'Bearer {token.get_token()}'
+                },
+                timeout=300,
+                stream=True
+        ) as request_stream:
+            request_stream.raise_for_status()
+            with open(
+                    location_act,
+                    'wb'
+            ) as write_stream:
+                for chunk in request_stream.iter_content(chunk_size=8192):
+                    write_stream.write(chunk)
 
 def log(message: str, coguard_api_url: str):
     """
