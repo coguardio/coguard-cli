@@ -309,7 +309,7 @@ def get_fixable_rule_list(
         return []
     return resp.json()
 
-def download_latest_report(
+def download_report(
         token,
         coguard_api_url,
         organization,

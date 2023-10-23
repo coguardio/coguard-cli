@@ -434,26 +434,6 @@ class TestApiConnection(unittest.TestCase):
             )
             self.assertEqual(result, mock_result)
 
-    def test_get_latest_report_bad_response(self):
-        """
-        Checks the retrieval of the latest report with bad response.
-        """
-        mock_response = unittest.mock.Mock(
-            status_code = 420
-        )
-        with unittest.mock.patch(
-                'requests.get',
-                new_callable=lambda: lambda url, headers, timeout: mock_response):
-            result = api_connection.get_latest_report(
-                unittest.mock.Mock(
-                    return_value = lambda: "token"),
-                "https://portal.coguard.io",
-                "scan_identifier",
-                "organization",
-                "username"
-            )
-            self.assertIsNone(result)
-
     def test_get_fixable_rule_list_bad_response_ogranization(self):
         """
         Checks the retrieval of the latest report with bad response.
@@ -562,4 +542,99 @@ class TestApiConnection(unittest.TestCase):
             api_connection.log(
                 "foo",
                 "https://portal.coguard.io"
+            )
+
+    def test_download_report_report_bad_response(self):
+        """
+        Checks the retrieval of the latest report with bad response.
+        """
+        def mock_raise():
+            raise Exception("foo")
+        mock_response = unittest.mock.Mock(
+            status_code = 420,
+            raise_for_status = lambda: None,
+            __enter__ = lambda x: unittest.mock.Mock(
+                raise_for_status = mock_raise(),
+                iter_content = lambda chunk_size: ["foo"]
+            ),
+            __exit__ = lambda w, x, y, z: None
+        )
+        with unittest.mock.patch(
+                'requests.get',
+                new_callable=lambda: lambda url, headers, timeout: mock_response):
+            with self.assertRaises(Exception):
+                api_connection.download_report(
+                    unittest.mock.Mock(
+                        return_value = lambda: "token"
+                    ),
+                    "https://portal.coguard.io",
+                    "organization",
+                    "username",
+                    "scan_identifier",
+                    "cluster_name",
+                    "report_name"
+                )
+
+    def test_download_report_good_response_organization(self):
+        """
+        Checks the retrieval of the latest report with bad response.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 200,
+            json = lambda: [],
+            raise_for_status = lambda: None,
+            __enter__ = lambda x: unittest.mock.Mock(
+                raise_for_status = lambda: None,
+                iter_content = lambda chunk_size: ["foo"]
+            ),
+            __exit__ = lambda w, x, y, z: None
+        )
+        with unittest.mock.patch(
+                'requests.get',
+                new_callable=lambda: lambda url, headers, timeout, stream: mock_response), \
+                unittest.mock.patch(
+                    'builtins.open',
+                    unittest.mock.mock_open()):
+            api_connection.download_report(
+                unittest.mock.Mock(
+                    return_value = lambda: "token"
+                ),
+                "https://portal.coguard.io",
+                "organization",
+                "username",
+                "scan_identifier",
+                "cluster_name",
+                "report_name"
+            )
+
+    def test_download_report_good_response_user(self):
+        """
+        Checks the retrieval of the latest report with bad response.
+        """
+        mock_response = unittest.mock.Mock(
+            status_code = 200,
+            json = lambda: [],
+            raise_for_status = lambda: None,
+            __enter__ = lambda x: unittest.mock.Mock(
+                raise_for_status = lambda: None,
+                iter_content = lambda chunk_size: ["foo"]
+            ),
+            __exit__ = lambda w, x, y, z: None
+        )
+        with unittest.mock.patch(
+                'requests.get',
+                new_callable=lambda: lambda url, headers, timeout, stream: mock_response), \
+                unittest.mock.patch(
+                    'builtins.open',
+                    unittest.mock.mock_open()):
+            api_connection.download_report(
+                unittest.mock.Mock(
+                    return_value = lambda: "token"
+                ),
+                "https://portal.coguard.io",
+                None,
+                "username",
+                "scan_identifier",
+                "cluster_name",
+                "report_name"
             )

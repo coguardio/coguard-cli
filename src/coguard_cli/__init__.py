@@ -786,7 +786,7 @@ def handle_account_action(args, token, username, organization):
                 f"cluster {args.cluster_name}.{COLOR_TERMINATION}"
             )
             return
-        api_connection.download_latest_report(
+        api_connection.download_report(
             token,
             args.coguard_api_url,
             organization,
