@@ -11,6 +11,7 @@ import tempfile
 from typing import Optional, Dict, List, Tuple
 import yaml
 from flatten_dict import unflatten
+from coguard_cli.util import convert_string_to_posix_path
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
 
 def get_path_behind_symlinks(
@@ -514,7 +515,7 @@ def create_grouped_temp_locations_and_manifest_entries(
                 {
                     "fileName": os.path.basename(location_on_current_machine),
                     "defaultFileName": default_file_name,
-                    "subPath": f".{os.sep}{loc_within_machine}",
+                    "subPath": f"./{convert_string_to_posix_path(loc_within_machine)}",
                     "configFileType": config_file_type
                 }
             )
@@ -570,7 +571,7 @@ def create_temp_location_and_manifest_entry(
             {
                 "fileName": file_name,
                 "defaultFileName": default_file_name,
-                "subPath": f".{os.sep}{loc_within_machine}",
+                "subPath": f"./{convert_string_to_posix_path(loc_within_machine)}",
                 "configFileType": config_file_type
             }
         ],

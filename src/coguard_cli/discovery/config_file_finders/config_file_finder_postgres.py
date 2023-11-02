@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Tuple
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
+from coguard_cli.util import convert_string_to_posix_path
 
 class ConfigFileFinderPostgres(ConfigFileFinder):
     """
@@ -63,7 +64,7 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
                 {
                     "fileName": file_name,
                     "defaultFileName": file_name,
-                    "subPath": f".{os.sep}{loc_within_machine}",
+                    "subPath": f"./{convert_string_to_posix_path(loc_within_machine)}",
                     "configFileType": "properties" if file_name == "postgresql.conf" else "pg_hba"
                 }
             ],

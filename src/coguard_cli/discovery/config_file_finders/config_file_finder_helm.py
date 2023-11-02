@@ -69,7 +69,7 @@ class ConfigFileFinderHelm(ConfigFileFinder):
                 {
                     "fileName": file_name,
                     "defaultFileName": "kube-deployment.yaml",
-                    "subPath": f".{os.sep}{loc_within_machine}",
+                    "subPath": f"./{loc_within_machine}",
                     "configFileType": "yaml"
                 }
             ],
@@ -113,7 +113,7 @@ class ConfigFileFinderHelm(ConfigFileFinder):
         """
         Helper function to find Helm charts.
         """
-        standard_names = ["Chart.ya?ml"]
+        standard_names = ["^Chart\\.ya?ml$"]
         result_files = []
         logging.debug("Trying to find the file by searching"
                       " for the standard name in the filesystem.")

@@ -6,6 +6,7 @@ import os
 import json
 import logging
 import re
+import pathlib
 from enum import Enum
 
 import shutil
@@ -47,7 +48,7 @@ def create_service_identifier(prefix: str,
         sub_path_list = []
     else:
         sub_path_list = [entry["subPath"] for entry in service_instance["configFileList"]]
-    common_prefix=os.path.commonpath(sub_path_list).strip(f".{os.sep}").replace(os.sep, "_") \
+    common_prefix=os.path.commonpath(sub_path_list).strip(f"./").replace("/", "_") \
         if len(sub_path_list) >= 2 else ""
     if common_prefix:
         logging.debug("There was a common prefix: %s",
@@ -149,3 +150,17 @@ def merge_coguard_infrastructure_description_folders(
     logging.debug("The new manifest looks like: %s", result_manifest)
     with open(os.path.join(result_folder, "manifest.json"), 'w', encoding='utf-8') as manifest_file:
         json.dump(result_manifest, manifest_file)
+
+def convert_string_to_posix_path(input_str: str) -> str:
+    """
+    This function has the goal to ensure that any input path is converted to Linux style.
+    This is important, since the manifest file for the CoGuard engine expects Posix-paths.
+    """
+    return "/".join(pathlib.Path(input_str).parts)
+
+def convert_posix_path_to_os_path(input_str: str) -> str:
+    """
+    This function takes in a string in posix-path format and converts it into whatever the
+    current path separator is.
+    """
+    return os.sep.join(pathlib.PurePosixPath(input_str).parts)

@@ -26,6 +26,7 @@ from coguard_cli.cluster_rule_fail_util import is_ci_cd_there
 from coguard_cli.auth.token import Token
 from coguard_cli.print_colors import COLOR_TERMINATION, \
     COLOR_RED, COLOR_GRAY, COLOR_CYAN, COLOR_YELLOW
+from coguard_cli.util import convert_posix_path_to_os_path
 
 def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
     """
@@ -39,7 +40,10 @@ def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
         if entry_dict.get("service") in services_dict:
             config_file_list_of_container = \
                 [
-                    os.path.join(entry["subPath"], entry["fileName"]) + \
+                    os.path.join(
+                        convert_posix_path_to_os_path(entry["subPath"]),
+                        entry["fileName"]
+                    ) + \
                     " for service " + entry_dict.get("service")
                     for entry in services_dict.get(
                             entry_dict.get("service")
@@ -54,7 +58,10 @@ def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
         if entry_dict.get("service") in services_dict:
             config_file_list_of_container = \
                 [
-                    os.path.join(entry["subPath"], entry["fileName"]) + \
+                    os.path.join(
+                        convert_posix_path_to_os_path(entry["subPath"]),
+                        entry["fileName"]
+                    ) + \
                     " for service " + entry_dict.get("service")
                     for entry in services_dict.get(
                             entry_dict.get("service")
@@ -290,11 +297,11 @@ def apply_fixes_to_folder(fix_folder: str, target_folder: str, zip_manifest: Dic
                 (
                     os.path.join(
                         pth,
-                        config_file.get("subPath"),
+                        convert_posix_path_to_os_path(config_file.get("subPath")),
                         config_file.get("fileName")
                     ),
                     os.path.join(
-                        config_file.get("subPath"),
+                        convert_posix_path_to_os_path(config_file.get("subPath")),
                         config_file.get("fileName")
                     )
                 )
@@ -304,11 +311,11 @@ def apply_fixes_to_folder(fix_folder: str, target_folder: str, zip_manifest: Dic
                 (
                     os.path.join(
                         pth,
-                        config_file.get("subPath"),
+                        convert_posix_path_to_os_path(config_file.get("subPath")),
                         config_file.get("fileName")
                     ),
                     os.path.join(
-                        config_file.get("subPath"),
+                        convert_posix_path_to_os_path(config_file.get("subPath")),
                         config_file.get("fileName")
                     )
                 )
