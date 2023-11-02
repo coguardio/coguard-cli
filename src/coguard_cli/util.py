@@ -48,7 +48,7 @@ def create_service_identifier(prefix: str,
         sub_path_list = []
     else:
         sub_path_list = [entry["subPath"] for entry in service_instance["configFileList"]]
-    common_prefix=os.path.commonpath(sub_path_list).strip(f"./").replace("/", "_") \
+    common_prefix=os.path.commonpath(sub_path_list).strip("./").replace("/", "_") \
         if len(sub_path_list) >= 2 else ""
     if common_prefix:
         logging.debug("There was a common prefix: %s",
