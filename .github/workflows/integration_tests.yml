@@ -1,9 +1,3 @@
-on:
-  pull_request:
-    branches:
-      - master
-    push:
-
 jobs:
   run-integrations-tests:
     runs-on: ubuntu-latest
