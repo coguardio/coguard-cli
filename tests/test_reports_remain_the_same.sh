@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -x
 
 test -n "$COGUARD_USER_NAME"
 test -n "$COGUARD_PASSWORD"
