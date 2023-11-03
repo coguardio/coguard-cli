@@ -31,7 +31,7 @@ class ConfigFileFinderKubernetes(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = [".*\\.ya?ml"]
+        standard_names = ["^.*\\.ya?ml$"]
         result_files = []
         required_fields = [
             "apiVersion",

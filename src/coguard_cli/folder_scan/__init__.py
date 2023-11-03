@@ -14,7 +14,8 @@ from flatten_dict import unflatten
 
 import coguard_cli.discovery.config_file_finder_factory as factory
 from coguard_cli.util import replace_special_chars_with_underscore, \
-    create_service_identifier
+    create_service_identifier, \
+    convert_posix_path_to_os_path
 
 # pylint: disable=too-many-locals
 def find_configuration_files_and_collect(
@@ -195,7 +196,7 @@ def extract_included_docker_images(
             machine_name,
             service_name),
          os.path.join(
-            config_file["subPath"],
+            convert_posix_path_to_os_path(config_file["subPath"]),
             config_file["fileName"]
          )) for machine_name, machine_dict in collected_manifest.get("machines", {}).items()
         for service_name, service_dict in machine_dict.get("services", {}).items()
@@ -209,7 +210,7 @@ def extract_included_docker_images(
             service_name
         ),
          os.path.join(
-            config_file["subPath"],
+            convert_posix_path_to_os_path(config_file["subPath"]),
             config_file["fileName"]
          ))
         for service_name, service_dict in collected_manifest.get("clusterServices", {}).items()

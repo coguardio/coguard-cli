@@ -1,0 +1,21 @@
+on:
+  workflow_dispatch:
+
+jobs:
+  run-integrations-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip3 install pytest coverage
+      - run: pip3 install -r requirements.txt
+      - run: pip3 install coguard-cli
+      - env:
+          COGUARD_USER_NAME: ${{secrets.CoGuardTestUserName}}
+          COGUARD_PASSWORD: ${{secrets.CoGuardTestPassword}}
+        run: make integration-test
