@@ -15,6 +15,7 @@ test_image_checksum() {
     IMAGE_NAME="$1";
     EXPECTED_CHECKSUM="$2"
     ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth docker-image "$IMAGE_NAME") | sed 1,18d | tee "$TEMP_DIR/$IMAGE_NAME" | sort | shasum | awk '{print $1}' );
+    cat "$TEMP_DIR/$IMAGE_NAME"
     test "$ACTUAL_CHECKSUM" = "$EXPECTED_CHECKSUM"
     rm -rf "${TEMP_DIR:-?}/$IMAGE_NAME"
 }
@@ -26,6 +27,7 @@ test_folder_checksum() {
     git clone "$GIT_REPO" "$TEMP_DIR"/tmp_repo_dir;
     git -C "$TEMP_DIR"/tmp_repo_dir checkout "$GIT_HASH";
     ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/tmp_repo_dir) | sed 1,18d | tee "$TEMP_DIR/folder_check.txt" | sort | shasum | awk '{print $1}' );
+    cat "$TEMP_DIR/folder_check.txt";
     test "$ACTUAL_CHECKSUM" = "$EXPECTED_CHECKSUM";
     rm -rf "${TEMP_DIR:-?}/tmp_repo_dir";
 }
