@@ -2,8 +2,7 @@
 
 set -ex
 
-# The following line is needed so that the output width remains the same
-echo "$COLUMNS"
+python3 -c "import os; print(os.get_terminal_size().columns)"
 
 test -n "$COGUARD_USER_NAME"
 test -n "$COGUARD_PASSWORD"
