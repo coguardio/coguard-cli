@@ -3,7 +3,7 @@
 set -ex
 
 # The following line is needed so that the output width remains the same
-stty cols 100
+echo "$COLUMNS"
 
 test -n "$COGUARD_USER_NAME"
 test -n "$COGUARD_PASSWORD"
