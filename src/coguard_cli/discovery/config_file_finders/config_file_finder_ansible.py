@@ -53,18 +53,22 @@ class ConfigFileFinderAnsible(ConfigFileFinder):
         """
         standard_names = ["^.*\\.ya?ml$"]
         result_files = []
-        logging.debug("Trying to find the file by searching"
+        logging.debug("Trying to find the ansible file by searching"
                       " for the standard name in the filesystem.")
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
             for standard_name in standard_names:
                 matching_file_names = [file_name for file_name in file_names
                                        if re.match(standard_name, file_name)]
+                logging.debug("Initial set of matching ansible files: %s",
+                              matching_file_names)
                 ansible_filter = [
                     file_name for file_name in matching_file_names
                     if self.is_valid_ansible_file(
                             os.path.join(dir_path, file_name)
                     )
                 ]
+                logging.debug("Set after filter: %s",
+                              ansible_filter)
                 if ansible_filter:
                     mapped_file_names = [
                         os.path.join(dir_path, file_name)

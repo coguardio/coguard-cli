@@ -592,7 +592,11 @@ def does_config_yaml_contain_required_keys(file_path: str, required_fields: List
         with open(file_path, 'r', encoding='utf-8') as file_stream:
             config_res = yaml.safe_load_all(file_stream)
             config = [] if config_res is None else [
-                unflatten(config_part, splitter='dot') for config_part in config_res
+                (unflatten(config_part, splitter='dot')
+                 if not isinstance(config_part, list)
+                 else config_part)
+                for config_part in config_res
+                if config_part is not None
             ]
     #pylint: disable=bare-except
     except:
