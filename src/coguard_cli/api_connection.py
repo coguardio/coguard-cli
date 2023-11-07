@@ -7,6 +7,7 @@ import logging
 import tempfile
 import os
 from typing import Dict, Optional
+import urllib.parse
 import requests
 
 from coguard_cli.auth.token import Token
@@ -24,9 +25,11 @@ def run_report(
     The output is whether the report run was successful or not.
     """
     resp = requests.put(
-        (f"{coguard_api_url}/cluster/run-report/"
-         f"{replace_special_chars_with_underscore(scan_identifier)}?"
-         f"organizationName={organization}"),
+        urllib.parse.quote_plus(
+            f"{coguard_api_url}/cluster/run-report/"
+            f"{replace_special_chars_with_underscore(scan_identifier)}?"
+            f"organizationName={organization}"
+        ),
         headers={
             "Authorization": f'Bearer {auth_token.get_token()}',
             "Content-Type": "application/json"
@@ -51,10 +54,12 @@ def get_latest_report(
     """
     if organization:
         resp = requests.get(
-            (f"{coguard_api_url}/cluster/reports/list?"
-             f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
-             f"organizationName={organization}"),
-             headers={
+            urllib.parse.quote_plus(
+                f"{coguard_api_url}/cluster/reports/list?"
+                f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
+                f"organizationName={organization}"
+            ),
+            headers={
                 "Authorization": f'Bearer {auth_token.get_token()}',
                 "Content-Type": "application/json"
             },
@@ -62,10 +67,12 @@ def get_latest_report(
         )
     else:
         resp = requests.get(
-            (f"{coguard_api_url}/coguard-cli/reports/list?"
-             f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
-             f"userName={username}"),
-             headers={
+            urllib.parse.quote_plus(
+                 f"{coguard_api_url}/coguard-cli/reports/list?"
+                 f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
+                 f"userName={username}"
+            ),
+            headers={
                 "Authorization": f'Bearer {auth_token.get_token()}',
                 "Content-Type": "application/json"
             },
@@ -105,9 +112,11 @@ def send_zip_file_for_scanning(
     with open(zip_file, 'rb') as file_to_send:
         if organization:
             resp_upload = requests.post(
-                (f"{coguard_api_url}/cluster/"
-                 f"upload-cluster-zip?organizationName={organization}&"
-                 f"overwrite=true&compliance={ruleset}"),
+                urllib.parse.quote_plus(
+                    f"{coguard_api_url}/cluster/"
+                    f"upload-cluster-zip?organizationName={organization}&"
+                    f"overwrite=true&compliance={ruleset}"
+                ),
                 headers={
                     "Authorization": f'Bearer {auth_token.get_token()}',
                     "Content-Type": "application/octet-stream"
@@ -138,10 +147,12 @@ def send_zip_file_for_scanning(
             if not latest_report:
                 return None
             resp = requests.get(
-                (f"{coguard_api_url}/cluster/report?"
-                 f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
-                 f"organizationName={organization}&"
-                 f"reportName={latest_report}"),
+                urllib.parse.quote_plus(
+                    f"{coguard_api_url}/cluster/report?"
+                    f"clusterName={replace_special_chars_with_underscore(scan_identifier)}&"
+                    f"organizationName={organization}&"
+                    f"reportName={latest_report}"
+                ),
                 headers={
                     "Authorization": f'Bearer {auth_token.get_token()}',
                     "Content-Type": "application/json"
@@ -150,8 +161,10 @@ def send_zip_file_for_scanning(
             )
         else:
             resp = requests.post(
-                (f"{coguard_api_url}/coguard-cli/"
-                 f"upload-cluster-zip?userName={user_name}&compliance={ruleset}"),
+                urllib.parse.quote_plus(
+                    f"{coguard_api_url}/coguard-cli/"
+                    f"upload-cluster-zip?userName={user_name}&compliance={ruleset}"
+                ),
                 headers={
                     "Authorization": f'Bearer {auth_token.get_token()}',
                     "Content-Type": "application/octet-stream"
@@ -185,8 +198,10 @@ def send_zip_file_for_fixing(
     """
     with open(zip_file, 'rb') as file_to_send:
         resp_upload = requests.post(
-            (f"{coguard_api_url}/cluster/"
-             f"fix-cluster-zip?organizationName={organization}"),
+            urllib.parse.quote_plus(
+                f"{coguard_api_url}/cluster/"
+                f"fix-cluster-zip?organizationName={organization}"
+            ),
             headers={
                 "Authorization": f'Bearer {auth_token.get_token()}',
                 "Content-Type": "application/octet-stream"
@@ -222,8 +237,9 @@ def does_user_with_email_already_exist(
     :param coguard_url: The url to contact the coguard API.
     :returns: Either None, or a boolean which is True if the user exists.
     """
-    resp = requests.get(f"{coguard_url}/registration/does-user-exist?userName={user_name}",
-                        timeout=300)
+    resp = requests.get(
+        urllib.parse.quote_plus(f"{coguard_url}/registration/does-user-exist?userName={user_name}"),
+        timeout=300)
     if resp.status_code != 200:
         logging.error("There was an error checking for the existence of a certain user: %s",
                       resp.reason)
@@ -244,7 +260,9 @@ def sign_up_for_coguard(
               the sign-up was successful.
     """
     resp = requests.post(
-        f"{coguard_url}/registration/register-user",
+        urllib.parse.quote_plus(
+            f"{coguard_url}/registration/register-user")
+        ,
         headers={"content-type": "application/json"},
         json={"userName": user_name, "password": password},
         timeout=300
@@ -267,7 +285,7 @@ def mention_referrer(
     :param coguard_url: The url of coguard to send the request to.
     """
     resp = requests.post(
-        f"{coguard_url}/registration/referrer-capture",
+        urllib.parse.quote_plus(f"{coguard_url}/registration/referrer-capture"),
         headers={"content-type": "application/json"},
         json={"userName": user_name, "referrer": referrer},
         timeout=300
@@ -285,7 +303,9 @@ def get_fixable_rule_list(
     """
     if organization:
         resp = requests.get(
-            f"{coguard_api_url}/cluster/get-fixable-list?organizationName={organization}",
+            urllib.parse.quote_plus(
+                f"{coguard_api_url}/cluster/get-fixable-list?organizationName={organization}"
+            ),
             headers={
                 "Authorization": f'Bearer {token.get_token()}'
             },
@@ -297,7 +317,9 @@ def get_fixable_rule_list(
             return []
         return resp.json()
     resp = requests.get(
-        f"{coguard_api_url}/coguard-cli/get-fixable-list?userName={user_name}",
+        urllib.parse.quote_plus(
+            f"{coguard_api_url}/coguard-cli/get-fixable-list?userName={user_name}"
+        ),
         headers={
             "Authorization": f'Bearer {token.get_token()}'
         },
@@ -324,7 +346,7 @@ def download_report(
     location_act = f"{cluster_name}_{report_name}_report.zip" if not location else location
     if organization:
         with requests.get(
-                (
+                urllib.parse.quote_plus(
                     f"{coguard_api_url}/cluster/report-audit-zip?organizationName={organization}&"
                     f"clusterName={cluster_name}&reportName={report_name}"
                 ),
@@ -343,7 +365,7 @@ def download_report(
                     write_stream.write(chunk)
     else:
         with requests.get(
-                (
+                urllib.parse.quote_plus(
                     f"{coguard_api_url}/coguard-cli/report-audit-zip?userName={username}&"
                     f"clusterName={cluster_name}&reportName={report_name}"
                 ),
@@ -366,7 +388,7 @@ def log(message: str, coguard_api_url: str):
     The call to the endpoint to determine a list of fixable rule identifiers.
     """
     resp = requests.post(
-        f"{coguard_api_url}/logging/log-message",
+        urllib.parse.quote_plus(f"{coguard_api_url}/logging/log-message"),
         headers={"content-type": "application/json"},
         json={"message": message},
         timeout=300
