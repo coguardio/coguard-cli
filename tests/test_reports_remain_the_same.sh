@@ -57,7 +57,7 @@ docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Git repository tests
 
-test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 015b6f8d3d1379610e7a129bf3592360a2952035
+test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 16bfa56d3d0be82e3bf127a703a3016096953dae
 test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 1ef86db5f550aa30dcddad32054ccac16a7af11f
 test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 427bfd7730daba621a96de38b5d589898021bad4
 test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 300630fe4876200aeaaf185dd25c24f170f7bc3f
