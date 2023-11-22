@@ -12,7 +12,7 @@ unit-test:
 
 integration-test:
 # Consistency test with older versions
-	./tests/test_reports_remain_the_same.sh
+	./tests/test_reports_remain_the_same.sh ${IS_TEST}
 
 lint:
 	find src -type f -name "*.py" -not -path "*/tests/*" | xargs pylint --rcfile="./.pylint.rc"

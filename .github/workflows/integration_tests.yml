@@ -23,4 +23,4 @@ jobs:
       - env:
           COGUARD_USER_NAME: ${{secrets.CoGuardTestUserName}}
           COGUARD_PASSWORD: ${{secrets.CoGuardTestPassword}}
-        run: make integration-test ${{ inputs.istest }}
+        run: make integration-test IS_TEST=${{ inputs.istest }}
