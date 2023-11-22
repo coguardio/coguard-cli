@@ -1,5 +1,10 @@
 on:
   workflow_dispatch:
+    inputs:
+      istest:
+        type: boolean
+        description: Print all checksums in case things change
+        default: false
 
 jobs:
   run-integrations-tests:
@@ -18,4 +23,4 @@ jobs:
       - env:
           COGUARD_USER_NAME: ${{secrets.CoGuardTestUserName}}
           COGUARD_PASSWORD: ${{secrets.CoGuardTestPassword}}
-        run: make integration-test
+        run: make integration-test ${{ inputs.istest }}
