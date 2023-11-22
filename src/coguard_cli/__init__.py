@@ -521,7 +521,7 @@ def perform_folder_scan(
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
         return
     additional_failed_rules = []
-    is_ci_cd_there(printed_folder_name, additional_failed_rules)
+    is_ci_cd_there(folder_name, additional_failed_rules)
     _find_and_merge_included_docker_images(
         collected_config_file_tuple,
         auth_config,
