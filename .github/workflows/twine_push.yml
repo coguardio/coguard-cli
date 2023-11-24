@@ -1,0 +1,25 @@
+name: Build and push coguard-cli to twine
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-push-twine:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: find_version_tag
+      run: |
+        CURRENT_COGUARD_VERSION=$(grep version setup.cfg | awk -F' = ' '{print $2}');
+        echo "CURRENT_COGUARD_VERSION=$CURRENT_COGUARD_VERSION" >> $GITHUB_ENV;
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - run: pip3 install -r requirements.txt
+    - run: make build
+    - run: echo "${{ secrets.PYPI_RC }}" > /tmp/pypi.rc
+    - run: python -m twine upload --config-file /tmp/pypi.rc dist/coguard-cli-${{ env.CURRENT_COGUARD_VERSION }}.tar.gz dist/coguard_cli-${{ env.CURRENT_COGUARD_VERSION }}-py3-none-any.whl
