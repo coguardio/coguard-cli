@@ -208,7 +208,7 @@ def send_zip_file_for_fixing(
     """
     with open(zip_file, 'rb') as file_to_send:
         resp_upload = requests.post(
-            urllib.parse.quote_plus(
+            (
                 f"{coguard_api_url}/cluster/"
                 f"fix-cluster-zip?organizationName={urllib.parse.quote_plus(organization)}"
             ),
