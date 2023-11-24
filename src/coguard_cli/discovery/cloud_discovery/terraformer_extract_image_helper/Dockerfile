@@ -29,7 +29,7 @@ RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
 RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 RUN yum install -y yum-utils-4.0.21-3.el8
 RUN yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
-RUN yum -y install terraform-1.5.6-1
+RUN yum -y install terraform-1.6.4-1
 RUN yum -y install jq-1.5-12.el8
 
 # Install Azure CLI
@@ -39,10 +39,7 @@ RUN dnf install -y azure-cli-2.54.0-1.el8
 
 # Install Terraformer
 
-# For now, we assume the provider to be AWS only; we would need to
-# check for adjustments for other providers, and maybe need to create
-# extra Docker files for that.
-ENV CURRENT_TERRAFORMER_VERSION=0.8.24
+ENV CURRENT_TERRAFORMER_VERSION=0.8.22
 ARG PROVIDER=aws
 ARG PROVIDER_ALT=""
 #coguard-config-checker: disable dockerfile_always_verify_downloads The Github release does not have a checksum included
