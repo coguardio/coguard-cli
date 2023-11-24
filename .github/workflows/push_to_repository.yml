@@ -1,10 +1,10 @@
-name: Terraform Apply
+name: Push coguard-cli image to repository
 
 on:
   workflow_dispatch:
 
 jobs:
-  terraform:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,3 +31,6 @@ jobs:
       with:
         push: true
         tags: coguard-cli-container:${{ env.CURRENT_COGUARD_VERSION }}
+        build-args:
+          - COGUARD_VERSION=${{ env.CURRENT_COGUARD_VERSION }}
+        context: docker

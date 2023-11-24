@@ -1,5 +1,7 @@
 FROM python:3.11.4-alpine3.18
 
+ARG COGUARD_VERSION
+
 RUN apk add docker=23.0.6-r7
 
 #coguard-config-checker: disable dockerfile_shell_check_on_run_commands Minor necessary violations like the missing of shebang
@@ -17,7 +19,7 @@ RUN chmod +x /home/coguard/entrypoint.sh
 
 USER coguard
 
-RUN pip install coguard-cli==0.2.23
+RUN pip install coguard-cli=="$COGUARD_VERSION"
 
 VOLUME /var/log
 
