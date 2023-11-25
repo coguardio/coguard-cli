@@ -26,11 +26,10 @@ jobs:
         username: ${{ secrets.AWS_ACCESS_KEY_ID }}
         password: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        push: true
-        tags: coguard-cli-container:${{ env.CURRENT_COGUARD_VERSION }}
-        build-args: |
-          COGUARD_VERSION=${{ env.CURRENT_COGUARD_VERSION }}
-        context: docker
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ secrets.ECR_ACCOUNT_ID }}.dkr.ecr.ca-central-1.amazonaws.com
+        IMAGE_TAG: ${{ env.CURRENT_COGUARD_VERSION }}
+      run: |
+          docker build -t $ECR_REGISTRY/coguard-cli-container:$IMAGE_TAG docker
+          docker push $ECR_REGISTRY/coguard-cli-container:$IMAGE_TAG
