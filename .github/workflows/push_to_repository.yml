@@ -31,5 +31,5 @@ jobs:
         ECR_REGISTRY: ${{ secrets.ECR_ACCOUNT_ID }}.dkr.ecr.ca-central-1.amazonaws.com
         IMAGE_TAG: ${{ env.CURRENT_COGUARD_VERSION }}
       run: |
-          docker build -t $ECR_REGISTRY/coguard-cli-container:$IMAGE_TAG docker
+          docker build --build-arg COGUARD_VERSION=${{ env.CURRENT_COGUARD_VERSION }} -t $ECR_REGISTRY/coguard-cli-container:$IMAGE_TAG docker
           docker push $ECR_REGISTRY/coguard-cli-container:$IMAGE_TAG
