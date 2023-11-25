@@ -44,7 +44,7 @@ test_folder_checksum() {
     rm -rf "${TEMP_DIR:-?}/tmp_repo_dir";
 }
 
-test_fix() {
+test_folder_fix() {
     GIT_REPO="$1";
     GIT_HASH="$2";
     git clone "$GIT_REPO" "$TEMP_DIR"/tmp_repo_dir;
