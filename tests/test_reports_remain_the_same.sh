@@ -44,6 +44,15 @@ test_folder_checksum() {
     rm -rf "${TEMP_DIR:-?}/tmp_repo_dir";
 }
 
+test_folder_fix() {
+    GIT_REPO="$1";
+    GIT_HASH="$2";
+    git clone "$GIT_REPO" "$TEMP_DIR"/tmp_repo_dir;
+    git -C "$TEMP_DIR"/tmp_repo_dir checkout "$GIT_HASH";
+    (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/tmp_repo_dir --fix=true)
+    rm -rf "${TEMP_DIR:-?}/tmp_repo_dir";
+}
+
 # Docker image tests
 
 test_image_checksum "nginx:1.23.2" "e1ccb91d20bcee9271b0546e4f7499da8b1deb4e"
@@ -76,5 +85,6 @@ test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d
 test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 0ae33243ffd58bd332882617fa3b0640cafc88d5
 test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 e5f543d3ee072c8f702864aaf2ab432101c3eb10
 test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 ed867334eff1b41aeb9f180ca33266272aa7188f
+test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
 rm -rf "$TEMP_DIR"
