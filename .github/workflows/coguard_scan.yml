@@ -7,7 +7,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: true
 
+      - name: Delete the faulty test clusters from the coverity tranlation submodule
+        run: rm -rf src/coverity_integration/tests
       - name: Run the CoGuard CLI Action
         uses: coguardio/coguard-scan-action@v0.2.2
         with:

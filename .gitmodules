@@ -1,0 +1,3 @@
+[submodule "src/coverity_integration"]
+	path = src/coverity_integration
+	url = https://github.com/coguardio/coverity_integration
