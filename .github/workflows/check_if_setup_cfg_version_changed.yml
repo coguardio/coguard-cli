@@ -13,4 +13,5 @@ jobs:
         with:
           submodules: true
           fetch-depth: 0
+      - run: git fetch origin master
       - run: git diff master | grep "version = "
