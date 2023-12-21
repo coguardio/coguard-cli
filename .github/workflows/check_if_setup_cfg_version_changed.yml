@@ -1,0 +1,15 @@
+on:
+  pull_request:
+    branches:
+      - master
+    push:
+
+jobs:
+  run-check-if-version-cfg-changed:
+    # This is important, since every PR should cause a version increase.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - run: git diff master | grep "version = "
