@@ -18,15 +18,19 @@ class CiCdProviderNames(Enum):
     """
     GITHUB = "github"
 
-def replace_special_chars_with_underscore(string: str) -> str:
+def replace_special_chars_with_underscore(string: str, keep_spaces=False) -> str:
     """
     Helper function remove any special character with underscore.
     """
     return re.sub(
         "_+",
         "_",
-        re.sub("[^a-zA-Z1-9]", "_", string)
-    ).strip("_")
+        re.sub(
+            "[^a-zA-Z1-9 ]" if keep_spaces else "[^a-zA-Z1-9]",
+            "_",
+            string
+        )
+    ).strip("_ ")
 
 def create_service_identifier(prefix: str,
                               currently_used_service_names: Set[str],

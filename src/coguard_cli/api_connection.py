@@ -24,10 +24,12 @@ def run_report(
     This is a helper function to kick off a report run on CoGuard.
     The output is whether the report run was successful or not.
     """
+    scan_identifier_sanitized = \
+        replace_special_chars_with_underscore(scan_identifier, True)
     resp = requests.put(
         (
             f"{coguard_api_url}/cluster/run-report/"
-            f"{urllib.parse.quote_plus(replace_special_chars_with_underscore(scan_identifier))}?"
+            f"{urllib.parse.quote_plus(scan_identifier_sanitized)}?"
             f"organizationName={urllib.parse.quote_plus(organization)}"
         ),
         headers={
@@ -54,7 +56,7 @@ def get_latest_report(
     """
     if organization:
         scan_identifier_sanitized = urllib.parse.quote_plus(
-            replace_special_chars_with_underscore(scan_identifier)
+            replace_special_chars_with_underscore(scan_identifier, True)
         )
         resp = requests.get(
             (
@@ -70,7 +72,7 @@ def get_latest_report(
         )
     else:
         scan_identifier_sanitized = urllib.parse.quote_plus(
-            replace_special_chars_with_underscore(scan_identifier)
+            replace_special_chars_with_underscore(scan_identifier, True)
         )
         resp = requests.get(
             (
