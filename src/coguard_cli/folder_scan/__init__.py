@@ -51,7 +51,8 @@ def find_configuration_files_and_collect(
                 os.path.dirname(
                     folder_path + os.sep
                 )
-            )
+            ),
+            True
         ) if manifest_name is None else manifest_name,
         "customerId": customer_id,
         "machines": {
