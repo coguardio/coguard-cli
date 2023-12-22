@@ -71,19 +71,19 @@ test_image_checksum "httpd:2.4.54" "e6d488c86d9dfea31744f5f92c1c149c3735771a"
 docker image rm "httpd:2.4.54"
 test_image_checksum "elasticsearch:8.5.0" "15fdb4ff7d4e8cdfddd18eeb73dbdb84dc99e003"
 docker image rm "elasticsearch:8.5.0"
-test_image_checksum "tomcat:9.0.69-jre17" "353d1be760e8a98d87b76521bd5d469d9f77f4c7"
+test_image_checksum "tomcat:9.0.69-jre17" "d15dcf7d045acbf0de181104ac3dcfe6006d1342"
 docker image rm "tomcat:9.0.69-jre17"
 test_image_checksum "redis:7.0.5" "80d3e29fc531047a40430194b6df1f0451db1fbc"
 docker image rm "redis:7.0.5"
-test_image_checksum "amazon/aws-otel-collector:v0.22.1" "3af250ef3a56d112ce5f7b8266737281197481e6"
+test_image_checksum "amazon/aws-otel-collector:v0.22.1" "e91a6f6c8c72f2b84cef572b77a2136ec67c018b"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Git repository tests
 
 test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df e25d33d42bb9013211fc079c26ba84212872d43a
-test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 208bcd6f40dc5f8479482b54214c64056f83d656
+test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 013346ece1df31c885c3e94c9724fd36c35e7ca1
 test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 cc462a4964ef50754f7834961a46d4ebb94bba88
-test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 25b93e00e5fedd3d3689b97bff2fd21cd8257470
+test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a79d4f0782bc51ad5d033a9270d779317e0763ca
 test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 ed867334eff1b41aeb9f180ca33266272aa7188f
 test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
