@@ -70,7 +70,7 @@ def find_configuration_files_and_collect(
             collected_service_results_dicts[finder_instance.get_service_name()] = \
                 (finder_instance.is_cluster_service(), discovered_config_files)
     dockerfile_entry = extract_docker_file_and_store(image_name)
-    image_name_no_special_chars = replace_special_chars_with_underscore(image_name)
+    image_name_no_special_chars = replace_special_chars_with_underscore(image_name, True)
     if dockerfile_entry is not None:
         collected_service_results_dicts[f"{image_name_no_special_chars}_dockerfile"] = (
             False,
@@ -80,7 +80,7 @@ def find_configuration_files_and_collect(
     if not collected_service_results_dicts:
         return None
     manifest_blueprint = {
-        "name": replace_special_chars_with_underscore(image_name),
+        "name": replace_special_chars_with_underscore(image_name, True),
         "customerId": customer_id,
         "machines": {
             "container": {

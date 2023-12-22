@@ -155,7 +155,7 @@ def send_zip_file_for_scanning(
             if not latest_report:
                 return None
             scan_identifier_sanitized = urllib.parse.quote_plus(
-                replace_special_chars_with_underscore(scan_identifier)
+                replace_special_chars_with_underscore(scan_identifier, True),
             )
             resp = requests.get(
                 (
