@@ -14,4 +14,8 @@ jobs:
           submodules: true
           fetch-depth: 0
       - run: git fetch origin master:master
-      - run: git diff master | grep "version = "
+      - run: |
+          if [ -n "$(git --no-pager diff master src)" ]
+          then
+            git diff master | grep "version = ";
+          fi;
