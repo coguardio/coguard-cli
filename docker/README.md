@@ -32,7 +32,7 @@ In order to scan a Docker image, it needs to be communicated via a
 variable to the system.
 
 ```
-docker run -it -e DOCKER_IMAGE=${YOUR_DOCKER_IMAGE} -v /var/run/docker.sock:/var/run/docker.sock coguard-cli
+docker run -it -e DOCKER_IMAGE=${YOUR_DOCKER_IMAGE} --privileged -v /var/run/docker.sock:/var/run/docker.sock coguard-cli
 ```
 
 ### Scanning a cloud snapshot
@@ -41,19 +41,30 @@ In order to scan a snapshot of your current cloud setup, you can run
 the following.
 
 ```
-docker run -it -e CLOUD=${YOUR_CLOUD} -v /var/run/docker.sock:/var/run/docker.sock coguard-cli
+docker run --privileged -it -e CLOUD=${YOUR_CLOUD} -v /var/run/docker.sock:/var/run/docker.sock coguard-cli
 ```
 
 Currently, the three valid options for CLOUD are `aws`, `gcp` and
 `azure`. Any authentication-relevant information needs to be entered
 via environment variables.
 
-## Challenges
+## Challenges and solutions
 
 Since CoGuard is scanning Docker-images and referenced Docker-images
-whenever it finds it in the repository, CoGuard needs access to the
-host's Docker socket.
+whenever it finds it in the repository, CoGuard needs to be able to pull
+Docker image and perform other Docker-related operations.
 
-For that, it needs to be ensured that the permissions on the
-`/var/run/docker.sock` are set so that the `other` user category can
-access it.
+One way of achieving this is by giving the container access to the
+Docker socket of the host via
+```
+-v /var/run/docker.sock:/var/run/docker.sock
+```
+and setting the `--privileged` flag. It also needs to be ensured
+that the user inside the Docker container has read privileges to
+that socket.
+
+One can also opt of running `dockerd` inside that container. This
+will still require the `--privileged` flag, but not the mounting of
+the docker-socket. The container supports an own `dockerd` out of the
+box by running the container as `root` and setting the environment
+variable `RUN_DOCKERD` to a non-empty value.
