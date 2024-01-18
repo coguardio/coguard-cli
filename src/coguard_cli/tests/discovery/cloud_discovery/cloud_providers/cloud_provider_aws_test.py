@@ -68,7 +68,8 @@ class TestCloudProviderAWS(unittest.TestCase):
         """
         aws_provider = CloudProviderAWS()
         session = unittest.mock.Mock(
-            available_profiles = []
+            available_profiles = [],
+            get_credentials = lambda: None
         )
         with unittest.mock.patch(
                 'boto3.Session',
