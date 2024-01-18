@@ -67,7 +67,7 @@ class CloudProviderAWS(CloudProvider):
                 credentials = session.get_credentials()
                 if not credentials:
                     return None
-            if len(profiles) == 1:
+            elif len(profiles) == 1:
                 credentials = session.get_credentials()
             else:
                 # The case of multiple profiles
