@@ -63,8 +63,10 @@ class CloudProviderAWS(CloudProvider):
         profiles = session.available_profiles
         try:
             if len(profiles) == 0:
-                logging.error("No profiles found.")
-                return None
+                logging.info("No profiles found.")
+                credentials = session.get_credentials()
+                if not credentials:
+                    return None
             if len(profiles) == 1:
                 credentials = session.get_credentials()
             else:
