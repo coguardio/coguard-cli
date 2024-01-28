@@ -26,7 +26,7 @@ class ConfigFileFinderDockerfile(ConfigFileFinder):
             'Dockerfile'
         ]
         locations_on_current_machine = [
-            os.path.join(path_to_file_system, entry[1:])
+            os.path.join(path_to_file_system, entry)
             for entry in standard_locations
         ]
         for location_on_current_machine in locations_on_current_machine:
