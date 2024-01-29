@@ -48,6 +48,8 @@ from coguard_cli.discovery.config_file_finders.config_file_finder_rabbitmq \
     import ConfigFileFinderRabbitmq
 from coguard_cli.discovery.config_file_finders.config_file_finder_ansible \
     import ConfigFileFinderAnsible
+from coguard_cli.discovery.config_file_finders.config_file_finder_github_actions \
+    import ConfigFileFinderGitHubActions
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 
 def config_file_finder_factory() -> Generator[ConfigFileFinder, None, None]:
