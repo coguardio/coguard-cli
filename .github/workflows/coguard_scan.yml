@@ -38,4 +38,4 @@ jobs:
       - env:
           COGUARD_USER_NAME: ${{secrets.CoGuardTestUserName}}
           COGUARD_PASSWORD: ${{secrets.CoGuardTestPassword}}
-        run: make integration-test IS_TEST=${{ inputs.istest }}
+        run: python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder .
