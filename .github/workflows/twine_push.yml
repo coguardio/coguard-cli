@@ -3,13 +3,29 @@ name: Build and push coguard-cli to twine
 on:
   workflow_dispatch:
 
+permissions:
+  actions: none
+  checks: read
+  contents: read
+  deployments: none
+  id-token: none
+  issues: none
+  discussions: none
+  packages: none
+  pages: none
+  pull-requests: read
+  repository-projects: none
+  security-events: none
+  statuses: read
+
 jobs:
   build-and-push-twine:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       with:
           submodules: true
 
@@ -18,7 +34,7 @@ jobs:
         CURRENT_COGUARD_VERSION=$(grep version setup.cfg | awk -F' = ' '{print $2}');
         echo "CURRENT_COGUARD_VERSION=$CURRENT_COGUARD_VERSION" >> $GITHUB_ENV;
 
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c
       with:
         python-version: '3.9'
     - run: pip3 install -r requirements.txt
