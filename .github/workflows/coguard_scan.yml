@@ -2,18 +2,40 @@ name: CoGuard Scanning for infrastructure related files
 run-name: Pull request ${{github.event.number}} is being scanned for misconfigurations.
 on:
   - pull_request
+
+permissions:
+  actions: none
+  checks: read
+  contents: read
+  deployments: none
+  id-token: none
+  issues: none
+  discussions: none
+  packages: none
+  pages: none
+  pull-requests: read
+  repository-projects: none
+  security-events: none
+  statuses: read
+
 jobs:
   run_coguard_check:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           submodules: true
 
       - name: Delete the faulty test clusters from the coverity tranlation submodule
         run: rm -rf src/coverity_integration/tests
-      - name: Run the CoGuard CLI Action
-        uses: coguardio/coguard-scan-action@v0.2.2
+      - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c
         with:
-          username: ${{ secrets.COGUARD_USER_NAME }}
-          password: ${{ secrets.COGUARD_PASSWORD }}
+          python-version: '3.9'
+      - run: pip3 install pytest coverage
+      - run: pip3 install -r requirements.txt
+      - run: pip3 install coguard-cli
+      - env:
+          COGUARD_USER_NAME: ${{secrets.CoGuardTestUserName}}
+          COGUARD_PASSWORD: ${{secrets.CoGuardTestPassword}}
+        run: make integration-test IS_TEST=${{ inputs.istest }}
