@@ -51,6 +51,8 @@ from coguard_cli.discovery.config_file_finders.config_file_finder_ansible \
 from coguard_cli.discovery.config_file_finders.config_file_finder_github_actions \
     import ConfigFileFinderGitHubActions
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
+from coguard_cli.discovery.config_file_finders.config_file_finder_grafana \
+    import ConfigFileFinderGrafana
 
 def config_file_finder_factory() -> Generator[ConfigFileFinder, None, None]:
     """
