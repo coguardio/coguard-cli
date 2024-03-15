@@ -590,7 +590,7 @@ def perform_folder_fix(
     collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
         folder_name,
         organization,
-        coguard_ignore_list = retrieve_coguard_ignore_values(folder_name)
+        ignore_list = coguard_ignore_list
     )
     if collected_config_file_tuple is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
