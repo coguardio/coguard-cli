@@ -409,3 +409,258 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                 ),
                 ["kubectl"]
             )
+
+    def test_filter_config_file_list_empty_list(self):
+        """
+        Testing the filter_config_file_list helper function with an empty list.
+        """
+        self.assertListEqual(
+            folder_scan.filter_config_file_list(
+                [],
+                ["*"]
+            ),
+            []
+        )
+
+    def test_filter_config_file_list_non_empty_wildcard(self):
+        """
+        Testing the filter_config_file_list helper function with a non-empty list, and wildcard match.
+        """
+        with unittest.mock.patch(
+                 "os.remove",
+                 new_callable=lambda: lambda x: None
+        ), \
+        unittest.mock.patch(
+                 "shutil.rmtree",
+                 new_callable=lambda: lambda tmp_path, ignore_errors: None
+        ):
+            self.assertListEqual(
+                folder_scan.filter_config_file_list(
+                    [
+                        (
+                            {
+                                "version": "1.0",
+                                "serviceName": "nginx",
+                                "configFileList": [
+                                    {"fileName": "nginx.conf",
+                                     "defaultFileName": "nginx.conf",
+                                     "subPath": "./apps/remix-ide",
+                                     "configFileType": "nginx"}
+                                ],
+                                "complimentaryFileList": []
+                            },
+                            "/tmp/coguard-cli-nginxoa0223ra"
+                        )
+                    ],
+                    ["*"]
+                ),
+                []
+            )
+
+    def test_filter_config_file_list_non_empty_no_chagnes(self):
+        """
+        Testing the filter_config_file_list helper function with a non-empty list, and
+        a non-wildcard-match.
+        """
+        orig_list = [
+            (
+                {
+                    "version": "1.0",
+                    "serviceName": "nginx",
+                    "configFileList": [
+                        {"fileName": "nginx.conf",
+                         "defaultFileName": "nginx.conf",
+                         "subPath": "./apps/remix-ide",
+                         "configFileType": "nginx"}
+                    ],
+                    "complimentaryFileList": []
+                },
+                "/tmp/coguard-cli-nginxoa0223ra"
+            )
+        ]
+        with unittest.mock.patch(
+                 "os.remove",
+                 new_callable=lambda: lambda x: None
+        ), \
+        unittest.mock.patch(
+                 "shutil.rmtree",
+                 new_callable=lambda: lambda tmp_path, ignore_errors: None
+        ):
+            self.assertListEqual(
+                folder_scan.filter_config_file_list(
+                    orig_list,
+                    ["foobar"]
+                ),
+                orig_list
+            )
+
+    def test_filter_collected_service_results_none_ignore_list(self):
+        """
+        Testing the `filter_collected_service_results_none_ignore_list` function.
+        The input here will be a regular dictionary, but an empty ignore-list.
+        """
+        input_dict = {
+            "nginx":
+            (
+                False,
+                [
+                    (
+                        {
+                            "version": "1.0",
+                            "serviceName": "nginx",
+                            "configFileList": [
+                                {
+                                    "fileName": "nginx.conf",
+                                    "defaultFileName": "nginx.conf",
+                                    "subPath": "./apps/remix-ide",
+                                    "configFileType": "nginx"
+                                }
+                            ],
+                            "complimentaryFileList": []
+                        },
+                        "/tmp/coguard-cli-nginxoa0223ra"
+                    )
+                ]
+            )
+        }
+        ignore_list = []
+        folder_scan.filter_collected_service_results(
+            input_dict,
+            ignore_list
+        )
+        self.assertDictEqual(
+            input_dict,
+            {
+                "nginx":
+                (
+                    False,
+                    [
+                        (
+                            {
+                                "version": "1.0",
+                                "serviceName": "nginx",
+                                "configFileList": [
+                                    {
+                                        "fileName": "nginx.conf",
+                                        "defaultFileName": "nginx.conf",
+                                        "subPath": "./apps/remix-ide",
+                                        "configFileType": "nginx"
+                                }
+                                ],
+                                "complimentaryFileList": []
+                            },
+                            "/tmp/coguard-cli-nginxoa0223ra"
+                        )
+                    ]
+                )
+            }
+        )
+
+    def test_filter_collected_service_results_wildcard_ignore_list(self):
+        """
+        Testing the `filter_collected_service_results_none_ignore_list` function.
+        The input here will be a regular dictionary, and a wildcard ignore-list.
+        """
+        input_dict = {
+            "nginx":
+            (
+                False,
+                [
+                    (
+                        {
+                            "version": "1.0",
+                            "serviceName": "nginx",
+                            "configFileList": [
+                                {
+                                    "fileName": "nginx.conf",
+                                    "defaultFileName": "nginx.conf",
+                                    "subPath": "./apps/remix-ide",
+                                    "configFileType": "nginx"
+                                }
+                            ],
+                            "complimentaryFileList": []
+                        },
+                        "/tmp/coguard-cli-nginxoa0223ra"
+                    )
+                ]
+            )
+        }
+        ignore_list = ["*"]
+        with unittest.mock.patch(
+                 "os.remove",
+                 new_callable=lambda: lambda x: None
+        ), \
+        unittest.mock.patch(
+                 "shutil.rmtree",
+                 new_callable=lambda: lambda tmp_path, ignore_errors: None
+        ):
+            folder_scan.filter_collected_service_results(
+                input_dict,
+                ignore_list
+            )
+            self.assertDictEqual(
+                input_dict,
+                {}
+            )
+
+    def test_filter_collected_service_results_normal_ignore_list(self):
+        """
+        Testing the `filter_collected_service_results_none_ignore_list` function.
+        The input here will be a regular dictionary, but an empty ignore-list.
+        """
+        input_dict = {
+            "nginx":
+            (
+                False,
+                [
+                    (
+                        {
+                            "version": "1.0",
+                            "serviceName": "nginx",
+                            "configFileList": [
+                                {
+                                    "fileName": "nginx.conf",
+                                    "defaultFileName": "nginx.conf",
+                                    "subPath": "./apps/remix-ide",
+                                    "configFileType": "nginx"
+                                }
+                            ],
+                            "complimentaryFileList": []
+                        },
+                        "/tmp/coguard-cli-nginxoa0223ra"
+                    )
+                ]
+            )
+        }
+        ignore_list = ["foobar"]
+        folder_scan.filter_collected_service_results(
+            input_dict,
+            ignore_list
+        )
+        self.assertDictEqual(
+            input_dict,
+            {
+                "nginx":
+                (
+                    False,
+                    [
+                        (
+                            {
+                                "version": "1.0",
+                                "serviceName": "nginx",
+                                "configFileList": [
+                                    {
+                                        "fileName": "nginx.conf",
+                                        "defaultFileName": "nginx.conf",
+                                        "subPath": "./apps/remix-ide",
+                                        "configFileType": "nginx"
+                                }
+                                ],
+                                "complimentaryFileList": []
+                            },
+                            "/tmp/coguard-cli-nginxoa0223ra"
+                        )
+                    ]
+                )
+            }
+        )
