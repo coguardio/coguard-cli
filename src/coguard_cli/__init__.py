@@ -507,7 +507,7 @@ def retrieve_coguard_ignore_values(
     result = []
     with coguard_ignore_path.open(encoding='utf-8') as ignore_stream:
         result = ignore_stream.readlines()
-    return [elem for elem in result if elem and not elem.startswith("#")]
+    return [elem for elem in result if elem.strip() and not elem.startswith("#")]
 
 def perform_folder_scan(
         folder_name: Optional[str],
