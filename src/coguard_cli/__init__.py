@@ -495,6 +495,20 @@ def _find_and_merge_included_docker_images(
     if to_add:
         additional_failed_rules.append("cluster_docker_images_with_failed_checks_included")
 
+def retrieve_coguard_ignore_values(
+        folder_name: str) -> List[str]:
+    """
+    Helper function to return the coguard_ignore_values
+    """
+    folder_name_path = Path(folder_name)
+    coguard_ignore_path = folder_name_path.joinpath(".coguardignore")
+    if not coguard_ignore_path.exists():
+        return []
+    result = []
+    with coguard_ignore_path.open(encoding='utf-8') as ignore_stream:
+        result = ignore_stream.readlines()
+    return [elem for elem in result if elem.strip() and not elem.startswith("#")]
+
 def perform_folder_scan(
         folder_name: Optional[str],
         deal_type: auth.util.DealEnum,
@@ -511,11 +525,13 @@ def perform_folder_scan(
     the current working directory is being used.
     """
     folder_name = folder_name or "."
+    coguard_ignore_list = retrieve_coguard_ignore_values(folder_name)
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
     collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
         folder_name,
-        organization or auth_config.get_username()
+        organization or auth_config.get_username(),
+        ignore_list = coguard_ignore_list
     )
     if collected_config_file_tuple is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
@@ -568,11 +584,13 @@ def perform_folder_fix(
               f"subscriptions {COLOR_TERMINATION}")
         return
     folder_name = folder_name or "."
+    coguard_ignore_list = retrieve_coguard_ignore_values(folder_name)
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
     collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
         folder_name,
-        organization
+        organization,
+        ignore_list = coguard_ignore_list
     )
     if collected_config_file_tuple is None:
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")

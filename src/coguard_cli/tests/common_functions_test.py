@@ -588,7 +588,7 @@ class TestCommonFunctions(unittest.TestCase):
         upload_and_fix = unittest.mock.Mock()
         with unittest.mock.patch(
                 'coguard_cli.folder_scan.find_configuration_files_and_collect',
-                new_callable=lambda: lambda a, b: None
+                new_callable=lambda: lambda a, b, ignore_list: None
         ), \
         unittest.mock.patch(
                 'coguard_cli.folder_scan.create_zip_to_upload_from_file_system',
@@ -621,7 +621,7 @@ class TestCommonFunctions(unittest.TestCase):
         upload_and_fix = unittest.mock.Mock()
         with unittest.mock.patch(
                 'coguard_cli.folder_scan.find_configuration_files_and_collect',
-                new_callable=lambda: lambda a, b: ("location", "something else")
+                new_callable=lambda: lambda a, b, ignore_list: ("location", "something else")
         ), \
         unittest.mock.patch(
                 'coguard_cli.folder_scan.create_zip_to_upload_from_file_system',
@@ -653,7 +653,7 @@ class TestCommonFunctions(unittest.TestCase):
         upload_and_fix = unittest.mock.Mock()
         with unittest.mock.patch(
                 'coguard_cli.folder_scan.find_configuration_files_and_collect',
-                new_callable=lambda: lambda a, b: ("location", "something else")
+                new_callable=lambda: lambda a, b, ignore_list: ("location", "something else")
         ), \
         unittest.mock.patch(
                 'coguard_cli.folder_scan.create_zip_to_upload_from_file_system',

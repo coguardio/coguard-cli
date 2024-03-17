@@ -8,6 +8,7 @@ import os
 import tempfile
 import shutil
 import zipfile
+import fnmatch
 from typing import Optional, Tuple, Dict, List, Union
 import yaml
 from flatten_dict import unflatten
@@ -17,17 +18,86 @@ from coguard_cli.util import replace_special_chars_with_underscore, \
     create_service_identifier, \
     convert_posix_path_to_os_path
 
+def filter_config_file_list(
+        config_file_list: List[Tuple[Dict, str]],
+        ignore_list: List[str]) -> List[Tuple[Dict, str]]:
+    """
+    Helper function for `filter_collected_service_results`, which filters the list out that contains
+    items in the ignore list.
+    """
+    result = []
+    for service_dict, tmp_path in config_file_list:
+        new_internal_config_file_list = []
+        for config_file_dict in service_dict.get("configFileList", []):
+            config_file_path = os.path.join(
+                config_file_dict.get("subPath"),
+                config_file_dict.get("fileName")
+            )
+            ignore = False
+            for ignore_pattern in ignore_list:
+                path_with_dot = config_file_path
+                path_without_dot = config_file_path[2:] if config_file_path.startswith("./") \
+                    else config_file_path
+                if fnmatch.fnmatch(path_with_dot, ignore_pattern) or \
+                   fnmatch.fnmatch(path_without_dot, ignore_pattern):
+                    ignore = True
+                    print(
+                        f"Found instruction to ignore {config_file_path} through {ignore_pattern}."
+                    )
+                    break
+            if not ignore:
+                new_internal_config_file_list.append(config_file_dict)
+            else:
+                os.remove(os.path.join(tmp_path, config_file_path))
+        if new_internal_config_file_list:
+            service_dict["configFileList"] = new_internal_config_file_list
+            result.append((service_dict, tmp_path))
+        else:
+            shutil.rmtree(tmp_path, ignore_errors=True)
+    return result
+
+
+def filter_collected_service_results(
+        collected_service_results_dicts: Dict[str, Tuple[bool, List[Tuple[Dict, str]]]],
+        ignore_list: List[str]
+) -> None:
+    """
+    The function to filter files found by the config_file_finder.find_configuration-files
+    function with respect to the patterns as found in the `ignore_list`.
+    """
+    if not ignore_list:
+        # Nothing to filter
+        return
+    del_keys = []
+    for service_name, (cluster_service_val, config_file_list) in \
+            collected_service_results_dicts.items():
+        new_filter_config_file_list = filter_config_file_list(config_file_list, ignore_list)
+        if new_filter_config_file_list:
+            collected_service_results_dicts[service_name] = (
+                cluster_service_val,
+                new_filter_config_file_list
+            )
+        else:
+            del_keys.append(service_name)
+    for service_name in del_keys:
+        del collected_service_results_dicts[service_name]
+
+
 # pylint: disable=too-many-locals
 def find_configuration_files_and_collect(
         folder_path: str,
         customer_id: str,
-        manifest_name: Optional[str] = None
+        manifest_name: Optional[str] = None,
+        ignore_list: Optional[List[str]] = None
 ) -> Optional[Tuple[str, Dict]]:
     """
     This function consumes a file_system store location,
     and extracts services and files from that, and stores it at a common location
     with a manifest file as acceptable by CoGuard. If nothing was possible to be
     extracted, None is returned.
+
+    An ignore_list can also be provided, matching the fnmatch function input there
+    and telling the parser to ignore certain files.
 
     Keep in mind that whoever is calling this function is in charge of deleting
     the generated folder afterwards.
@@ -45,6 +115,7 @@ def find_configuration_files_and_collect(
                 (finder_instance.is_cluster_service(), discovered_config_files)
     if not collected_service_results_dicts:
         return None
+    filter_collected_service_results(collected_service_results_dicts, ignore_list)
     manifest_blueprint = {
         "name": replace_special_chars_with_underscore(
             os.path.basename(
