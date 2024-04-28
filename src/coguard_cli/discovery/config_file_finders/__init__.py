@@ -8,7 +8,7 @@ import logging
 import copy
 import shutil
 import tempfile
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Union, Callable
 import yaml
 from flatten_dict import unflatten
 from coguard_cli.util import convert_string_to_posix_path
@@ -467,7 +467,7 @@ def create_grouped_temp_locations_and_manifest_entries(
         path_to_file_system: str,
         files_dict: Dict[str, List[str]],
         service_name,
-        default_file_name: str,
+        default_file_name: Union[str, Callable[[str], str]],
         config_file_type) -> List[Tuple[Dict, str]]:
     """
     This function acts similar to `create_temp_location_and_manifest_entry`,
@@ -514,7 +514,8 @@ def create_grouped_temp_locations_and_manifest_entries(
             manifest_entry["configFileList"].append(
                 {
                     "fileName": os.path.basename(location_on_current_machine),
-                    "defaultFileName": default_file_name,
+                    "defaultFileName": default_file_name if isinstance(default_file_name, str)
+                    else default_file_name(os.path.basename(location_on_current_machine)),
                     "subPath": f"./{convert_string_to_posix_path(loc_within_machine)}",
                     "configFileType": config_file_type
                 }
