@@ -41,4 +41,4 @@ jobs:
     - run: pip3 install build twine
     - run: make build
     - run: echo "${{ secrets.PYPI_RC }}" > /tmp/pypi.rc
-    - run: python -m twine upload --config-file /tmp/pypi.rc dist/coguard-cli-${{ env.CURRENT_COGUARD_VERSION }}.tar.gz dist/coguard_cli-${{ env.CURRENT_COGUARD_VERSION }}-py3-none-any.whl
+    - run: python -m twine upload --config-file /tmp/pypi.rc dist/coguard_cli-${{ env.CURRENT_COGUARD_VERSION }}.tar.gz dist/coguard_cli-${{ env.CURRENT_COGUARD_VERSION }}-py3-none-any.whl
