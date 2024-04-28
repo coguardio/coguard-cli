@@ -101,6 +101,8 @@ def print_failed_check(color: str,
         subsequent_indent=' '*len(prefix)
     )
     documentation_candidate = entry["rule"]["documentation"]
+    logging.debug("The candidate for the documentation presentation is: %s",
+                  documentation_candidate)
     if isinstance(documentation_candidate, str):
         print(wrapper.fill(entry["rule"]["documentation"]))
     else:

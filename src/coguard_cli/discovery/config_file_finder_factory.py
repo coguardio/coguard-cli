@@ -50,6 +50,8 @@ from coguard_cli.discovery.config_file_finders.config_file_finder_ansible \
     import ConfigFileFinderAnsible
 from coguard_cli.discovery.config_file_finders.config_file_finder_github_actions \
     import ConfigFileFinderGitHubActions
+from coguard_cli.discovery.config_file_finders.config_file_finder_systemd \
+    import ConfigFileFinderSystemd
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 from coguard_cli.discovery.config_file_finders.config_file_finder_grafana \
     import ConfigFileFinderGrafana
