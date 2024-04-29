@@ -2,7 +2,7 @@ FROM python:3.11.4-alpine3.18
 
 ARG COGUARD_VERSION
 
-RUN apk add docker=25.0.3-r0
+RUN apk add docker=25.0.5-r0
 
 #coguard-config-checker: disable dockerfile_shell_check_on_run_commands Minor necessary violations like the missing of shebang
 
