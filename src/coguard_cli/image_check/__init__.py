@@ -62,6 +62,9 @@ def find_configuration_files_and_collect(
     """
     collected_service_results_dicts = {}
     for finder_instance in factory.config_file_finder_factory():
+        if finder_instance.get_service_name() == 'systemd':
+            # For now, we exclude systemd from docker-image scans
+            continue
         discovered_config_files = finder_instance.find_configuration_files(
             file_system_store_location,
             docker_config
