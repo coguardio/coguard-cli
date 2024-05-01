@@ -61,7 +61,11 @@ def find_configuration_files_and_collect(
     extracted, None is returned.
     """
     collected_service_results_dicts = {}
-    for finder_instance in factory.config_file_finder_factory():
+    # For now, exclude SystemD
+    for finder_instance in [
+            entry for entry in factory.config_file_finder_factory()
+            if not entry.get_service_name() == 'systemd'
+    ]:
         discovered_config_files = finder_instance.find_configuration_files(
             file_system_store_location,
             docker_config
