@@ -272,9 +272,7 @@ def sign_up_for_coguard(
               the sign-up was successful.
     """
     resp = requests.post(
-        urllib.parse.quote_plus(
-            f"{coguard_url}/registration/register-user")
-        ,
+        f"{coguard_url}/registration/register-user",
         headers={"content-type": "application/json"},
         json={"userName": user_name, "password": password},
         timeout=300
