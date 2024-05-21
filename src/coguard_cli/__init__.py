@@ -10,6 +10,7 @@ import sys
 import textwrap
 import logging
 import tempfile
+import pathlib
 from zipfile import ZipFile
 from pathlib import Path
 from typing import Dict, Optional, Tuple, List
@@ -27,6 +28,8 @@ from coguard_cli.auth.token import Token
 from coguard_cli.print_colors import COLOR_TERMINATION, \
     COLOR_RED, COLOR_GRAY, COLOR_CYAN, COLOR_YELLOW
 from coguard_cli.util import convert_posix_path_to_os_path
+from coguard_cli.output_generators.output_generator_sarif import \
+    translate_result_to_sarif
 
 def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
     """
@@ -260,8 +263,14 @@ def upload_and_evaluate_zip_candidate(
             auth_config.get_username(),
             organization
         )
-    else:
+    elif output_format == 'json':
         print(json.dumps(result or {}))
+    else:
+        translate_result_to_sarif(
+            result or {},
+            pathlib.Path('result.sarif.json')
+        )
+        print(f"Sarif file written to `result.sarif.json`")
     if deal_type != auth.util.DealEnum.ENTERPRISE:
         print("""
         🔧 Save time. Automatically find and fix vulnerabilities.

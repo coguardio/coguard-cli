@@ -5,16 +5,26 @@ This module provides functionality to translate a CoGuard result into SARIF form
 from typing import Dict
 import pathlib
 import json
+import logging
+from importlib.metadata import version, PackageNotFoundError
+import urllib.parse
 
 def translate_result_to_sarif(
         coguard_result: Dict[str, str],
-        to_safe_path = pathlib.Path("result_sarif.json")) -> None:
+        to_safe_path = pathlib.Path("result.sarif.json")) -> None:
     """
     This function takes a result JSON as produced by CoGuard, and stores the sarif version
     in a path as specified by `to_safe_path`.
     """
-    if not to_safe_path:
+    if to_safe_path is None or not str(to_safe_path):
         raise ValueError("The path to save the file has been empty")
+    if coguard_result is None:
+        raise ValueError("The path to save the file has been empty")
+    try:
+        coguard_version = version("coguard-cli")
+    except PackageNotFoundError:
+        logging.error("CoGuard not locally installed")
+        coguard_version = "0.0.0"
     result_blueprint = {
         "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
         "version": "2.1.0",
@@ -23,6 +33,8 @@ def translate_result_to_sarif(
                 "tool": {
                     "driver": {
                         "name": "CoGuard",
+                        "version": f'{coguard_version}',
+                        "informationUri": "https://www.coguard.io",
                         "rules": []
                     }
                 },
@@ -43,24 +55,24 @@ def translate_result_to_sarif(
         Description: {description}
         Remediation: {remediation}
         Sources: {sources}
-        """
+        """.strip()
         file_uri = pathlib.Path(failed_rule.get("config_file", {}).get("subPath")).joinpath(
             failed_rule.get("config_file", {}).get("fileName")
         )
         service_name = failed_rule.get("service")
         if "machine" in failed_rule:
             file_uri = pathlib.Path(
-                failed_rule.get("machine")
+                urllib.parse.quote_plus(failed_rule.get("machine"))
             ).joinpath(
-                service_name
+                urllib.parse.quote_plus(service_name)
             ).joinpath(
                 file_uri
             )
         else:
             file_uri = pathlib.Path(
-                failed_rule.get("clusterServices")
+                urllib.parse.quote_plus("clusterServices")
             ).joinpath(
-                service_name
+                urllib.parse.quote_plus(service_name)
             ).joinpath(
                 file_uri
             )
@@ -70,8 +82,8 @@ def translate_result_to_sarif(
                     "uri": str(file_uri)
                 },
                 "region": {
-                    "startLine": failed_rule.get("fromLine", 0),
-                    "endline": failed_rule.get("toLine", 1)
+                    "startLine": failed_rule.get("fromLine", 0) + 1,
+                    "endLine": failed_rule.get("toLine", 1) + 1
                 }
             }
         }
@@ -85,10 +97,7 @@ def translate_result_to_sarif(
                 },
                 "locations": [
                     location
-                ],
-                "partialFingerprints": {
-                "primaryLocationLineHash": "39fa2ee980eb94b0:1"
-                }
+                ]
             }
         )
     with to_safe_path.open('w', encoding='utf-8') as serif_result_file:
