@@ -59,23 +59,6 @@ def translate_result_to_sarif(
         file_uri = pathlib.Path(failed_rule.get("config_file", {}).get("subPath")).joinpath(
             failed_rule.get("config_file", {}).get("fileName")
         )
-        service_name = failed_rule.get("service")
-        if "machine" in failed_rule:
-            file_uri = pathlib.Path(
-                urllib.parse.quote_plus(failed_rule.get("machine"))
-            ).joinpath(
-                urllib.parse.quote_plus(service_name)
-            ).joinpath(
-                file_uri
-            )
-        else:
-            file_uri = pathlib.Path(
-                urllib.parse.quote_plus("clusterServices")
-            ).joinpath(
-                urllib.parse.quote_plus(service_name)
-            ).joinpath(
-                file_uri
-            )
         location = {
             "physicalLocation": {
                 "artifactLocation": {
