@@ -322,4 +322,4 @@ configuration files in the near future.
 
 - [CoGuard](https://www.coguard.io)
 - [Blog](https://www.coguard.io/blog)
-- [Contact Us](https://coguard.io/contact
+- [Contact Us](https://coguard.io/contact)
