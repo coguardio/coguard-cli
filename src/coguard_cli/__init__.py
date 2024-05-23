@@ -270,7 +270,7 @@ def upload_and_evaluate_zip_candidate(
             result or {},
             pathlib.Path('result.sarif.json')
         )
-        print(f"Sarif file written to `result.sarif.json`")
+        print("Sarif file written to `result.sarif.json`")
     if deal_type != auth.util.DealEnum.ENTERPRISE:
         print("""
         🔧 Save time. Automatically find and fix vulnerabilities.
