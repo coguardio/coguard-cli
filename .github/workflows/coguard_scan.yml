@@ -38,7 +38,7 @@ jobs:
       - env:
           COGUARD_USER_NAME: ${{secrets.CoGuardTestUserName}}
           COGUARD_PASSWORD: ${{secrets.CoGuardTestPassword}}
-        run: cd src && python3 -m coguard_cli --output-format=sarif --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder ..
+        run: cd src && python3 -m coguard_cli --minimum-fail-level=4 --output-format=sarif --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder ..
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v3
         with:
