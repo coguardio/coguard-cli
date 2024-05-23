@@ -152,7 +152,7 @@ class TestTranslateToSarif(unittest.TestCase):
                                  'locations': [
                                      {'physicalLocation': {
                                          'artifactLocation': {
-                                             'uri': 'Azure-VM-1/Kerberos+Client/krb5.conf'
+                                             'uri': 'krb5.conf'
                                          },
                                          'region': {
                                              'startLine': 1, 'endLine': 2
@@ -172,8 +172,7 @@ class TestTranslateToSarif(unittest.TestCase):
                                         {
                                             'physicalLocation': {
                                                 'artifactLocation': {
-                                                    'uri': ('Azure-VM-Kerberos/Kerberos+'
-                                                            'Server/krb5.conf')
+                                                    'uri': 'krb5.conf'
                                                 },
                                                 'region': {
                                                     'startLine': 1, 'endLine': 2

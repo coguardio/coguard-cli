@@ -7,7 +7,6 @@ import pathlib
 import json
 import logging
 from importlib.metadata import version, PackageNotFoundError
-import urllib.parse
 
 def translate_result_to_sarif(
         coguard_result: Dict[str, str],
