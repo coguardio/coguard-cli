@@ -95,6 +95,7 @@ def main():
         type=str,
         dest='output_format',
         default='formatted',
+        choices=['formatted', 'json', 'sarif'],
         help=("The format of the output. It is either `formatted` (default), "
               "i.e. human readable, or `json`.")
     )
