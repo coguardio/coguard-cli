@@ -267,7 +267,7 @@ Here is a screenshot of a sample scan:
 
 As you can see, CoGuard also analyzes the last Dockerfile used.
 
-The checks are gathered from different security benchmarks, but also
+The checks are gathered from different security controls, but also
 directly from the user manuals of these software projects. At times, known issues for
 certain versions and security remediations specific to a certain version are being taken
 into account as well.
