@@ -1,0 +1,56 @@
+# Ansible file to check that Docker images remained up to date and fail if not
+
+- name: Find Docker commands inside python files and ensure that they fix the image and have the latest.
+  hosts: localhost
+  vars:
+    search_path: "{{ search_path }}"
+  tasks:
+    - name: Gather all Python paths
+      ansible.builtin.find:
+        paths: "{{ search_path }}"
+        patterns: "*.py"
+      register: python_files
+    - name: Initialize list to store files containing docker commands
+      ansible.builtin.set_fact:
+        docker_files: []
+    - name: Initialize the result array
+      ansible.builtin.set_fact:
+        artifact_matches: []
+    - name: Set the known list of dependencies that we have
+      ansible.builtin.set_fact:
+        known_images:
+          - "alpine/helm:3.15.2"
+          - "{terraformer_wrapper_image_name}"
+    - name: Check for 'docker run' expression in Python files
+      ansible.builtin.command: grep -l "docker run" {{ item.path }}
+      changed_when: true
+      register: docker_run_files
+      ignore_errors: true
+      no_log: true
+      loop: "{{ python_files.files }}"
+      when: python_files.matched > 0
+    - name: Add files with 'docker run' to the list
+      ansible.builtin.set_fact:
+        docker_files: "{{ docker_files + [item.item.path] }}"
+      when: item.rc == 0
+      loop: "{{ docker_run_files.results }}"
+    - name: Remove duplicates from that list
+      ansible.builtin.set_fact:
+        docker_files: "{{ docker_files | unique }}"
+    - name: Grep the files and get the surrounding around "docker run"
+      loop: "{{ docker_files }}"
+      ansible.builtin.command: grep -A5 "docker run" {{ item }}
+      changed_when: true
+      register: docker_run_instances
+    - name: Create a final array for the different docker run instances
+      ansible.builtin.set_fact:
+        docker_run_instances_split: []
+    - name: Fill the lit of properly split docker-run instances.
+      loop: "{{ docker_run_instances.results }}"
+      ansible.builtin.set_fact:
+        docker_run_instances_split: "{{ docker_run_instances_split + (item.stdout | split('\n--\n')) }}"
+    - name: Check if any of the images are included in the stdout
+      loop: "{{ docker_run_instances_split }}"
+      ansible.builtin.set_fact:
+        artifact_matches: "{{ artifact_matches + [item | regex_search(known_images | join('|')) is not none] }}"
+      failed_when: "false in artifact_matches"
