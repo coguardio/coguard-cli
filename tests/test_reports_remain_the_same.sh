@@ -92,7 +92,7 @@ test_image_checksum "tomcat:9.0.69-jre17" "d15dcf7d045acbf0de181104ac3dcfe6006d1
 docker image rm "tomcat:9.0.69-jre17"
 test_image_checksum "redis:7.0.5" "80d3e29fc531047a40430194b6df1f0451db1fbc"
 docker image rm "redis:7.0.5"
-test_image_checksum "amazon/aws-otel-collector:v0.22.1" "6297c55a86bfe6420f02d6841a0e7edc96690703"
+test_image_checksum "amazon/aws-otel-collector:v0.22.1" "29667a0041c9c5a6e25c7a9ad98f0ca8af925e49"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Git repository tests
