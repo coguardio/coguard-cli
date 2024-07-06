@@ -229,7 +229,7 @@ def get_kubernetes_translation_from_helm(path_to_repo: str, helm_dir: str) -> Op
     try:
         return subprocess.run(
             (f"docker run --rm -v \"{path_to_repo}\":/opt/infra "
-             f"alpine/helm template /opt/infra/{helm_dir} --dependency-update"),
+             f"alpine/helm:3.15.2 template /opt/infra/{helm_dir} --dependency-update"),
             check=True,
             shell=True,
             capture_output=True,

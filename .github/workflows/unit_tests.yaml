@@ -35,4 +35,5 @@ jobs:
           python-version: '3.9'
       - run: pip3 install pytest coverage
       - run: pip3 install -r requirements.txt
+      - run: pipx install ansible ansible-core
       - run: make unit-test

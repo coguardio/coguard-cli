@@ -16,15 +16,24 @@ echo "Created temp directory $TEMP_DIR to store the temporary directory results.
 test_image_checksum() {
     IMAGE_NAME="$1";
     EXPECTED_CHECKSUM="$2"
-    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth docker-image "$IMAGE_NAME") | sed 1,18d | tee "$TEMP_DIR/$IMAGE_NAME" | sort | sha1sum | awk '{print $1}' );
+    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth docker-image "$IMAGE_NAME") | sed 1,18d | tee "$TEMP_DIR/image_check.txt" | sort | sha1sum | awk '{print $1}' );
     if [ "$IS_TEST" == "true" ]
     then
         echo "ACTUAL: $ACTUAL_CHECKSUM";
         echo "EXPECTED: $EXPECTED_CHECKSUM"
     else
-        test "$ACTUAL_CHECKSUM" = "$EXPECTED_CHECKSUM"
+        if [ "$ACTUAL_CHECKSUM" == "$EXPECTED_CHECKSUM" ]
+        then
+            echo "ACTUAL checksum matched EXPECTED checksum for $IMAGE_NAME";
+        else
+            echo "ACTUAL: $ACTUAL_CHECKSUM";
+            echo "EXPECTED: $EXPECTED_CHECKSUM";
+            echo "ACTUAL OUTPUT:";
+            cat "$TEMP_DIR/image_check.txt";
+            exit 1;
+        fi
     fi
-    rm -rf "${TEMP_DIR:-?}/$IMAGE_NAME"
+    rm -rf "${TEMP_DIR:-?}/image_check.txt"
 }
 
 test_folder_checksum() {
@@ -39,9 +48,19 @@ test_folder_checksum() {
         echo "ACTUAL: $ACTUAL_CHECKSUM";
         echo "EXPECTED: $EXPECTED_CHECKSUM"
     else
-        test "$ACTUAL_CHECKSUM" = "$EXPECTED_CHECKSUM"
+        if [ "$ACTUAL_CHECKSUM" == "$EXPECTED_CHECKSUM" ]
+        then
+            echo "ACTUAL checksum matched EXPECTED checksum for $GIT_REPO";
+        else
+            echo "ACTUAL: $ACTUAL_CHECKSUM";
+            echo "EXPECTED: $EXPECTED_CHECKSUM";
+            echo "ACTUAL OUTPUT:";
+            cat "$TEMP_DIR/folder_check.txt";
+            exit 1;
+        fi
     fi
     rm -rf "${TEMP_DIR:-?}/tmp_repo_dir";
+    rm -rf "$TEMP_DIR/folder_check.txt";
 }
 
 test_folder_fix() {
@@ -75,15 +94,15 @@ test_image_checksum "tomcat:9.0.69-jre17" "d15dcf7d045acbf0de181104ac3dcfe6006d1
 docker image rm "tomcat:9.0.69-jre17"
 test_image_checksum "redis:7.0.5" "80d3e29fc531047a40430194b6df1f0451db1fbc"
 docker image rm "redis:7.0.5"
-test_image_checksum "amazon/aws-otel-collector:v0.22.1" "6297c55a86bfe6420f02d6841a0e7edc96690703"
+test_image_checksum "amazon/aws-otel-collector:v0.22.1" "29667a0041c9c5a6e25c7a9ad98f0ca8af925e49"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Git repository tests
 
-test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df d676866edb65abf08a2e9e9bb801b493a75424d7
-test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 a19447c5dd40d645b905b7fe9656b8b38d911ae7
-test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 3d5d7c59480a2c361e644f4a7665dcfb1f00e2c3
-test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 aa43395c7438a9ce74c283855ad799cf15fe3aa9
+test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 071d39a11673b9ff7a7c34e2dbb366b8ed1273c9
+test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 c64353028211498e497279de6f82e59d4d19433e
+test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 1dd10956c269f2f72f3b869eb0559d2925e153a7
+test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 e3607b13a7ef2657e12aa38a5c78e0ac0d094baa
 test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 7adf1f439662c5f433044a63b63462e88149bb86
 test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
