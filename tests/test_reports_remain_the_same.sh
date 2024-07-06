@@ -22,7 +22,15 @@ test_image_checksum() {
         echo "ACTUAL: $ACTUAL_CHECKSUM";
         echo "EXPECTED: $EXPECTED_CHECKSUM"
     else
-        test "$ACTUAL_CHECKSUM" = "$EXPECTED_CHECKSUM"
+        if [ "$ACTUAL_CHECKSUM" == "$EXPECTED_CHECKSUM" ]
+        then
+            echo "ACTUAL checksum matched EXPECTED checksum for $IMAGE_NAME";
+        else
+            echo "ACTUAL: $ACTUAL_CHECKSUM";
+            echo "EXPECTED: $EXPECTED_CHECKSUM";
+            echo "ACTUAL OUTPUT:";
+            cat "$TEMP_DIR/$IMAGE_NAME";
+        fi
     fi
     rm -rf "${TEMP_DIR:-?}/$IMAGE_NAME"
 }
@@ -39,7 +47,15 @@ test_folder_checksum() {
         echo "ACTUAL: $ACTUAL_CHECKSUM";
         echo "EXPECTED: $EXPECTED_CHECKSUM"
     else
-        test "$ACTUAL_CHECKSUM" = "$EXPECTED_CHECKSUM"
+        if [ "$ACTUAL_CHECKSUM" == "$EXPECTED_CHECKSUM" ]
+        then
+            echo "ACTUAL checksum matched EXPECTED checksum for $GIT_REPO";
+        else
+            echo "ACTUAL: $ACTUAL_CHECKSUM";
+            echo "EXPECTED: $EXPECTED_CHECKSUM";
+            echo "ACTUAL OUTPUT:";
+            cat "$TEMP_DIR/folder_check.txt";
+        fi
     fi
     rm -rf "${TEMP_DIR:-?}/tmp_repo_dir";
 }
