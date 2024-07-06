@@ -16,7 +16,7 @@ echo "Created temp directory $TEMP_DIR to store the temporary directory results.
 test_image_checksum() {
     IMAGE_NAME="$1";
     EXPECTED_CHECKSUM="$2"
-    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth docker-image "$IMAGE_NAME") | sed 1,18d | tee "$TEMP_DIR/$IMAGE_NAME" | sort | sha1sum | awk '{print $1}' );
+    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth docker-image "$IMAGE_NAME") | sed 1,18d | tee "$TEMP_DIR/image_check.txt" | sort | sha1sum | awk '{print $1}' );
     if [ "$IS_TEST" == "true" ]
     then
         echo "ACTUAL: $ACTUAL_CHECKSUM";
@@ -29,10 +29,10 @@ test_image_checksum() {
             echo "ACTUAL: $ACTUAL_CHECKSUM";
             echo "EXPECTED: $EXPECTED_CHECKSUM";
             echo "ACTUAL OUTPUT:";
-            cat "$TEMP_DIR/$IMAGE_NAME";
+            cat "$TEMP_DIR/image_check.txt";
         fi
     fi
-    rm -rf "${TEMP_DIR:-?}/$IMAGE_NAME"
+    rm -rf "${TEMP_DIR:-?}/image_check.txt"
 }
 
 test_folder_checksum() {
@@ -58,6 +58,7 @@ test_folder_checksum() {
         fi
     fi
     rm -rf "${TEMP_DIR:-?}/tmp_repo_dir";
+    rm -rf "$TEMP_DIR/folder_check.txt";
 }
 
 test_folder_fix() {
