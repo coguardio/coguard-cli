@@ -30,6 +30,7 @@ test_image_checksum() {
             echo "EXPECTED: $EXPECTED_CHECKSUM";
             echo "ACTUAL OUTPUT:";
             cat "$TEMP_DIR/image_check.txt";
+            exit 1;
         fi
     fi
     rm -rf "${TEMP_DIR:-?}/image_check.txt"
@@ -55,6 +56,7 @@ test_folder_checksum() {
             echo "EXPECTED: $EXPECTED_CHECKSUM";
             echo "ACTUAL OUTPUT:";
             cat "$TEMP_DIR/folder_check.txt";
+            exit 1;
         fi
     fi
     rm -rf "${TEMP_DIR:-?}/tmp_repo_dir";
@@ -97,10 +99,10 @@ docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Git repository tests
 
-test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df d676866edb65abf08a2e9e9bb801b493a75424d7
-test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 a19447c5dd40d645b905b7fe9656b8b38d911ae7
-test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 3d5d7c59480a2c361e644f4a7665dcfb1f00e2c3
-test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 aa43395c7438a9ce74c283855ad799cf15fe3aa9
+test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 071d39a11673b9ff7a7c34e2dbb366b8ed1273c9
+test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 c64353028211498e497279de6f82e59d4d19433e
+test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 1dd10956c269f2f72f3b869eb0559d2925e153a7
+test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 e3607b13a7ef2657e12aa38a5c78e0ac0d094baa
 test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 7adf1f439662c5f433044a63b63462e88149bb86
 test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
