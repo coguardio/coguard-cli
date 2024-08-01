@@ -74,7 +74,7 @@ test_folder_fix() {
 
 # Docker image tests
 
-test_image_checksum "nginx:1.23.2" "e1ccb91d20bcee9271b0546e4f7499da8b1deb4e"
+test_image_checksum "nginx:1.23.2" "69bc757a21d0a81fe92b9e93b11a8e9750e5e008"
 docker image rm "nginx:1.23.2"
 test_image_checksum "mysql:8.0.31" "ab23c1f34b955ee1b429fdf098330e9cdd8dde01"
 docker image rm "mysql:8.0.31"
@@ -94,15 +94,15 @@ test_image_checksum "tomcat:9.0.69-jre17" "d15dcf7d045acbf0de181104ac3dcfe6006d1
 docker image rm "tomcat:9.0.69-jre17"
 test_image_checksum "redis:7.0.5" "80d3e29fc531047a40430194b6df1f0451db1fbc"
 docker image rm "redis:7.0.5"
-test_image_checksum "amazon/aws-otel-collector:v0.22.1" "29667a0041c9c5a6e25c7a9ad98f0ca8af925e49"
+test_image_checksum "amazon/aws-otel-collector:v0.22.1" "8ab2b3c6615b84b9a980e8cbac68d318344847b5"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Git repository tests
 
-test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 071d39a11673b9ff7a7c34e2dbb366b8ed1273c9
-test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 c64353028211498e497279de6f82e59d4d19433e
-test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 1dd10956c269f2f72f3b869eb0559d2925e153a7
-test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 e3607b13a7ef2657e12aa38a5c78e0ac0d094baa
+test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df c10b90361224e7003b305a5ab3ab530f1801308a
+test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 2a0a742e2f01a2261891e8b8a8bc48ae5acbe554
+test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 9484928fc10014e268fc7d865dc572b450de8ffe
+test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 2c5391d2921765bb06482e88bed178be09c96a3d
 test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 7adf1f439662c5f433044a63b63462e88149bb86
 test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
