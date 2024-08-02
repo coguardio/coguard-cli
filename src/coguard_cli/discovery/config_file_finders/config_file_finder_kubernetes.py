@@ -36,8 +36,7 @@ class ConfigFileFinderKubernetes(ConfigFileFinder):
         required_fields = [
             "apiVersion",
             "kind",
-            "metadata",
-            "spec"
+            "metadata"
         ]
         logging.debug("Trying to find the file by searching"
                       " for the standard name in the filesystem.")
