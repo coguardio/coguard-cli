@@ -16,7 +16,8 @@ echo "Created temp directory $TEMP_DIR to store the temporary directory results.
 test_image_checksum() {
     IMAGE_NAME="$1";
     EXPECTED_CHECKSUM="$2"
-    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth docker-image "$IMAGE_NAME") | sed 1,18d | tee "$TEMP_DIR/image_check.txt" | sort | sha1sum | awk '{print $1}' );
+    COMPLIANCE=${3:-""}
+    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --ruleset="$COMPLIANCE" --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth docker-image "$IMAGE_NAME") | sed 1,18d | tee "$TEMP_DIR/image_check.txt" | sort | sha1sum | awk '{print $1}' );
     if [ "$IS_TEST" == "true" ]
     then
         echo "ACTUAL: $ACTUAL_CHECKSUM";
@@ -40,9 +41,10 @@ test_folder_checksum() {
     GIT_REPO="$1";
     GIT_HASH="$2";
     EXPECTED_CHECKSUM="$3";
+    COMPLIANCE=${4:-""}
     git clone "$GIT_REPO" "$TEMP_DIR"/tmp_repo_dir;
     git -C "$TEMP_DIR"/tmp_repo_dir checkout "$GIT_HASH";
-    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/tmp_repo_dir) | sed 1,18d | tee "$TEMP_DIR/folder_check.txt" | sort | sha1sum | awk '{print $1}' );
+    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --ruleset="$COMPLIANCE" --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/tmp_repo_dir) | sed 1,18d | tee "$TEMP_DIR/folder_check.txt" | sort | sha1sum | awk '{print $1}' );
     if [ "$IS_TEST" == "true" ]
     then
         echo "ACTUAL: $ACTUAL_CHECKSUM";
@@ -77,12 +79,15 @@ test_folder_fix() {
 test_image_checksum "nginx:1.23.2" "69bc757a21d0a81fe92b9e93b11a8e9750e5e008"
 docker image rm "nginx:1.23.2"
 test_image_checksum "mysql:8.0.31" "ab23c1f34b955ee1b429fdf098330e9cdd8dde01"
+test_image_checksum "mysql:8.0.31" "ab23c1f34b955ee1b429fdf098330e9cdd8dde01" stig
 docker image rm "mysql:8.0.31"
 test_image_checksum "postgres:15.1" "4fa159437ff236e7cf2195a53e213e2f17f7b5d5"
+test_image_checksum "postgres:15.1" "4fa159437ff236e7cf2195a53e213e2f17f7b5d5" soc2
 docker image rm "postgres:15.1"
 test_image_checksum "mongo:6.0.2" "11573dd2bb16683135ca303bb029ee0b1b1ae4a1"
 docker image rm "mongo:6.0.2"
 test_image_checksum "mariadb:10.9.4" "4f418ef75d40ce02afe4cc0bdf8e4e226988a524"
+test_image_checksum "mariadb:10.9.4" "4f418ef75d40ce02afe4cc0bdf8e4e226988a524" hipaa
 docker image rm "mariadb:10.9.4"
 test_image_checksum "bitnami/kafka:3.3.1" "4b5aecbe74d0fbd6a68c68e832747e44e3a66768"
 docker image rm "bitnami/kafka:3.3.1"
