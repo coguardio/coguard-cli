@@ -94,6 +94,8 @@ test_image_checksum "tomcat:9.0.69-jre17" "d15dcf7d045acbf0de181104ac3dcfe6006d1
 docker image rm "tomcat:9.0.69-jre17"
 test_image_checksum "redis:7.0.5" "80d3e29fc531047a40430194b6df1f0451db1fbc"
 docker image rm "redis:7.0.5"
+test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "0000000000000000000000000000000000000000"
+docker image rm "rethinkdb:2.4.4-bookworm-slim"
 test_image_checksum "amazon/aws-otel-collector:v0.22.1" "8ab2b3c6615b84b9a980e8cbac68d318344847b5"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
 
