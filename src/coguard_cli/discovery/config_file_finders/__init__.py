@@ -321,11 +321,11 @@ def common_call_command_in_container(
     result_files = []
     #strategy 1: direct entry
     result_files.extend(
-        [os.path.split(entry)[-1]
+        [os.path.split(entry)[-1] if isinstance(entry, str) else os.path.split(entry[-1])[-1]
          for entry in re.findall(executable_regex, entrypoint_entry)]
     )
     result_files.extend(
-        [os.path.split(entry)[-1]
+        [os.path.split(entry)[-1] if isinstance(entry, str) else os.path.split(entry[-1])[-1]
          for entry in re.findall(executable_regex, cmd_entry)]
     )
     # strategy 2: see if there are executable files in entrypoint or command
@@ -347,7 +347,8 @@ def common_call_command_in_container(
                         encoding='utf-8'
                 ) as entrypoint_executable:
                     result_files.extend([
-                        os.path.split(entry)[-1]
+                        os.path.split(entry)[-1] if isinstance(entry, str)
+                        else os.path.split(entry[-1])[-1]
                         for entry in re.findall(
                                 executable_regex,
                                 entrypoint_executable.read(),
