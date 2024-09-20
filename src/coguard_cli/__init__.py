@@ -535,7 +535,7 @@ def perform_folder_scan(
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
     """
-    folder_name = folder_name or "."
+    folder_name = folder_name or os.path.abspath(".")
     coguard_ignore_list = retrieve_coguard_ignore_values(folder_name)
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
@@ -594,7 +594,7 @@ def perform_folder_fix(
         print(f"{COLOR_RED} AUTO-REMEDIATION is only available for Enterprise "
               f"subscriptions {COLOR_TERMINATION}")
         return
-    folder_name = folder_name or "."
+    folder_name = folder_name or os.path.abspath(".")
     coguard_ignore_list = retrieve_coguard_ignore_values(folder_name)
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
