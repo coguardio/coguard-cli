@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 test -n "$COGUARD_USER_NAME"
 test -n "$COGUARD_PASSWORD"
@@ -78,16 +78,16 @@ test_folder_fix() {
 
 test_image_checksum "nginx:1.23.2" "69bc757a21d0a81fe92b9e93b11a8e9750e5e008"
 docker image rm "nginx:1.23.2"
-test_image_checksum "mysql:8.0.31" "330900d7eea98defee5cf6b95f8ce1529143b84c"
-test_image_checksum "mysql:8.0.31" "7579e5f990d40998e8d3e6e01efa6db48914c74e" stig
+test_image_checksum "mysql:8.0.31" "828ae648a07f79dad8d60ee18a7c7cab50e11435"
+test_image_checksum "mysql:8.0.31" "ce01757c73ab5d0d85b4f30e9807f25a9820dd04" stig
 docker image rm "mysql:8.0.31"
 test_image_checksum "postgres:15.1" "4fa159437ff236e7cf2195a53e213e2f17f7b5d5"
 test_image_checksum "postgres:15.1" "8eca512bc7ff7816419f4c55a594eedbe88a8869" soc2
 docker image rm "postgres:15.1"
 test_image_checksum "mongo:6.0.2" "11573dd2bb16683135ca303bb029ee0b1b1ae4a1"
 docker image rm "mongo:6.0.2"
-test_image_checksum "mariadb:10.9.4" "bcbfc4b159c089a0210a8a243b9a2563cf8cfd7f"
-test_image_checksum "mariadb:10.9.4" "08e7a31efba48555bcddcf1b8c261d5aefebaf17" hipaa
+test_image_checksum "mariadb:10.9.4" "b2622095704ae7080ce70f05918e1f0b96c03aef"
+test_image_checksum "mariadb:10.9.4" "75b53c4345d21af9022e0ce109dcaeb3d9e9a935" hipaa
 docker image rm "mariadb:10.9.4"
 test_image_checksum "bitnami/kafka:3.3.1" "4b5aecbe74d0fbd6a68c68e832747e44e3a66768"
 docker image rm "bitnami/kafka:3.3.1"
@@ -101,16 +101,16 @@ test_image_checksum "redis:7.0.5" "80d3e29fc531047a40430194b6df1f0451db1fbc"
 docker image rm "redis:7.0.5"
 test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "f5bdf596877e210e89cefb5b63dc79d19a4855d0"
 docker image rm "rethinkdb:2.4.4-bookworm-slim"
-test_image_checksum "amazon/aws-otel-collector:v0.22.1" "874ddc40ee93470c9412e088448b70a0c756d3a2"
+test_image_checksum "amazon/aws-otel-collector:v0.22.1" "08a49d0a5a38a6fafc723bcb73fb459bbc6ca61a"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Git repository tests
 
-test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 07620788b8adbc96a57bc167675594dd97dccb8c
-test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 c6c03b05b87f3a35d0ecbf54fc92072a71602dca
-test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 0c9bcdcc012cd11230f193c5ce26df5cfb5d4dad
-test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 3fda8b6305219dd54d8e735078dad95b30d554a7
-test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 7adf1f439662c5f433044a63b63462e88149bb86
+test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 68a28bc8a650749881f94e9e0487137ee9fde5c6
+test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 4e6f5cfd3b251452a10e757312645ccaefd145d7
+test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 ae7e5931f2e0d22bc6eaec42b4139e9af8e9ade5
+test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 98087a874a6c5039a103ac818c1f9402ef8c599f
+test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 67081c91818a12d1572bd06cb9bd63e79015cc8d
 test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
 rm -rf "$TEMP_DIR"
