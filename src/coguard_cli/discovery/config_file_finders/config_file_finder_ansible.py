@@ -7,9 +7,12 @@ import os
 import re
 import logging
 from typing import Dict, List, Optional, Tuple
+import yaml
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
+from flatten_dict import unflatten
+
 
 class ConfigFileFinderAnsible(ConfigFileFinder):
     """
@@ -23,6 +26,42 @@ class ConfigFileFinderAnsible(ConfigFileFinder):
         There is no standard location for Ansible files. Returning nothing.
         """
         return None
+
+    def heuristic_is_ansible_playbook(self, file_path: str) -> bool:
+        """
+        A heuristic method that checks if each YAML config within the file
+        specified by `file_path` is indeed an Ansible playbook (it is a list and
+        each list item has a `name` tag).
+        """
+        config = []
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file_stream:
+                config_res = yaml.safe_load_all(file_stream)
+                config = [] if config_res is None else [
+                    (unflatten(config_part, splitter='dot')
+                     if not isinstance(config_part, list)
+                     else config_part)
+                    for config_part in config_res
+                    if config_part is not None
+                ]
+        #pylint: disable=bare-except
+        except:
+            logging.debug(
+                "Failed to load %s",
+                file_path
+            )
+            return False
+        logging.debug("The config object looks like: %s",
+                      str(config))
+        for config_instance in config:
+            if not isinstance(config_instance, list):
+                return False
+            for itm in config_instance:
+                if not isinstance(itm, dict):
+                    return False
+                if "name" not in itm:
+                    return False
+        return True
 
     def is_valid_ansible_file(self, file_path: str) -> bool:
         """
@@ -38,11 +77,16 @@ class ConfigFileFinderAnsible(ConfigFileFinder):
             "meta"
         ]
         super_folder = os.path.basename(os.path.dirname(os.path.abspath(file_path)))
-        return super_folder in valid_super_folders and \
+        role_structure = super_folder in valid_super_folders and \
             cff_util.does_config_yaml_contain_required_keys(
                 file_path,
                 []
             ) # Just checking if it opens
+        if role_structure:
+            return True
+        return self.heuristic_is_ansible_playbook(
+            file_path
+        )
 
     def check_for_config_files_filesystem_search(
             self,
