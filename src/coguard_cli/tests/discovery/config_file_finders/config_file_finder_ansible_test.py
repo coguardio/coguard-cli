@@ -128,7 +128,7 @@ class TestConfigFileFinderAnsible(unittest.TestCase):
                 "foo.txt"
             ))
 
-    def test_is_valid_ansible_file_file_proper(self):
+    def test_is_valid_ansible_file_with_subpath_match(self):
         """
         Testing the function to see if we can parse a tf file.
         """
@@ -143,6 +143,24 @@ class TestConfigFileFinderAnsible(unittest.TestCase):
             self.assertTrue(config_file_finder_ansible.is_valid_ansible_file(
                 "foo.txt"
             ))
+
+    def test_is_valid_ansible_file_actual_playbook(self):
+        """
+        Testing an actual playbook.
+        """
+        config_file_finder_ansible = ConfigFileFinderAnsible()
+        self.assertTrue(config_file_finder_ansible.is_valid_ansible_file(
+            "./coguard_cli/tests/discovery/config_file_finders/resources/playbook.yaml"
+        ))
+
+    def test_is_invalid_ansible_file_actual_playbook(self):
+        """
+        Testing an actual playbook.
+        """
+        config_file_finder_ansible = ConfigFileFinderAnsible()
+        self.assertFalse(config_file_finder_ansible.is_valid_ansible_file(
+            "./coguard_cli/tests/discovery/config_file_finders/resources/wannabe_playbook.yaml"
+        ))
 
     def test_is_cluster_service(self):
         """
