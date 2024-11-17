@@ -44,7 +44,12 @@
         docker_files: "{{ docker_files | unique }}"
     - name: Grep the files and get the surrounding around "docker run"
       loop: "{{ docker_files }}"
-      ansible.builtin.command: grep -A5 "docker run" {{ item }}
+      ansible.builtin.command:
+        cmd: grep
+        argv:
+          - -A5
+          - "docker run"
+          - "{{ item }}"
       changed_when: true
       register: docker_run_instances
     - name: Create a final array for the different docker run instances
