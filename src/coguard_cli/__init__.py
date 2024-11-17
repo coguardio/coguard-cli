@@ -31,62 +31,37 @@ from coguard_cli.util import convert_posix_path_to_os_path
 from coguard_cli.output_generators.output_generator_sarif import \
     translate_result_to_sarif
 
-def extract_reference_string(entry_dict: Dict, manifest_dict: Dict):
+def extract_reference_string(entry_dict: Dict):
     """
     This is a helper function to extract the respective file in the manifest
     corresponding to an entry in the failed rules.
     """
-    machines_dict = manifest_dict.get("machines", {})
-    reference = ""
-    for machine in machines_dict.values():
-        services_dict = machine.get("services", {})
-        if entry_dict.get("service") in services_dict:
-            config_file_list_of_container = \
-                [
-                    os.path.join(
-                        convert_posix_path_to_os_path(entry["subPath"]),
-                        entry["fileName"]
-                    ) + \
-                    " for service " + entry_dict.get("service")
-                    for entry in services_dict.get(
-                            entry_dict.get("service")
-                    ).get("configFileList", [])
-                ]
-            if config_file_list_of_container:
-                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
-                break
-    if not reference:
-        # Could be in cluster services
-        services_dict = manifest_dict.get("clusterServices", {})
-        if entry_dict.get("service") in services_dict:
-            config_file_list_of_container = \
-                [
-                    os.path.join(
-                        convert_posix_path_to_os_path(entry["subPath"]),
-                        entry["fileName"]
-                    ) + \
-                    " for service " + entry_dict.get("service")
-                    for entry in services_dict.get(
-                            entry_dict.get("service")
-                    ).get("configFileList", [])
-                ]
-            if config_file_list_of_container:
-                reference = f" (affected files: {', '.join(config_file_list_of_container)})"
-    return reference
+    config_file_in_entry = entry_dict.get("config_file", {})
+    from_line = entry_dict.get("fromLine", None)
+    to_line = entry_dict.get("toLine", None)
+    if (from_line is not None and to_line is not None) and (from_line != 0 and to_line != 1):
+        from_to_line = f", {from_line}-{to_line}"
+    else:
+        from_to_line = ""
+    if not config_file_in_entry:
+        return ""
+    reference_path = pathlib.Path(
+        config_file_in_entry.get("subPath", ".")
+    ).joinpath(
+        config_file_in_entry.get("fileName", ".")
+    )
+    return f" (affected files: {reference_path}{from_to_line})"
 
 def print_failed_check(color: str,
                        entry: Dict,
-                       manifest_dict: Dict,
                        fixable_checks: List[str]):
     """
     This is the function to print a failed check entry, given a color.
 
     :param color: The color to use. see e.g. :const:`COLOR_RED`
     :param entry: The entry as returned by the CoGuard API.
-    :param manifest_dict: The manifest dictionary containing information about the included
-                          configuration files
     """
-    reference = extract_reference_string(entry, manifest_dict)
+    reference = extract_reference_string(entry)
     fix_icon = "🔧 " if entry["rule"]["name"] in fixable_checks else ""
     print(
         f'{fix_icon}{color} X Severity {entry["rule"]["severity"]}: '
@@ -109,6 +84,7 @@ def print_failed_check(color: str,
     if isinstance(documentation_candidate, str):
         print(wrapper.fill(entry["rule"]["documentation"]))
     else:
+        print("BAZ")
         description = documentation_candidate["documentation"]
         remediation = documentation_candidate["remediation"]
         sources = ",\n".join(documentation_candidate["sources"])
@@ -131,7 +107,6 @@ def print_failed_check(color: str,
 
 def output_result_json_from_coguard(
         result_json: Dict,
-        manifest_dict: Dict,
         token: Token,
         coguard_api_url: str,
         user_name: Optional[str],
@@ -140,8 +115,6 @@ def output_result_json_from_coguard(
     The function which outputs the result json in a pretty format to the screen.
 
     :param result_json: The output from the API call to CoGuard.
-    :param manifest_dict: The manifest dictionary containing information about the included
-                          configuration files
     """
     high_checks = [entry for entry in result_json.get("failed", []) \
                    if entry["rule"]["severity"] > 3]
@@ -166,11 +139,11 @@ def output_result_json_from_coguard(
                f"(🔧 {len(fixable_checks)} candidates for auto-remediation)")
     print(summary)
     for entry in high_checks:
-        print_failed_check(COLOR_RED, entry, manifest_dict, fixable_check_list)
+        print_failed_check(COLOR_RED, entry, fixable_check_list)
     for entry in medium_checks:
-        print_failed_check(COLOR_YELLOW, entry, manifest_dict, fixable_check_list)
+        print_failed_check(COLOR_YELLOW, entry, fixable_check_list)
     for entry in low_checks:
-        print_failed_check(COLOR_GRAY, entry, manifest_dict, fixable_check_list)
+        print_failed_check(COLOR_GRAY, entry, fixable_check_list)
     print(summary)
 
 class SubParserNames(Enum):
@@ -233,7 +206,7 @@ def upload_and_evaluate_zip_candidate(
             f"{COLOR_YELLOW}Unable to identify any known configuration files.{COLOR_TERMINATION}"
         )
         return
-    zip_file, manifest_dict = zip_candidate
+    zip_file, _ = zip_candidate
     result = api_connection.send_zip_file_for_scanning(
         zip_file,
         auth_config.get_username(),
@@ -257,7 +230,6 @@ def upload_and_evaluate_zip_candidate(
     if output_format == 'formatted':
         output_result_json_from_coguard(
             result or {},
-            manifest_dict,
             token,
             coguard_api_url,
             auth_config.get_username(),
