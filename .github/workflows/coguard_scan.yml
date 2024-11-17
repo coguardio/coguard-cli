@@ -44,6 +44,5 @@ jobs:
         with:
           sarif_file: src/result.sarif.json
           category: CoGuard
-      - run: jq -r '.runs[0]' src/result.sarif.json
       - name: Fail job if there is a result
         run: test -z "$(jq -r '.runs[0].results[]' src/result.sarif.json)"

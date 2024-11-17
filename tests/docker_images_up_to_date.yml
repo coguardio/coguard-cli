@@ -22,7 +22,12 @@
           - "alpine/helm:3.15.2"
           - "{terraformer_wrapper_image_name}"
     - name: Check for 'docker run' expression in Python files
-      ansible.builtin.command: grep -l "docker run" {{ item.path }}
+      ansible.builtin.command:
+        cmd: grep
+        argv:
+          - -l
+          - "docker run"
+          - "{{ item.path }}"
       changed_when: true
       register: docker_run_files
       ignore_errors: true
