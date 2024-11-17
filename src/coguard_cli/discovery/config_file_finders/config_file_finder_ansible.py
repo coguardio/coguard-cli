@@ -8,10 +8,10 @@ import re
 import logging
 from typing import Dict, List, Optional, Tuple
 import yaml
+from flatten_dict import unflatten
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 import coguard_cli.discovery.config_file_finders as cff_util
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
-from flatten_dict import unflatten
 
 
 class ConfigFileFinderAnsible(ConfigFileFinder):
