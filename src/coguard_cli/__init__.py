@@ -84,7 +84,6 @@ def print_failed_check(color: str,
     if isinstance(documentation_candidate, str):
         print(wrapper.fill(entry["rule"]["documentation"]))
     else:
-        print("BAZ")
         description = documentation_candidate["documentation"]
         remediation = documentation_candidate["remediation"]
         sources = ",\n".join(documentation_candidate["sources"])
