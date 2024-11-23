@@ -13,24 +13,36 @@ class TestCommonFunctions(unittest.TestCase):
     The class to test the functions in coguard_cli.__init__
     """
 
-    def print_failed_check_test(self):
+    def test_print_failed_check(self):
         """
         Prints a failed check entry.
         """
         new_stdout = StringIO()
+        # Comment: we seem to also need to patch logging.debug
+        #          since it seems to interfere with our mock on
+        #          sys.stdout. Strange python behavior, and we might
+        #          want to examine if this is a python bug.
         with unittest.mock.patch(
                 'sys.stdout',
-                new_callable=lambda: new_stdout):
+                new_callable=lambda: new_stdout), \
+            unittest.mock.patch(
+                'logging.debug',
+                new_callable=unittest.mock.MagicMock()
+            ):
             coguard_cli.print_failed_check(coguard_cli.COLOR_RED, {
                 "rule": {
                     "name": "foo_bar_baz",
                     "severity": 5,
-                    "documentation": "Let's not even talk about it"
+                    "documentation": {
+                        "documentation": "Let's not even talk about it",
+                        "remediation": "foo",
+                        "sources": []
+                    }
                 }
             }, {})
             self.assertIn("not even talk", new_stdout.getvalue())
 
-    def print_output_result_json_from_coguard_test(self):
+    def test_print_output_result_json_from_coguard(self):
         """
         Prints a failed check entry.
         """
@@ -95,13 +107,22 @@ class TestCommonFunctions(unittest.TestCase):
         }
         with unittest.mock.patch(
                 'sys.stdout',
-                new_callable=lambda: new_stdout):
-            coguard_cli.output_result_json_from_coguard(result_json, {})
+                new_callable=lambda: new_stdout), \
+             unittest.mock.patch(
+                'coguard_cli.api_connection.get_fixable_rule_list',
+                 new_callable=lambda: lambda token, coguard_api_url, user_name, organization: []):
+            coguard_cli.output_result_json_from_coguard(
+                result_json,
+                "foo",
+                "bar",
+                "baz",
+                "boo"
+            )
             self.assertIn("1 High", new_stdout.getvalue())
             self.assertIn("1 Medium", new_stdout.getvalue())
             self.assertIn("4 Low", new_stdout.getvalue())
 
-    def auth_token_retrieval_auth_config_not_none_test(self):
+    def test_auth_token_retrieval_auth_config_not_none(self):
         """
         tests for the auth_token_retrieval.
         """
@@ -116,7 +137,7 @@ class TestCommonFunctions(unittest.TestCase):
             token = coguard_cli.auth_token_retrieval("foo", "bar")
             self.assertIsNotNone(token)
 
-    def auth_token_retrieval_auth_config_none_test(self):
+    def test_auth_token_retrieval_auth_config_none(self):
         """
         tests for the auth_token_retrieval.
         """
@@ -135,7 +156,7 @@ class TestCommonFunctions(unittest.TestCase):
             token = coguard_cli.auth_token_retrieval("foo", "bar")
             self.assertIsNotNone(token)
 
-    def upload_and_evaluate_zip_candidate_zip_candidate_none_test(self):
+    def test_upload_and_evaluate_zip_candidate_zip_candidate_none(self):
         """
         Testing zip candidate None
         """
@@ -152,24 +173,31 @@ class TestCommonFunctions(unittest.TestCase):
                 "foo",
                 None,
                 1,
-                "foo"
+                "foo",
+                "iso"
             )
             self.assertIn("Unable to identify any known configuration files.", new_stdout.getvalue())
 
-    def upload_and_evaluate_zip_candidate_test(self):
+    def test_upload_and_evaluate_zip_candidate(self):
         """
         Testing zip candidate None
         """
         new_stdout = StringIO()
         with unittest.mock.patch(
                 'coguard_cli.api_connection.send_zip_file_for_scanning',
-                new_callable=lambda: lambda a, b, c, d, e, f: {"failed": []}), \
+                new_callable=lambda: lambda a, b, c, d, e, f, g: {"failed": []}), \
                 unittest.mock.patch(
                     'sys.stdout',
                     new_callable=lambda: new_stdout), \
                 unittest.mock.patch(
                 'os.remove',
-                new_callable=lambda: lambda a: None):
+                new_callable=lambda: lambda a: None), \
+                unittest.mock.patch(
+                'coguard_cli.api_connection.get_fixable_rule_list',
+                 new_callable=lambda: lambda token, coguard_api_url, user_name, organization: []), \
+                unittest.mock.patch(
+                'logging.debug',
+                new_callable=unittest.mock.MagicMock()):
             auth_config = unittest.mock.MagicMock()
             auth_config.get_username = unittest.mock.Mock(return_value = "foo")
             coguard_cli.upload_and_evaluate_zip_candidate(
@@ -181,9 +209,10 @@ class TestCommonFunctions(unittest.TestCase):
                 "foo",
                 "formatted",
                 1,
-                "foo"
+                "foo",
+                "iso"
             )
-            self.assertIn("Scan result_jsons", new_stdout.getvalue())
+            self.assertIn("SCANNING OF", new_stdout.getvalue())
 
     def upload_and_evaluate_zip_candidate_json_formatted_test(self):
         """
@@ -210,7 +239,8 @@ class TestCommonFunctions(unittest.TestCase):
                 "foo",
                 "json",
                 1,
-                "foo"
+                "foo",
+                "iso"
             )
             self.assertIn('{"failed": []}', new_stdout.getvalue())
 
@@ -219,7 +249,7 @@ class TestCommonFunctions(unittest.TestCase):
         A test of the extract reference string function.
         """
         self.assertEqual(coguard_cli.extract_reference_string(
-            {}, {}
+            {}
         ), "")
 
     def extract_reference_string_test_non_trivial_dicts(self):
@@ -227,42 +257,30 @@ class TestCommonFunctions(unittest.TestCase):
         A test of the extract reference string function.
         """
         self.assertEqual(coguard_cli.extract_reference_string(
-            {"service": "foo"}, {
-                "machines": {
-                    "machine": {
-                        "services": {
-                            "foo": {
-                                "configFileList": [
-                                    {
-                                        "subPath": "bar",
-                                        "fileName": "foo.txt"
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                }
-            }
-        ), " (affected files: bar/foo.txt for service foo)")
+            {"service": "foo",
+             "fromLine": 0,
+             "toLine": 1,
+             "config_file": {
+                 "fileName": "krb5.conf",
+                 "subPath": ".",
+                 "configFileType": "krb"
+             }}
+        ), " (affected files: ./krb5.conf)")
 
-    def extract_reference_string_test_cluster_services_dicts(self):
+    def extract_reference_string_test_non_trivial_dicts_and_lines(self):
         """
         A test of the extract reference string function.
         """
         self.assertEqual(coguard_cli.extract_reference_string(
-            {"service": "foo"}, {
-                "clusterServices": {
-                    "foo": {
-                        "configFileList": [
-                            {
-                                "subPath": "bar",
-                                "fileName": "foo.txt"
-                            }
-                        ]
-                    }
-                }
-            }
-        ), " (affected files: bar/foo.txt for service foo)")
+            {"service": "foo",
+             "fromLine": 2,
+             "toLine": 5,
+             "config_file": {
+                 "fileName": "krb5.conf",
+                 "subPath": ".",
+                 "configFileType": "krb"
+             }}
+        ), " (affected files: ./krb5.conf, 2-5)")
 
     def test_apply_fixes_to_folder(self):
         """

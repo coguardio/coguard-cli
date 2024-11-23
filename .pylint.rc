@@ -1,7 +1,7 @@
 [MESSAGES CONTROL]
 disable=
         duplicate-code,
-        too-many-arguments
+        too-many-arguments,
         too-many-positional-arguments
 [BASIC]
 max-locals=20
