@@ -55,8 +55,8 @@ def translate_result_to_sarif(
         Remediation: {remediation}
         Sources: {sources}
         """.strip()
-        file_uri = pathlib.Path(failed_rule.get("config_file", {}).get("subPath")).joinpath(
-            failed_rule.get("config_file", {}).get("fileName")
+        file_uri = pathlib.Path(failed_rule.get("config_file", {}).get("subPath", ".")).joinpath(
+            failed_rule.get("config_file", {}).get("fileName", "")
         )
         location = {
             "physicalLocation": {

@@ -76,41 +76,41 @@ test_folder_fix() {
 
 # Docker image tests
 
-test_image_checksum "nginx:1.23.2" "69bc757a21d0a81fe92b9e93b11a8e9750e5e008"
+test_image_checksum "nginx:1.23.2" "247b93d12b6c0dddd73fbdfc5852f1fd892b5a3c"
 docker image rm "nginx:1.23.2"
-test_image_checksum "mysql:8.0.31" "828ae648a07f79dad8d60ee18a7c7cab50e11435"
-test_image_checksum "mysql:8.0.31" "ce01757c73ab5d0d85b4f30e9807f25a9820dd04" stig
+test_image_checksum "mysql:8.0.31" "15f9d4d4a0c1356ad22260793c97789825ecc00d"
+test_image_checksum "mysql:8.0.31" "ffd0dfbf8d5a12436cef8639fdbb587fc989afcd" stig
 docker image rm "mysql:8.0.31"
-test_image_checksum "postgres:15.1" "4fa159437ff236e7cf2195a53e213e2f17f7b5d5"
-test_image_checksum "postgres:15.1" "8eca512bc7ff7816419f4c55a594eedbe88a8869" soc2
+test_image_checksum "postgres:15.1" "87eb693e99e9cdd60f5f8d79cea4d75fa2675ed9"
+test_image_checksum "postgres:15.1" "f4333d5bc08540be3b17ce7c9430a4fef78437ab" soc2
 docker image rm "postgres:15.1"
-test_image_checksum "mongo:6.0.2" "11573dd2bb16683135ca303bb029ee0b1b1ae4a1"
+test_image_checksum "mongo:6.0.2" "be2d4a8ee7c83dbd04a896f44fd6ac5f33b69913"
 docker image rm "mongo:6.0.2"
-test_image_checksum "mariadb:10.9.4" "b2622095704ae7080ce70f05918e1f0b96c03aef"
-test_image_checksum "mariadb:10.9.4" "75b53c4345d21af9022e0ce109dcaeb3d9e9a935" hipaa
+test_image_checksum "mariadb:10.9.4" "1498f771142810f494930da77234a0b6c5b59e6b"
+test_image_checksum "mariadb:10.9.4" "54318b75d6fc2f7ec948fdb64d63c82ff0ff20b4" hipaa
 docker image rm "mariadb:10.9.4"
-test_image_checksum "bitnami/kafka:3.3.1" "4b5aecbe74d0fbd6a68c68e832747e44e3a66768"
+test_image_checksum "bitnami/kafka:3.3.1" "9dae7d5bfc8d9f9002e3fc670c941092c4c14f56"
 docker image rm "bitnami/kafka:3.3.1"
-test_image_checksum "httpd:2.4.54" "16b03fffb98474b2f7ba2fbbf07e7868eb7a6749"
+test_image_checksum "httpd:2.4.54" "774139309ef3ff82f40f5c31a2b6e7493da5ea07"
 docker image rm "httpd:2.4.54"
-test_image_checksum "elasticsearch:8.5.0" "15fdb4ff7d4e8cdfddd18eeb73dbdb84dc99e003"
+test_image_checksum "elasticsearch:8.5.0" "7e6284a43165f47dd342eccf4f19439d6596b5eb"
 docker image rm "elasticsearch:8.5.0"
-test_image_checksum "tomcat:9.0.69-jre17" "d15dcf7d045acbf0de181104ac3dcfe6006d1342"
+test_image_checksum "tomcat:9.0.69-jre17" "712d6a7502e64cb9baa00e0571cb20c89ebf4c3b"
 docker image rm "tomcat:9.0.69-jre17"
-test_image_checksum "redis:7.0.5" "80d3e29fc531047a40430194b6df1f0451db1fbc"
+test_image_checksum "redis:7.0.5" "32ebbd865d23088b802ea5adee2b068734f9d6ca"
 docker image rm "redis:7.0.5"
-test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "f5bdf596877e210e89cefb5b63dc79d19a4855d0"
+test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "065484e4e5483d126a32da0ff958dea2671eef5f"
 docker image rm "rethinkdb:2.4.4-bookworm-slim"
-test_image_checksum "amazon/aws-otel-collector:v0.22.1" "08a49d0a5a38a6fafc723bcb73fb459bbc6ca61a"
+test_image_checksum "amazon/aws-otel-collector:v0.22.1" "9253ac064181113f972856a7f304fb7cc9d21ae6"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Git repository tests
 
-test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 68a28bc8a650749881f94e9e0487137ee9fde5c6
-test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 4e6f5cfd3b251452a10e757312645ccaefd145d7
-test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 ae7e5931f2e0d22bc6eaec42b4139e9af8e9ade5
-test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 98087a874a6c5039a103ac818c1f9402ef8c599f
-test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 67081c91818a12d1572bd06cb9bd63e79015cc8d
+test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df cff2be9fa9933ecdbf05fbac3b6530d0364e68c0
+test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 8903c845ff9cb5de916a0997bcc0e5acee4b158c
+test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 6f7ef1a03ae3c0234580a3cbc7ca672f54bd959c
+test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 665ccf1f9c8a3f17c6f85646db6a3868014ad195
+test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 d5eeca2c63c658fb9fc3df6f096658b14b00a737
 test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
 rm -rf "$TEMP_DIR"
