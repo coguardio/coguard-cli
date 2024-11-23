@@ -76,7 +76,7 @@ test_folder_fix() {
 
 # Docker image tests
 
-test_image_checksum "nginx:1.23.2" "247b93d12b6c0dddd73fbdfc5852f1fd892b5a3c"
+test_image_checksum "nginx:1.23.2" "ca532b2cc57393c82504333a5dad1c947afa83be"
 docker image rm "nginx:1.23.2"
 test_image_checksum "mysql:8.0.31" "15f9d4d4a0c1356ad22260793c97789825ecc00d"
 test_image_checksum "mysql:8.0.31" "ffd0dfbf8d5a12436cef8639fdbb587fc989afcd" stig
