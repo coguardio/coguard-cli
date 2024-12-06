@@ -82,5 +82,5 @@ def translate_result_to_sarif(
                 ]
             }
         )
-    with to_safe_path.open('w', encoding='utf-8') as serif_result_file:
-        json.dump(result_blueprint, serif_result_file)
+    with to_safe_path.open('w', encoding='utf-8') as sarif_result_file:
+        json.dump(result_blueprint, sarif_result_file, indent=2)

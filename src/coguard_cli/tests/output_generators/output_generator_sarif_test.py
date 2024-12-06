@@ -185,5 +185,6 @@ class TestTranslateToSarif(unittest.TestCase):
                         }
                     ]
                 },
-                to_safe_path.open().__enter__()
+                to_safe_path.open().__enter__(),
+                indent=2
             )

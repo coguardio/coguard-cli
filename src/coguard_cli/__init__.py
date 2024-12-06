@@ -235,7 +235,9 @@ def upload_and_evaluate_zip_candidate(
             organization
         )
     elif output_format == 'json':
-        print(json.dumps(result or {}))
+        with pathlib.Path("result.json").open('w', encoding='utf-8') as result_file:
+            json.dump(result or {}, result_file, indent=2)
+            print("JSON file written to `result.json`")
     else:
         translate_result_to_sarif(
             result or {},
