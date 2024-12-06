@@ -93,13 +93,13 @@ test_image_checksum "bitnami/kafka:3.3.1" "9dae7d5bfc8d9f9002e3fc670c941092c4c14
 docker image rm "bitnami/kafka:3.3.1"
 test_image_checksum "httpd:2.4.54" "774139309ef3ff82f40f5c31a2b6e7493da5ea07"
 docker image rm "httpd:2.4.54"
-test_image_checksum "elasticsearch:8.5.0" "7e6284a43165f47dd342eccf4f19439d6596b5eb"
+test_image_checksum "elasticsearch:8.5.0" "54d3970c4ac30423e9e92beb2356246adddb0246"
 docker image rm "elasticsearch:8.5.0"
 test_image_checksum "tomcat:9.0.69-jre17" "712d6a7502e64cb9baa00e0571cb20c89ebf4c3b"
 docker image rm "tomcat:9.0.69-jre17"
 test_image_checksum "redis:7.0.5" "32ebbd865d23088b802ea5adee2b068734f9d6ca"
 docker image rm "redis:7.0.5"
-test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "065484e4e5483d126a32da0ff958dea2671eef5f"
+test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "728e5bff42a891911520e394a04a11f05439159a"
 docker image rm "rethinkdb:2.4.4-bookworm-slim"
 test_image_checksum "amazon/aws-otel-collector:v0.22.1" "9253ac064181113f972856a7f304fb7cc9d21ae6"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
@@ -107,7 +107,7 @@ docker image rm "amazon/aws-otel-collector:v0.22.1"
 # Git repository tests
 
 test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df cff2be9fa9933ecdbf05fbac3b6530d0364e68c0
-test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 8903c845ff9cb5de916a0997bcc0e5acee4b158c
+test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 0867ade8961470de6dadb31e88bf7b3c381a0c05
 test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 6f7ef1a03ae3c0234580a3cbc7ca672f54bd959c
 test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 665ccf1f9c8a3f17c6f85646db6a3868014ad195
 test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 d5eeca2c63c658fb9fc3df6f096658b14b00a737
