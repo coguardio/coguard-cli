@@ -61,6 +61,8 @@ from coguard_cli.discovery.config_file_finders.config_file_finder_docker_daemon 
     import ConfigFileFinderDockerDaemon
 from coguard_cli.discovery.config_file_finders.config_file_finder_rethinkdb \
     import ConfigFileFinderRethinkdb
+from coguard_cli.discovery.config_file_finders.config_file_finder_cassandra \
+    import ConfigFileFinderCassandra
 
 def config_file_finder_factory() -> Generator[ConfigFileFinder, None, None]:
     """
