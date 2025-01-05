@@ -80,6 +80,15 @@ class ConfigFileFinderPostgres(ConfigFileFinder):
             r'include_dir\s+"?\'?(.+)"?\'?\s*',
             "\\.conf"
         )
+        if file_name == 'pg_hba.conf':
+            cff_util.extract_include_directives(
+                path_to_file_system,
+                location_on_current_machine,
+                temp_location,
+                manifest_entry,
+                "custom",
+                r'.*@([^,\s]+).*'
+            )
         return (
             manifest_entry,
             temp_location
