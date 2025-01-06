@@ -23,8 +23,8 @@
           - "{terraformer_wrapper_image_name}"
     - name: Check for 'docker run' expression in Python files
       ansible.builtin.command:
-        cmd: grep
         argv:
+          - grep
           - -l
           - "docker run"
           - "{{ item.path }}"
@@ -45,8 +45,8 @@
     - name: Grep the files and get the surrounding around "docker run"
       loop: "{{ docker_files }}"
       ansible.builtin.command:
-        cmd: grep
         argv:
+          - grep
           - -A5
           - "docker run"
           - "{{ item }}"
