@@ -356,11 +356,12 @@ def download_report(
     The call to download the latest report from the server.
     """
     location_act = f"{cluster_name}_{report_name}_report.zip" if not location else location
+    cluster_name_sanitized = replace_special_chars_with_underscore(cluster_name, True)
     if organization:
         with requests.get(
                 (
                     f"{coguard_api_url}/cluster/report-audit-zip?organizationName={organization}&"
-                    f"clusterName={urllib.parse.quote_plus(cluster_name)}&"
+                    f"clusterName={urllib.parse.quote_plus(cluster_name_sanitized)}&"
                     f"reportName={urllib.parse.quote_plus(report_name)}"
                 ),
                 headers={
@@ -380,7 +381,7 @@ def download_report(
         with requests.get(
                 (
                     f"{coguard_api_url}/coguard-cli/report-audit-zip?userName={username}&"
-                    f"clusterName={urllib.parse.quote_plus(cluster_name)}&"
+                    f"clusterName={urllib.parse.quote_plus(cluster_name_sanitized)}&"
                     f"reportName={urllib.parse.quote_plus(report_name)}"
                 ),
                 headers={
