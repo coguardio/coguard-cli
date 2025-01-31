@@ -7,7 +7,6 @@ import unittest.mock
 import pathlib
 from coguard_cli.output_generators.output_generator_markdown import \
     translate_result_to_markdown
-from importlib.metadata import version, PackageNotFoundError
 
 class TestTranslateToMarkdown(unittest.TestCase):
     """
@@ -111,14 +110,14 @@ class TestTranslateToMarkdown(unittest.TestCase):
                 }
             ]
         }
-        try:
-            coguard_version = version("coguard-cli")
-        except PackageNotFoundError:
-            coguard_version = "0.0.0"
         with unittest.mock.patch(
                 'pathlib.Path.open',
                 unittest.mock.mock_open()
-        ) as write_op:
+        ) as write_op, \
+        unittest.mock.patch(
+            'importlib.metadata.version',
+            new_callable=lambda: lambda x: "0.0.0"
+        ):
             translate_result_to_markdown(
                 coguard_output,
                 "foo",
@@ -210,14 +209,14 @@ One should avoid the legacy TGS...
                 }
             ]
         }
-        try:
-            coguard_version = version("coguard-cli")
-        except PackageNotFoundError:
-            coguard_version = "0.0.0"
         with unittest.mock.patch(
                 'pathlib.Path.open',
                 unittest.mock.mock_open()
-        ) as write_op:
+        ) as write_op, \
+        unittest.mock.patch(
+            'importlib.metadata.version',
+            new_callable=lambda: lambda x: "0.0.0"
+        ):
             translate_result_to_markdown(
                 coguard_output,
                 "foo",
@@ -225,7 +224,7 @@ One should avoid the legacy TGS...
             )
             # pylint: disable=unnecessary-dunder-call
             write_op().write.assert_called_once_with(
-                """
+                f"""
 # CoGuard evaluation of `foo`
 CoGuard CLI version: None
 # Findings
