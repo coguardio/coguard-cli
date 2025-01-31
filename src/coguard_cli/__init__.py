@@ -30,6 +30,8 @@ from coguard_cli.print_colors import COLOR_TERMINATION, \
 from coguard_cli.util import convert_posix_path_to_os_path
 from coguard_cli.output_generators.output_generator_sarif import \
     translate_result_to_sarif
+from coguard_cli.output_generators.output_generator_markdown import \
+    translate_result_to_markdown
 
 def extract_reference_string(entry_dict: Dict):
     """
@@ -238,6 +240,9 @@ def upload_and_evaluate_zip_candidate(
         with pathlib.Path("result.json").open('w', encoding='utf-8') as result_file:
             json.dump(result or {}, result_file, indent=2)
             print("JSON file written to `result.json`")
+    if 'markdown' in output_format:
+        translate_result_to_markdown(result, scan_identifier)
+        print("Markdown file written to `result.md`")
     if 'sarif' in output_format:
         translate_result_to_sarif(
             result or {},
