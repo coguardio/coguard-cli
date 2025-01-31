@@ -20,6 +20,25 @@ def create_unique_result_list(
             result[rule_name] = failed_rule
     return list(result.values())
 
+def extract_affected_files_by_severity(coguard_result: Dict[str, str]) -> Dict[str, Dict]:
+    """
+    Helper function to group affected files by rule-identifier.
+    """
+    affected_files_by_severity = {}
+    failed_rules = coguard_result.get("failed", [])
+    for rule in failed_rules:
+        rule_name = rule.get('rule', {}).get("name", '')
+        new_config_file_entry = rule.get("config_file", {})
+        if new_config_file_entry:
+            new_config_file_name = new_config_file_entry.get('fileName', '')
+            new_config_file_subpath = new_config_file_entry.get('subPath', '')
+            new_config_file_as_string = f"{new_config_file_subpath}{os.sep}{new_config_file_name}"
+            if rule_name not in affected_files_by_severity:
+                affected_files_by_severity[rule_name] = [new_config_file_as_string]
+            else:
+                affected_files_by_severity[rule_name].append(new_config_file_as_string)
+    return affected_files_by_severity
+
 def translate_result_to_markdown(
         coguard_result: Dict[str, str],
         scan_identifier: str = "",
@@ -42,19 +61,8 @@ def translate_result_to_markdown(
 CoGuard CLI version: {coguard_version}
 # Findings
 """
-    affected_files_by_severity = {}
+    affected_files_by_severity = extract_affected_files_by_severity(coguard_result)
     failed_rules = coguard_result.get("failed", [])
-    for rule in failed_rules:
-        rule_name = rule.get('rule', {}).get("name", '')
-        new_config_file_entry = rule.get("config_file", {})
-        if new_config_file_entry:
-            new_config_file_name = new_config_file_entry.get('fileName', '')
-            new_config_file_subpath = new_config_file_entry.get('subPath', '')
-            new_config_file_as_string = f"{new_config_file_subpath}{os.sep}{new_config_file_name}"
-            if rule_name not in affected_files_by_severity:
-                affected_files_by_severity[rule_name] = [new_config_file_as_string]
-            else:
-                affected_files_by_severity[rule_name].append(new_config_file_as_string)
     failed_rules.sort(key=lambda itm: itm.get("rule", {}).get("severity"), reverse=True)
     failed_rules=create_unique_result_list(failed_rules)
     findings_list = []
