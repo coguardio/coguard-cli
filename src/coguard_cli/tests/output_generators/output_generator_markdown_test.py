@@ -116,7 +116,7 @@ class TestTranslateToMarkdown(unittest.TestCase):
         ) as write_op, \
         unittest.mock.patch(
             'importlib.metadata.version',
-            new_callable=lambda: lambda x: "0.0.0"
+            new_callable=lambda: lambda x: None
         ):
             translate_result_to_markdown(
                 coguard_output,
@@ -215,7 +215,7 @@ One should avoid the legacy TGS...
         ) as write_op, \
         unittest.mock.patch(
             'importlib.metadata.version',
-            new_callable=lambda: lambda x: "0.0.0"
+            new_callable=lambda: lambda x: None
         ):
             translate_result_to_markdown(
                 coguard_output,
