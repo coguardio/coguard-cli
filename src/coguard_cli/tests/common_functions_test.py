@@ -5,6 +5,7 @@ CoGuard CLI module.
 
 import unittest
 import unittest.mock
+import argparse
 from io import StringIO
 import coguard_cli
 
@@ -693,3 +694,23 @@ class TestCommonFunctions(unittest.TestCase):
             )
             self.assertEqual(rmtree.call_count, 1)
             self.assertEqual(upload_and_fix.call_count, 1)
+
+    def test_output_format_validation_function(self):
+        """
+        Testing the validation function for the output-format parameter.
+        """
+        inp_str_1 = "formatted"
+        self.assertEqual(inp_str_1, coguard_cli.validate_output_format(inp_str_1))
+        inp_str_2 = "foo"
+        with self.assertRaises(argparse.ArgumentTypeError):
+            coguard_cli.validate_output_format(inp_str_2)
+        inp_str_3 = "formatted,json"
+        self.assertEqual(inp_str_3, coguard_cli.validate_output_format(inp_str_3))
+        with self.assertRaises(argparse.ArgumentTypeError):
+            coguard_cli.validate_output_format(
+                ",".join([
+                    inp_str_1,
+                    inp_str_2,
+                    inp_str_3
+                ])
+            )

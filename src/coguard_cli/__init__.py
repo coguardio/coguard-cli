@@ -4,6 +4,7 @@ The CoGuard CLI top level entrypoint where the entrypoint function is being defi
 
 from enum import Enum
 import json
+import argparse
 import shutil
 import os
 import sys
@@ -194,7 +195,7 @@ def upload_and_evaluate_zip_candidate(
         token: auth.token.Token,
         coguard_api_url: str,
         scan_identifier: str,
-        output_format: List[str],
+        output_format: str,
         fail_level: int,
         organization: Optional[str],
         ruleset: str):
@@ -374,7 +375,7 @@ def perform_docker_image_scan(
         token: auth.token.Token,
         organization: str,
         coguard_api_url: Optional[str],
-        output_format: List[str],
+        output_format: str,
         fail_level: int,
         ruleset: str,
         dry_run: bool = False):
@@ -505,7 +506,7 @@ def perform_folder_scan(
         token: auth.token.Token,
         organization: str,
         coguard_api_url: Optional[str],
-        output_format: List[str],
+        output_format: str,
         fail_level: int,
         ruleset: str,
         dry_run: bool = False):
@@ -556,6 +557,23 @@ def perform_folder_scan(
             organization,
             ruleset
         )
+
+def validate_output_format(inp_string: str) -> bool:
+    """
+    A helper function to validate the input for the output format of the CLI.
+    """
+    choices = ['formatted', 'json', 'sarif', 'markdown']
+    if "," not in inp_string and inp_string not in choices:
+        raise argparse.ArgumentTypeError(
+            f"Invalid output-format choice. Please choose from {choices}."
+        )
+    inp_strings = inp_string.split(',')
+    for elem in inp_strings:
+        if elem not in choices:
+            raise argparse.ArgumentTypeError(
+                f"Invalid output-format choice. Please choose from {choices}."
+            )
+    return inp_string
 
 def perform_folder_fix(
         folder_name: Optional[str],
@@ -611,7 +629,7 @@ def perform_cloud_provider_scan(
         token: auth.token.Token,
         organization: str,
         coguard_api_url: Optional[str],
-        output_format: List[str],
+        output_format: str,
         fail_level: int,
         ruleset: str,
         dry_run: bool = False):

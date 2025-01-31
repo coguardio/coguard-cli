@@ -6,7 +6,7 @@ interface
 import argparse
 import logging
 import pkg_resources
-from coguard_cli import entrypoint, SubParserNames
+from coguard_cli import entrypoint, SubParserNames, validate_output_format
 from coguard_cli.util import CiCdProviderNames
 from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL
 
@@ -92,13 +92,12 @@ def main():
     )
     parser.add_argument(
         '--output-format',
-        type=str,
+        type=validate_output_format,
         dest='output_format',
-        nargs='*',
-        default=['formatted'],
-        choices=['formatted', 'json', 'sarif', 'markdown'],
+        default='formatted',
         help=("The format of the output. It is either `formatted` (default), "
-              "i.e. human readable, or `json`.")
+              "i.e. human readable to stdout, or it can be exported to other formats. "
+              "Multiple formats can be chosen and concatenated via a comma.")
     )
     parser.add_argument(
         '--ruleset',
