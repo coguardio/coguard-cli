@@ -116,7 +116,7 @@ class TestTranslateToMarkdown(unittest.TestCase):
         ) as write_op, \
         unittest.mock.patch(
             'importlib.metadata.version',
-            new_callable=lambda: lambda x: None
+            new_callable=lambda: lambda x: "0.0.0"
         ):
             translate_result_to_markdown(
                 coguard_output,
@@ -127,7 +127,7 @@ class TestTranslateToMarkdown(unittest.TestCase):
             write_op().write.assert_called_once_with(
                 """
 # CoGuard evaluation of `foo`
-CoGuard CLI version: None
+CoGuard CLI version: 0.0.0
 # Findings
 
 ## kerberos_default_tgs_enctypes
@@ -215,7 +215,7 @@ One should avoid the legacy TGS...
         ) as write_op, \
         unittest.mock.patch(
             'importlib.metadata.version',
-            new_callable=lambda: lambda x: None
+            new_callable=lambda: lambda x: "0.0.0"
         ):
             translate_result_to_markdown(
                 coguard_output,
@@ -226,7 +226,7 @@ One should avoid the legacy TGS...
             write_op().write.assert_called_once_with(
                 f"""
 # CoGuard evaluation of `foo`
-CoGuard CLI version: None
+CoGuard CLI version: 0.0.0
 # Findings
 
 ## kerberos_default_tgs_enctypes

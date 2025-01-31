@@ -6,7 +6,7 @@ from typing import Dict
 import pathlib
 import os
 import logging
-from importlib.metadata import version, PackageNotFoundError
+import importlib.metadata
 
 def create_unique_result_list(
         failed_rules):
@@ -52,8 +52,8 @@ def translate_result_to_markdown(
     if coguard_result is None:
         raise ValueError("The path to save the file has been empty")
     try:
-        coguard_version = version("coguard-cli")
-    except PackageNotFoundError:
+        coguard_version =  importlib.metadata.version("coguard-cli")
+    except importlib.metadata.PackageNotFoundError:
         logging.error("CoGuard not locally installed")
         coguard_version = "0.0.0"
     markdown_blueprint = f"""
