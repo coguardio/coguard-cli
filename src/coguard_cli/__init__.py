@@ -192,7 +192,7 @@ def upload_and_evaluate_zip_candidate(
         token: auth.token.Token,
         coguard_api_url: str,
         scan_identifier: str,
-        output_format: str,
+        output_format: List[str],
         fail_level: int,
         organization: Optional[str],
         ruleset: str):
@@ -226,7 +226,7 @@ def upload_and_evaluate_zip_candidate(
                   str(result))
     print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {scan_identifier}"
           f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
-    if output_format == 'formatted':
+    if 'formatted' in output_format:
         output_result_json_from_coguard(
             result or {},
             token,
@@ -234,11 +234,11 @@ def upload_and_evaluate_zip_candidate(
             auth_config.get_username(),
             organization
         )
-    elif output_format == 'json':
+    if 'json' in output_format:
         with pathlib.Path("result.json").open('w', encoding='utf-8') as result_file:
             json.dump(result or {}, result_file, indent=2)
             print("JSON file written to `result.json`")
-    else:
+    if 'sarif' in output_format:
         translate_result_to_sarif(
             result or {},
             pathlib.Path('result.sarif.json')
@@ -369,7 +369,7 @@ def perform_docker_image_scan(
         token: auth.token.Token,
         organization: str,
         coguard_api_url: Optional[str],
-        output_format: str,
+        output_format: List[str],
         fail_level: int,
         ruleset: str,
         dry_run: bool = False):
@@ -500,7 +500,7 @@ def perform_folder_scan(
         token: auth.token.Token,
         organization: str,
         coguard_api_url: Optional[str],
-        output_format: str,
+        output_format: List[str],
         fail_level: int,
         ruleset: str,
         dry_run: bool = False):
@@ -606,7 +606,7 @@ def perform_cloud_provider_scan(
         token: auth.token.Token,
         organization: str,
         coguard_api_url: Optional[str],
-        output_format: str,
+        output_format: List[str],
         fail_level: int,
         ruleset: str,
         dry_run: bool = False):
