@@ -80,7 +80,8 @@ CoGuard CLI version: {coguard_version}
             'scenarios', []
         ))
         if compliance_needs:
-            compliance_needs = f"\n - {compliance_needs}"
+            compliance_needs = \
+                f"\n**References for your specific requirements:**\n\n - {compliance_needs}"
         findings_list.append(
             f"""
 ## {rule_name}
@@ -91,15 +92,13 @@ CoGuard CLI version: {coguard_version}
 **Remediation:**
 
 {remediation}
-{"\n**References for your specific requirements:**\n" + compliance_needs
-            if compliance_needs else ""}
+{compliance_needs}
 
 **Sources:**
 {source}
 
 **Affected files:**
 {affected_files}
-"""
-        )
+""")
     with to_safe_path.open('w', encoding='utf-8') as markdown_result_file:
         markdown_result_file.write(markdown_blueprint + "\n".join(findings_list))
