@@ -4,6 +4,7 @@ The CoGuard CLI top level entrypoint where the entrypoint function is being defi
 
 from enum import Enum
 import json
+import argparse
 import shutil
 import os
 import sys
@@ -30,6 +31,8 @@ from coguard_cli.print_colors import COLOR_TERMINATION, \
 from coguard_cli.util import convert_posix_path_to_os_path
 from coguard_cli.output_generators.output_generator_sarif import \
     translate_result_to_sarif
+from coguard_cli.output_generators.output_generator_markdown import \
+    translate_result_to_markdown
 
 def extract_reference_string(entry_dict: Dict):
     """
@@ -226,7 +229,7 @@ def upload_and_evaluate_zip_candidate(
                   str(result))
     print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {scan_identifier}"
           f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
-    if output_format == 'formatted':
+    if 'formatted' in output_format:
         output_result_json_from_coguard(
             result or {},
             token,
@@ -234,11 +237,14 @@ def upload_and_evaluate_zip_candidate(
             auth_config.get_username(),
             organization
         )
-    elif output_format == 'json':
+    if 'json' in output_format:
         with pathlib.Path("result.json").open('w', encoding='utf-8') as result_file:
             json.dump(result or {}, result_file, indent=2)
             print("JSON file written to `result.json`")
-    else:
+    if 'markdown' in output_format:
+        translate_result_to_markdown(result, scan_identifier)
+        print("Markdown file written to `result.md`")
+    if 'sarif' in output_format:
         translate_result_to_sarif(
             result or {},
             pathlib.Path('result.sarif.json')
@@ -551,6 +557,23 @@ def perform_folder_scan(
             organization,
             ruleset
         )
+
+def validate_output_format(inp_string: str) -> bool:
+    """
+    A helper function to validate the input for the output format of the CLI.
+    """
+    choices = ['formatted', 'json', 'sarif', 'markdown']
+    if "," not in inp_string and inp_string not in choices:
+        raise argparse.ArgumentTypeError(
+            f"Invalid output-format choice. Please choose from {choices}."
+        )
+    inp_strings = inp_string.split(',')
+    for elem in inp_strings:
+        if elem not in choices:
+            raise argparse.ArgumentTypeError(
+                f"Invalid output-format choice. Please choose from {choices}."
+            )
+    return inp_string
 
 def perform_folder_fix(
         folder_name: Optional[str],
