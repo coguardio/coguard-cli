@@ -298,19 +298,24 @@ can be found
     - PostgreSQL
     - Redis
     - TerraForm
+    - Ansible
+    - Jenkins
+    - OpenAPI
+    - BitBucket Pipelines
+    - Apache Druid
+    - Flink
+    - SystemD
 - Supported Cloud Hosts
     - AWS
     - Azure
     - GCP
     - OVH Cloud
+    - Hetzner Cloud
+    - Vultr
 - <a id="supported-roadmap"></a>Roadmap (Future Support Planned)
-    - Ansible
-    - Jenkins
     - Bamboo
     - CircleCI
-    - OpenAPI
     - Puppet
-    - BitBucket Pipelines
     - [Contact us](https://coguard.io/contact) for full list or to add a specific request or custom rules
 
 This list
