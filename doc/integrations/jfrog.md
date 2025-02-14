@@ -94,7 +94,8 @@ jobs:
           --package-version ${{ env.CURRENT_COGUARD_VERSION }} \
           --package-repo-name docker-trial \
           --markdown result.md \
-          --key ./private_key.pem --key-alias ${{ secrets.JF_KEY_ALIAS }} \
+          --key "${{ secrets.JF_PRIVATE_KEY }}" \
+          --key-alias ${{ secrets.JF_KEY_ALIAS }} \
           --predicate result.json \
           --predicate-type https://www.coguard.io/schema-v1
 ```
