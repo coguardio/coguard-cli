@@ -113,4 +113,8 @@ test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f
 test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 d5eeca2c63c658fb9fc3df6f096658b14b00a737
 test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
+# Test with a weird name
+git clone https://github.com/ethereum/remix-project.git "$TEMP_DIR"/"tmp_repo_dir (1)";
+(cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/"tmp_repo_dir (1)") | sed 1,18d | tee "$TEMP_DIR/folder_check.txt" | sort | sha1sum | awk '{print $1}'
+
 rm -rf "$TEMP_DIR"

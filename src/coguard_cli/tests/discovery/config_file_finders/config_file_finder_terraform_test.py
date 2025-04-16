@@ -133,14 +133,15 @@ class TestConfigFileFinderTerraform(unittest.TestCase):
         """
         Testing the function to see if we can parse a tf file.
         """
+        inp_string = """
+resource "aws_test" "bar" {
+    foo = "bar"
+}
+        """
         with unittest.mock.patch(
                 'builtins.open',
                 unittest.mock.mock_open(
-                    read_data="""
-resource "aws_test" bar {
-    foo = "bar"
-}
-                    """)):
+                    read_data=inp_string)):
             config_file_finder_terraform = ConfigFileFinderTerraform()
             self.assertTrue(config_file_finder_terraform._can_parse_tf_file(
                 "foo.txt"

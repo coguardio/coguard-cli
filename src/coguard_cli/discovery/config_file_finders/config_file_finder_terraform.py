@@ -30,16 +30,16 @@ class ConfigFileFinderTerraform(ConfigFileFinder):
         Helper function to ensure that a file with ending .tf is indeed parseable
         using Terraform.
         """
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file_stream:
+        with open(file_path, 'r', encoding='utf-8') as file_stream:
+            try:
                 hcl2.load(file_stream)
-        #pylint: disable=bare-except
-        except:
-            logging.debug(
-                "Failed to load potential terraform file %s",
-                file_path
-            )
-            return False
+            #pylint: disable=bare-except
+            except:
+                logging.debug(
+                    "Failed to load potential terraform file %s",
+                    file_path
+                )
+                return False
         return True
 
 

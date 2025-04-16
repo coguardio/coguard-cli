@@ -29,7 +29,7 @@ def run_report(
     resp = requests.put(
         (
             f"{coguard_api_url}/cluster/run-report/"
-            f"{urllib.parse.quote_plus(scan_identifier_sanitized)}?"
+            f"{urllib.parse.quote(scan_identifier_sanitized)}?"
             f"organizationName={urllib.parse.quote_plus(organization)}"
         ),
         headers={
@@ -55,7 +55,7 @@ def get_latest_report(
     Returns None if the latest report did not exist.
     """
     if organization:
-        scan_identifier_sanitized = urllib.parse.quote_plus(
+        scan_identifier_sanitized = urllib.parse.quote(
             replace_special_chars_with_underscore(scan_identifier, True)
         )
         resp = requests.get(
@@ -71,7 +71,7 @@ def get_latest_report(
             timeout=300
         )
     else:
-        scan_identifier_sanitized = urllib.parse.quote_plus(
+        scan_identifier_sanitized = urllib.parse.quote(
             replace_special_chars_with_underscore(scan_identifier, True)
         )
         resp = requests.get(
@@ -154,7 +154,7 @@ def send_zip_file_for_scanning(
             logging.debug("The latest report is %s", latest_report)
             if not latest_report:
                 return None
-            scan_identifier_sanitized = urllib.parse.quote_plus(
+            scan_identifier_sanitized = urllib.parse.quote(
                 replace_special_chars_with_underscore(scan_identifier, True),
             )
             resp = requests.get(
