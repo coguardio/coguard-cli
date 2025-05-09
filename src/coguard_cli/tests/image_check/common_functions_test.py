@@ -6,7 +6,7 @@ inside the image_check module.
 import unittest
 import unittest.mock
 from coguard_cli import image_check
-from coguard_cli.auth.util import DealEnum
+from coguard_cli.auth.enums import DealEnum
 from coguard_cli.discovery.config_file_finders.config_file_finder_nginx \
     import ConfigFileFinderNginx
 from coguard_cli.discovery.config_file_finders.config_file_finder_netlify \

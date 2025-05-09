@@ -11,7 +11,7 @@ import urllib.parse
 import requests
 
 from coguard_cli.auth.token import Token
-from coguard_cli.util import replace_special_chars_with_underscore
+from coguard_cli.check_common_util import replace_special_chars_with_underscore
 from coguard_cli.print_colors import COLOR_TERMINATION, \
     COLOR_RED
 

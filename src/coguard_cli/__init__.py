@@ -3,158 +3,43 @@ The CoGuard CLI top level entrypoint where the entrypoint function is being defi
 """
 
 from enum import Enum
-import json
 import argparse
 import shutil
 import os
 import sys
-import textwrap
 import logging
 import tempfile
-import pathlib
+import subprocess
 from zipfile import ZipFile
 from pathlib import Path
-from typing import Dict, Optional, Tuple, List
-
+from typing import Dict, Optional, Tuple
 from coguard_cli import image_check
 from coguard_cli import folder_scan
 from coguard_cli import docker_dao
-from coguard_cli import util
 from coguard_cli.discovery.cloud_discovery.cloud_provider_factory import cloud_provider_factory
 from coguard_cli.ci_cd.ci_cd_provider_factory import ci_cd_provider_factory
-from coguard_cli import auth
-from coguard_cli import api_connection
-from coguard_cli.cluster_rule_fail_util import is_ci_cd_there
+from coguard_cli.auth.auth_config import CoGuardCliConfig
 from coguard_cli.auth.token import Token
+from coguard_cli.auth.util import retrieve_configuration_object, \
+    sign_in_or_sign_up
+from coguard_cli.auth.enums import DealEnum
+import coguard_cli.api_connection
 from coguard_cli.print_colors import COLOR_TERMINATION, \
-    COLOR_RED, COLOR_GRAY, COLOR_CYAN, COLOR_YELLOW
-from coguard_cli.util import convert_posix_path_to_os_path
-from coguard_cli.output_generators.output_generator_sarif import \
-    translate_result_to_sarif
-from coguard_cli.output_generators.output_generator_markdown import \
-    translate_result_to_markdown
-
-def extract_reference_string(entry_dict: Dict):
-    """
-    This is a helper function to extract the respective file in the manifest
-    corresponding to an entry in the failed rules.
-    """
-    config_file_in_entry = entry_dict.get("config_file", {})
-    from_line = entry_dict.get("fromLine", None)
-    to_line = entry_dict.get("toLine", None)
-    if (from_line is not None and to_line is not None) and (from_line != 0 and to_line != 1):
-        from_to_line = f", {from_line}-{to_line}"
-    else:
-        from_to_line = ""
-    if not config_file_in_entry:
-        return ""
-    reference_path = pathlib.Path(
-        config_file_in_entry.get("subPath", ".")
-    ).joinpath(
-        config_file_in_entry.get("fileName", ".")
-    )
-    return f" (affected files: {reference_path}{from_to_line})"
-
-def print_failed_check(color: str,
-                       entry: Dict,
-                       fixable_checks: List[str]):
-    """
-    This is the function to print a failed check entry, given a color.
-
-    :param color: The color to use. see e.g. :const:`COLOR_RED`
-    :param entry: The entry as returned by the CoGuard API.
-    """
-    reference = extract_reference_string(entry)
-    fix_icon = "🔧 " if entry["rule"]["name"] in fixable_checks else ""
-    print(
-        f'{fix_icon}{color} X Severity {entry["rule"]["severity"]}: '
-        f'{entry["rule"]["name"]}{COLOR_TERMINATION}'
-        f'{reference}'
-    )
-    prefix = "Documentation: "
-    try:
-        terminal_size = os.get_terminal_size().columns
-    except OSError:
-        terminal_size = 80
-    wrapper = textwrap.TextWrapper(
-        initial_indent=prefix,
-        width=max(80, terminal_size//2),
-        subsequent_indent=' '*len(prefix)
-    )
-    documentation_candidate = entry["rule"]["documentation"]
-    logging.debug("The candidate for the documentation presentation is: %s",
-                  documentation_candidate)
-    if isinstance(documentation_candidate, str):
-        print(wrapper.fill(entry["rule"]["documentation"]))
-    else:
-        description = documentation_candidate["documentation"]
-        remediation = documentation_candidate["remediation"]
-        sources = ",\n".join(documentation_candidate["sources"])
-        if "scenarios" in documentation_candidate:
-            scenario_string = "\nReferences for the specific ruleset: " + ",\n".join(
-                documentation_candidate["scenarios"]
-            )
-        else:
-            scenario_string = ''
-        documentation_string = f"""
-        {description}
-
-        Remediation: {remediation}
-        {scenario_string}
-
-        Source:
-        {sources}
-        """.replace("        ", "")
-        print(wrapper.fill(documentation_string))
-
-def output_result_json_from_coguard(
-        result_json: Dict,
-        token: Token,
-        coguard_api_url: str,
-        user_name: Optional[str],
-        organization: Optional[str]):
-    """
-    The function which outputs the result json in a pretty format to the screen.
-
-    :param result_json: The output from the API call to CoGuard.
-    """
-    high_checks = [entry for entry in result_json.get("failed", []) \
-                   if entry["rule"]["severity"] > 3]
-    high_checks.sort(key = lambda x: x["rule"]["severity"], reverse=True)
-    medium_checks = [entry for entry in result_json.get("failed", []) \
-                     if entry["rule"]["severity"] == 3]
-    medium_checks.sort(key = lambda x: x["rule"]["severity"], reverse=True)
-    low_checks = [entry for entry in result_json.get("failed", []) if entry["rule"]["severity"] < 3]
-    low_checks.sort(key = lambda x: x["rule"]["severity"], reverse=True)
-    fixable_check_list = api_connection.get_fixable_rule_list(
-        token,
-        coguard_api_url,
-        user_name,
-        organization
-    )
-    fixable_checks = [entry for entry in result_json.get("failed", []) \
-                      if entry["rule"]["name"] in fixable_check_list]
-    summary = (f'Scan result: {len(result_json.get("failed", []))} checks failed, '
-               f"{COLOR_RED}{len(high_checks)} High{COLOR_TERMINATION}/"
-               f"{COLOR_YELLOW}{len(medium_checks)} Medium{COLOR_TERMINATION}/"
-               f"{COLOR_GRAY}{len(low_checks)} Low{COLOR_TERMINATION} "
-               f"(🔧 {len(fixable_checks)} candidates for auto-remediation)")
-    print(summary)
-    for entry in high_checks:
-        print_failed_check(COLOR_RED, entry, fixable_check_list)
-    for entry in medium_checks:
-        print_failed_check(COLOR_YELLOW, entry, fixable_check_list)
-    for entry in low_checks:
-        print_failed_check(COLOR_GRAY, entry, fixable_check_list)
-    print(summary)
+    COLOR_RED, COLOR_CYAN, COLOR_YELLOW
+from coguard_cli.util import convert_posix_path_to_os_path, \
+    dry_run_outp, \
+    upload_and_evaluate_zip_candidate, \
+    retrieve_coguard_ignore_values
 
 class SubParserNames(Enum):
     """
     The enumeration capturing the different supported sub-parsers.
     """
     DOCKER_IMAGE = "docker-image"
+    DOCKER_CONTAINER = "docker-container"
     FOLDER_SCAN = "folder"
     CLOUD_SCAN = "cloud"
+    REPO_SCAN = "repository"
     CI_CD_GEN = "pipeline"
     ACCOUNT = "account"
     SCAN = "scan"
@@ -162,105 +47,31 @@ class SubParserNames(Enum):
 def auth_token_retrieval(
         coguard_api_url: Optional[str],
         coguard_auth_url: Optional[str]
-) -> Optional[auth.token.Token]:
+) -> Optional[Token]:
     """
     The helper function to get the authentication token.
     This may make the user sign up. If the process succeeds,
     it returns the token as string. If the process fails,
     None is being returned.
     """
-    auth_config = auth.retrieve_configuration_object(
+    auth_config = retrieve_configuration_object(
         arg_coguard_url = coguard_api_url,
         arg_auth_url = coguard_auth_url
     )
     if auth_config is None:
         print(f'{COLOR_YELLOW}Could not find authentication file. You can sign up right now '
               f'for your default account and continue with the requested scan.{COLOR_TERMINATION}')
-        api_connection.log("REGISTRATION_PROMPT", coguard_api_url)
-        token = auth.sign_in_or_sign_up(coguard_api_url, coguard_auth_url)
+        coguard_cli.api_connection.log("REGISTRATION_PROMPT", coguard_api_url)
+        token = sign_in_or_sign_up(coguard_api_url, coguard_auth_url)
         # Here is where we insert the authentication logic.
-        auth_config = auth.retrieve_configuration_object()
+        auth_config = retrieve_configuration_object()
     else:
         logging.debug("Retrieving config with auth_config %s", str(auth_config))
-        token = auth.token.Token("", auth_config)
+        token = Token("", auth_config)
         res = token.authenticate_to_server()
         if res is None:
             token = None
     return token
-
-def upload_and_evaluate_zip_candidate(
-        zip_candidate: Optional[Tuple[str, Dict]],
-        auth_config: Optional[auth.auth_config.CoGuardCliConfig],
-        deal_type,
-        token: auth.token.Token,
-        coguard_api_url: str,
-        scan_identifier: str,
-        output_format: str,
-        fail_level: int,
-        organization: Optional[str],
-        ruleset: str):
-    """
-    The common function to upload a zip file, as generated by the
-    helper functions, and evaluate the returned result.
-    """
-    if zip_candidate is None:
-        print(
-            f"{COLOR_YELLOW}Unable to identify any known configuration files.{COLOR_TERMINATION}"
-        )
-        return
-    zip_file, _ = zip_candidate
-    result = api_connection.send_zip_file_for_scanning(
-        zip_file,
-        auth_config.get_username(),
-        token,
-        coguard_api_url,
-        scan_identifier,
-        organization,
-        ruleset
-    )
-    if result is None:
-        print(
-            f"{COLOR_RED} An error occurred while scanning. Please file a "
-            f"bug report, and include the file located at {zip_file}, if possible. "
-            f"{COLOR_TERMINATION}"
-        )
-        sys.exit(1)
-    logging.debug("The result from the api is: %s",
-                  str(result))
-    print(f"{COLOR_CYAN}SCANNING OF{COLOR_TERMINATION} {scan_identifier}"
-          f" {COLOR_CYAN}COMPLETED{COLOR_TERMINATION}")
-    if 'formatted' in output_format:
-        output_result_json_from_coguard(
-            result or {},
-            token,
-            coguard_api_url,
-            auth_config.get_username(),
-            organization
-        )
-    if 'json' in output_format:
-        with pathlib.Path("result.json").open('w', encoding='utf-8') as result_file:
-            json.dump(result or {}, result_file, indent=2)
-            print("JSON file written to `result.json`")
-    if 'markdown' in output_format:
-        translate_result_to_markdown(result, scan_identifier)
-        print("Markdown file written to `result.md`")
-    if 'sarif' in output_format:
-        translate_result_to_sarif(
-            result or {},
-            pathlib.Path('result.sarif.json')
-        )
-        print("Sarif file written to `result.sarif.json`")
-    if deal_type != auth.util.DealEnum.ENTERPRISE:
-        print("""
-        🔧 Save time. Automatically find and fix vulnerabilities.
-           Upgrade to auto-remediate issues.
-        """)
-    os.remove(zip_file)
-    max_fail_severity = max(
-        entry["rule"]["severity"] for entry in result.get("failed", [])
-    ) if (result and result.get("failed", [])) else 0
-    if max_fail_severity >= fail_level:
-        sys.exit(1)
 
 def apply_fixes_to_folder(fix_folder: str, target_folder: str, zip_manifest: Dict):
     """
@@ -337,7 +148,7 @@ def apply_fixes_to_folder(fix_folder: str, target_folder: str, zip_manifest: Dic
 def upload_and_fix_zip_candidate(
         zip_candidate: Optional[Tuple[str, Dict]],
         folder_path: str,
-        token: auth.token.Token,
+        token: Token,
         coguard_api_url: str,
         organization: Optional[str]) -> None:
     """
@@ -350,7 +161,7 @@ def upload_and_fix_zip_candidate(
         )
         return
     zip_file, zip_manifest = zip_candidate
-    api_result = api_connection.send_zip_file_for_fixing(
+    api_result = coguard_cli.api_connection.send_zip_file_for_fixing(
         zip_file,
         token,
         coguard_api_url,
@@ -370,9 +181,9 @@ def upload_and_fix_zip_candidate(
 
 def perform_docker_image_scan(
         docker_image: Optional[str],
-        auth_config: auth.CoGuardCliConfig,
-        deal_type: auth.util.DealEnum,
-        token: auth.token.Token,
+        auth_config: CoGuardCliConfig,
+        deal_type: DealEnum,
+        token: Token,
         organization: str,
         coguard_api_url: Optional[str],
         output_format: str,
@@ -441,123 +252,6 @@ def perform_docker_image_scan(
                 ruleset
             )
 
-# pylint: disable=bare-except
-def _find_and_merge_included_docker_images(
-        collected_config_file_tuple: Tuple[str, Dict],
-        auth_config: auth.CoGuardCliConfig,
-        additional_failed_rules: List[str]):
-    docker_images_extracted = folder_scan.extract_included_docker_images(
-        collected_config_file_tuple
-    )
-    to_add = False
-    for image, location in docker_images_extracted:
-        print(
-            f"{COLOR_CYAN}Found referenced docker image "
-            f"{image} in configuration file {location}."
-            f"{COLOR_TERMINATION}"
-        )
-        try:
-            to_add = True
-            temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
-                image
-            ) or (None, None, None)
-            if temp_folder is None or temp_inspection is None or temp_image is None:
-                continue
-            collected_docker_config_file_tuple = image_check.find_configuration_files_and_collect(
-                image,
-                auth_config.get_username(),
-                temp_folder,
-                temp_inspection
-            )
-            util.merge_coguard_infrastructure_description_folders(
-                "included_docker_image",
-                collected_config_file_tuple,
-                collected_docker_config_file_tuple
-            )
-            # cleanup
-            collected_location, _ = collected_docker_config_file_tuple
-            shutil.rmtree(collected_location, ignore_errors=True)
-            shutil.rmtree(temp_folder, ignore_errors=True)
-            docker_dao.rm_temporary_container_name(temp_image)
-        except:
-            to_add = True
-            logging.error("Failed to extract the referenced Docker image.")
-    if to_add:
-        additional_failed_rules.append("cluster_docker_images_with_failed_checks_included")
-
-def retrieve_coguard_ignore_values(
-        folder_name: str) -> List[str]:
-    """
-    Helper function to return the coguard_ignore_values
-    """
-    folder_name_path = Path(folder_name)
-    coguard_ignore_path = folder_name_path.joinpath(".coguardignore")
-    if not coguard_ignore_path.exists():
-        return []
-    result = []
-    with coguard_ignore_path.open(encoding='utf-8') as ignore_stream:
-        result = ignore_stream.readlines()
-    return [elem for elem in result if elem.strip() and not elem.startswith("#")]
-
-def perform_folder_scan(
-        folder_name: Optional[str],
-        deal_type: auth.util.DealEnum,
-        auth_config: auth.CoGuardCliConfig,
-        token: auth.token.Token,
-        organization: str,
-        coguard_api_url: Optional[str],
-        output_format: str,
-        fail_level: int,
-        ruleset: str,
-        dry_run: bool = False):
-    """
-    Helper function to run a scan on a folder. If the folder_name parameter is None,
-    the current working directory is being used.
-    """
-    folder_name = folder_name or os.path.abspath(".")
-    coguard_ignore_list = retrieve_coguard_ignore_values(folder_name)
-    printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
-    print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
-    collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
-        folder_name,
-        organization or auth_config.get_username(),
-        ignore_list = coguard_ignore_list
-    )
-    if collected_config_file_tuple is None:
-        print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
-        return
-    additional_failed_rules = []
-    is_ci_cd_there(folder_name, additional_failed_rules)
-    _find_and_merge_included_docker_images(
-        collected_config_file_tuple,
-        auth_config,
-        additional_failed_rules
-    )
-    zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
-        collected_config_file_tuple,
-        additional_failed_rules
-    )
-    collected_location, _ = collected_config_file_tuple
-    shutil.rmtree(collected_location, ignore_errors=True)
-    if zip_candidate is None:
-        print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
-        return
-    if dry_run:
-        dry_run_outp(zip_candidate)
-    else:
-        upload_and_evaluate_zip_candidate(
-            zip_candidate,
-            auth_config,
-            deal_type,
-            token,
-            coguard_api_url,
-            printed_folder_name,
-            output_format,
-            fail_level,
-            organization,
-            ruleset
-        )
-
 def validate_output_format(inp_string: str) -> bool:
     """
     A helper function to validate the input for the output format of the CLI.
@@ -577,8 +271,8 @@ def validate_output_format(inp_string: str) -> bool:
 
 def perform_folder_fix(
         folder_name: Optional[str],
-        deal_type: auth.util.DealEnum,
-        token: auth.token.Token,
+        deal_type: DealEnum,
+        token: Token,
         organization: str,
         coguard_api_url: Optional[str],
         dry_run: bool = False):
@@ -586,7 +280,7 @@ def perform_folder_fix(
     Helper function to run a fix on a folder. If the folder_name parameter is None,
     the current working directory is being used.
     """
-    if deal_type != auth.util.DealEnum.ENTERPRISE:
+    if deal_type != DealEnum.ENTERPRISE:
         print(f"{COLOR_RED} AUTO-REMEDIATION is only available for Enterprise "
               f"subscriptions {COLOR_TERMINATION}")
         return
@@ -624,9 +318,9 @@ def perform_folder_fix(
 def perform_cloud_provider_scan(
         cloud_provider_name: Optional[str],
         credentials_file: Optional[str],
-        deal_type: auth.util.DealEnum,
-        auth_config: auth.CoGuardCliConfig,
-        token: auth.token.Token,
+        deal_type: DealEnum,
+        auth_config: CoGuardCliConfig,
+        token: Token,
         organization: str,
         coguard_api_url: Optional[str],
         output_format: str,
@@ -713,19 +407,6 @@ def perform_ci_cd_action(
         sys.exit(1)
     print(ci_cd_provider_instance.post_string())
 
-def dry_run_outp(zip_candidate: Tuple[str, Dict]):
-    """
-    The function to output the location of the zip for the
-    dry-run to the user.
-    """
-    if zip_candidate is None:
-        print("No file generated")
-        return
-    zip_location, _ = zip_candidate
-    print("Dry-run complete. You can find the upload-candidate "
-          f"in the following location: {zip_location}")
-
-
 def docker_image_scan_handler(
         args,
         auth_config,
@@ -784,7 +465,7 @@ def folder_scan_handler(
             args.dry_run
         )
     else:
-        perform_folder_scan(
+        folder_scan.perform_folder_scan(
             folder_name,
             deal_type,
             auth_config,
@@ -805,7 +486,7 @@ def handle_account_action(args, token, username, organization):
         if not args.cluster_name:
             print(f"{COLOR_RED}No cluster name provided.{COLOR_TERMINATION}")
             return
-        latest_report = api_connection.get_latest_report(
+        latest_report = coguard_cli.api_connection.get_latest_report(
             token,
             args.coguard_api_url,
             args.cluster_name,
@@ -818,7 +499,7 @@ def handle_account_action(args, token, username, organization):
                 f"cluster {args.cluster_name}.{COLOR_TERMINATION}"
             )
             return
-        api_connection.download_report(
+        coguard_cli.api_connection.download_report(
             token,
             args.coguard_api_url,
             organization,
@@ -829,6 +510,29 @@ def handle_account_action(args, token, username, organization):
         )
     else:
         print(f"{COLOR_RED}No valid account action provided.{COLOR_TERMINATION}")
+
+def clone_git_repo(url: str) -> str:
+    """
+    Clones the git repository into a temporary folder and returns the path.
+    Returns the empty string if an error occurs.
+    """
+    dest = tempfile.mkdtemp(prefix = "coguard_repo_extract")
+    try:
+        subprocess.run(
+            ["git", "-C", dest, "clone", url],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=300
+        )
+        subdirs = [os.path.join(dest, name) for name in os.listdir(dest)
+                   if os.path.isdir(os.path.join(dest, name))]
+        if len(subdirs) != 1:
+            return ""
+        return subdirs[0]
+    except subprocess.CalledProcessError:
+        return ""
 
 #pylint: disable=too-many-branches
 def entrypoint(args):
@@ -860,7 +564,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         if token is None:
             print(f"{COLOR_RED}Failed to authenticate.{COLOR_TERMINATION}")
             return
-        auth_config = auth.retrieve_configuration_object(
+        auth_config = retrieve_configuration_object(
             arg_coguard_url = args.coguard_api_url,
             arg_auth_url = args.coguard_auth_url
         )
@@ -868,13 +572,13 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         organization = token.extract_organization_from_token()
     else:
         token=None
-        auth_config = auth.auth_config.CoGuardCliConfig("dry-run-user", None, None, None)
-        deal_type = auth.util.DealEnum.ENTERPRISE
+        auth_config = CoGuardCliConfig("dry-run-user", None, None, None)
+        deal_type = DealEnum.ENTERPRISE
         organization = None
     ruleset = args.ruleset
     logging.debug("Extracted deal type: %s", deal_type)
     logging.debug("Extracted organization: %s", organization)
-    if ruleset and deal_type != auth.util.DealEnum.ENTERPRISE:
+    if ruleset and deal_type != DealEnum.ENTERPRISE:
         print(f"{COLOR_RED} Ruleset specification is not available in default "
               f"subscriptions {COLOR_TERMINATION}")
         return
@@ -913,6 +617,28 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             ruleset,
             args.dry_run
         )
+    elif args.subparsers_location == SubParserNames.REPO_SCAN.value:
+        repository_url = args.repo_url or args.scan or None
+        if not repository_url:
+            print(f"{COLOR_RED} Repository URL needs to be provided.{COLOR_TERMINATION}")
+            return
+        git_repo_dir = clone_git_repo(repository_url)
+        if not git_repo_dir:
+            print(f"{COLOR_RED} Could not download requested repository URL.{COLOR_TERMINATION}")
+            return
+        folder_scan.perform_folder_scan(
+            git_repo_dir,
+            deal_type,
+            auth_config,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.output_format,
+            args.fail_level,
+            ruleset,
+            args.dry_run
+        )
+        shutil.rmtree(git_repo_dir)
     elif args.subparsers_location == SubParserNames.CI_CD_GEN.value:
         ci_cd_provider = args.ci_cd_provider_name
         ci_cd_command = args.ci_cd_command
@@ -945,7 +671,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             ruleset,
             args.dry_run
         )
-        perform_folder_scan(
+        folder_scan.perform_folder_scan(
             None,
             deal_type,
             auth_config,

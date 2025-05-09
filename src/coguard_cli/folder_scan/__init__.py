@@ -14,9 +14,21 @@ import yaml
 from flatten_dict import unflatten
 
 import coguard_cli.discovery.config_file_finder_factory as factory
-from coguard_cli.util import replace_special_chars_with_underscore, \
-    create_service_identifier, \
-    convert_posix_path_to_os_path
+from coguard_cli.check_common_util import replace_special_chars_with_underscore
+from coguard_cli.util import create_service_identifier, \
+    convert_posix_path_to_os_path, \
+    retrieve_coguard_ignore_values, \
+    dry_run_outp, \
+    upload_and_evaluate_zip_candidate, \
+    merge_coguard_infrastructure_description_folders
+from coguard_cli.print_colors import COLOR_TERMINATION, \
+    COLOR_CYAN, COLOR_YELLOW
+from coguard_cli.cluster_rule_fail_util import is_ci_cd_there
+from coguard_cli.auth.auth_config import CoGuardCliConfig
+from coguard_cli.auth.enums import DealEnum
+from coguard_cli.auth.token import Token
+from coguard_cli import docker_dao
+from coguard_cli import image_check
 
 def filter_config_file_list(
         config_file_list: List[Tuple[Dict, str]],
@@ -292,3 +304,106 @@ def extract_included_docker_images(
     return _find_and_extract_docker_images_from_config_files(
         extracted_relevant_machine_config_files + extracted_relevant_cluster_service_config_files
     )
+
+# pylint: disable=bare-except
+def _find_and_merge_included_docker_images(
+        collected_config_file_tuple: Tuple[str, Dict],
+        auth_config: CoGuardCliConfig,
+        additional_failed_rules: List[str]):
+    docker_images_extracted = extract_included_docker_images(
+        collected_config_file_tuple
+    )
+    to_add = False
+    for image, location in docker_images_extracted:
+        print(
+            f"{COLOR_CYAN}Found referenced docker image "
+            f"{image} in configuration file {location}."
+            f"{COLOR_TERMINATION}"
+        )
+        try:
+            to_add = True
+            temp_folder, temp_inspection, temp_image = image_check.extract_image_to_file_system(
+                image
+            ) or (None, None, None)
+            if temp_folder is None or temp_inspection is None or temp_image is None:
+                continue
+            collected_docker_config_file_tuple = image_check.find_configuration_files_and_collect(
+                image,
+                auth_config.get_username(),
+                temp_folder,
+                temp_inspection
+            )
+            merge_coguard_infrastructure_description_folders(
+                "included_docker_image",
+                collected_config_file_tuple,
+                collected_docker_config_file_tuple
+            )
+            # cleanup
+            collected_location, _ = collected_docker_config_file_tuple
+            shutil.rmtree(collected_location, ignore_errors=True)
+            shutil.rmtree(temp_folder, ignore_errors=True)
+            docker_dao.rm_temporary_container_name(temp_image)
+        except:
+            to_add = True
+            logging.error("Failed to extract the referenced Docker image.")
+    if to_add:
+        additional_failed_rules.append("cluster_docker_images_with_failed_checks_included")
+
+def perform_folder_scan(
+        folder_name: Optional[str],
+        deal_type: DealEnum,
+        auth_config: CoGuardCliConfig,
+        token: Token,
+        organization: str,
+        coguard_api_url: Optional[str],
+        output_format: str,
+        fail_level: int,
+        ruleset: str,
+        dry_run: bool = False):
+    """
+    Helper function to run a scan on a folder. If the folder_name parameter is None,
+    the current working directory is being used.
+    """
+    folder_name = folder_name or os.path.abspath(".")
+    coguard_ignore_list = retrieve_coguard_ignore_values(folder_name)
+    printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
+    print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
+    collected_config_file_tuple = find_configuration_files_and_collect(
+        folder_name,
+        organization or auth_config.get_username(),
+        ignore_list = coguard_ignore_list
+    )
+    if collected_config_file_tuple is None:
+        print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
+        return
+    additional_failed_rules = []
+    is_ci_cd_there(folder_name, additional_failed_rules)
+    _find_and_merge_included_docker_images(
+        collected_config_file_tuple,
+        auth_config,
+        additional_failed_rules
+    )
+    zip_candidate = create_zip_to_upload_from_file_system(
+        collected_config_file_tuple,
+        additional_failed_rules
+    )
+    collected_location, _ = collected_config_file_tuple
+    shutil.rmtree(collected_location, ignore_errors=True)
+    if zip_candidate is None:
+        print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
+        return
+    if dry_run:
+        dry_run_outp(zip_candidate)
+    else:
+        upload_and_evaluate_zip_candidate(
+            zip_candidate,
+            auth_config,
+            deal_type,
+            token,
+            coguard_api_url,
+            printed_folder_name,
+            output_format,
+            fail_level,
+            organization,
+            ruleset
+        )

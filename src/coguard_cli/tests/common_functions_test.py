@@ -6,6 +6,7 @@ CoGuard CLI module.
 import unittest
 import unittest.mock
 import argparse
+import subprocess
 from io import StringIO
 import coguard_cli
 
@@ -30,7 +31,7 @@ class TestCommonFunctions(unittest.TestCase):
                 'logging.debug',
                 new_callable=unittest.mock.MagicMock()
             ):
-            coguard_cli.print_failed_check(coguard_cli.COLOR_RED, {
+            coguard_cli.util.print_failed_check(coguard_cli.COLOR_RED, {
                 "rule": {
                     "name": "foo_bar_baz",
                     "severity": 5,
@@ -112,7 +113,7 @@ class TestCommonFunctions(unittest.TestCase):
              unittest.mock.patch(
                 'coguard_cli.api_connection.get_fixable_rule_list',
                  new_callable=lambda: lambda token, coguard_api_url, user_name, organization: []):
-            coguard_cli.output_result_json_from_coguard(
+            coguard_cli.util.output_result_json_from_coguard(
                 result_json,
                 "foo",
                 "bar",
@@ -128,7 +129,7 @@ class TestCommonFunctions(unittest.TestCase):
         tests for the auth_token_retrieval.
         """
         with unittest.mock.patch(
-                'coguard_cli.auth.retrieve_configuration_object',
+                'coguard_cli.auth.util.retrieve_configuration_object',
                 new_callable=lambda: lambda arg_coguard_url, arg_auth_url: {}
         ), \
         unittest.mock.patch(
@@ -143,7 +144,7 @@ class TestCommonFunctions(unittest.TestCase):
         tests for the auth_token_retrieval.
         """
         with unittest.mock.patch(
-                'coguard_cli.auth.retrieve_configuration_object',
+                'coguard_cli.auth.util.retrieve_configuration_object',
                 new_callable=lambda: lambda arg_coguard_url, arg_auth_url: "None"
         ), \
         unittest.mock.patch(
@@ -151,7 +152,7 @@ class TestCommonFunctions(unittest.TestCase):
             new_callable=lambda: lambda auth_config: "foo"
         ), \
         unittest.mock.patch(
-            'coguard_cli.auth.sign_in_or_sign_up',
+            'coguard_cli.auth.util.sign_in_or_sign_up',
             new_callable=lambda: lambda coguard_api_url, coguard_auth_url: "foo"
         ):
             token = coguard_cli.auth_token_retrieval("foo", "bar")
@@ -168,7 +169,7 @@ class TestCommonFunctions(unittest.TestCase):
             coguard_cli.upload_and_evaluate_zip_candidate(
                 None,
                 {},
-                coguard_cli.auth.util.DealEnum.ENTERPRISE,
+                coguard_cli.auth.enums.DealEnum.ENTERPRISE,
                 "token",
                 "https://portal.coguard.io/server",
                 "foo",
@@ -204,7 +205,7 @@ class TestCommonFunctions(unittest.TestCase):
             coguard_cli.upload_and_evaluate_zip_candidate(
                 ("foo.zip", {}),
                 auth_config,
-                coguard_cli.auth.util.DealEnum.ENTERPRISE,
+                coguard_cli.auth.enums.DealEnum.ENTERPRISE,
                 "token",
                 "https://portal.coguard.io/server",
                 "foo",
@@ -234,7 +235,7 @@ class TestCommonFunctions(unittest.TestCase):
             coguard_cli.upload_and_evaluate_zip_candidate(
                 ("foo.zip", {}),
                 auth_config,
-                coguard_cli.auth.util.DealEnum.ENTERPRISE,
+                coguard_cli.auth.enums.DealEnum.ENTERPRISE,
                 "token",
                 "https://portal.coguard.io/server",
                 "foo",
@@ -249,7 +250,7 @@ class TestCommonFunctions(unittest.TestCase):
         """
         A test of the extract reference string function.
         """
-        self.assertEqual(coguard_cli.extract_reference_string(
+        self.assertEqual(coguard_cli.util.extract_reference_string(
             {}
         ), "")
 
@@ -257,7 +258,7 @@ class TestCommonFunctions(unittest.TestCase):
         """
         A test of the extract reference string function.
         """
-        self.assertEqual(coguard_cli.extract_reference_string(
+        self.assertEqual(coguard_cli.util.extract_reference_string(
             {"service": "foo",
              "fromLine": 0,
              "toLine": 1,
@@ -272,7 +273,7 @@ class TestCommonFunctions(unittest.TestCase):
         """
         A test of the extract reference string function.
         """
-        self.assertEqual(coguard_cli.extract_reference_string(
+        self.assertEqual(coguard_cli.util.extract_reference_string(
             {"service": "foo",
              "fromLine": 2,
              "toLine": 5,
@@ -588,7 +589,7 @@ class TestCommonFunctions(unittest.TestCase):
         ):
             coguard_cli.perform_folder_fix(
                 "foo",
-                coguard_cli.auth.util.DealEnum.DEV,
+                coguard_cli.auth.enums.DealEnum.DEV,
                 "token",
                 "coguard",
                 "portal.coguard.io"
@@ -622,7 +623,7 @@ class TestCommonFunctions(unittest.TestCase):
         ):
             coguard_cli.perform_folder_fix(
                 "foo",
-                coguard_cli.auth.util.DealEnum.ENTERPRISE,
+                coguard_cli.auth.enums.DealEnum.ENTERPRISE,
                 "token",
                 "coguard",
                 "portal.coguard.io"
@@ -655,7 +656,7 @@ class TestCommonFunctions(unittest.TestCase):
         ):
             coguard_cli.perform_folder_fix(
                 "foo",
-                coguard_cli.auth.util.DealEnum.ENTERPRISE,
+                coguard_cli.auth.enums.DealEnum.ENTERPRISE,
                 "token",
                 "coguard",
                 "portal.coguard.io"
@@ -687,7 +688,7 @@ class TestCommonFunctions(unittest.TestCase):
         ):
             coguard_cli.perform_folder_fix(
                 "foo",
-                coguard_cli.auth.util.DealEnum.ENTERPRISE,
+                coguard_cli.auth.enums.DealEnum.ENTERPRISE,
                 "token",
                 "coguard",
                 "portal.coguard.io"
@@ -714,3 +715,77 @@ class TestCommonFunctions(unittest.TestCase):
                     inp_str_3
                 ])
             )
+
+    def test_clone_git_repo_fail_listdir_empty(self):
+        """
+        A test to clone a Git repo, with listdir being empty.
+        """
+        with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: lambda prefix: "/foo/bar"
+        ), \
+        unittest.mock.patch(
+            'subprocess.run',
+            new_callable=lambda: lambda *args, **kwargs: ""
+        ), \
+        unittest.mock.patch(
+            'os.listdir',
+            new_callable=lambda: lambda x: []
+        ), \
+        unittest.mock.patch(
+            'os.path.isdir',
+            new_callable=lambda: lambda x: True
+        ):
+            result = coguard_cli.clone_git_repo("foo")
+            self.assertEqual(result, "")
+
+    def test_clone_git_repo_fail_raise_exception(self):
+        """
+        A test to clone a Git repo, with listdir being empty.
+        """
+        def raise_error(*args, **kwargs):
+            """
+            Just raise a subprocesss error.
+            """
+            raise subprocess.CalledProcessError(returncode="1", cmd="foo")
+        with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: lambda prefix: "/foo/bar"
+        ), \
+        unittest.mock.patch(
+            'subprocess.run',
+            new_callable=lambda: raise_error
+        ), \
+        unittest.mock.patch(
+            'os.listdir',
+            new_callable=lambda: lambda x: ["a"]
+        ), \
+        unittest.mock.patch(
+            'os.path.isdir',
+            new_callable=lambda: lambda x: True
+        ):
+            result = coguard_cli.clone_git_repo("foo")
+            self.assertEqual(result, "")
+
+    def test_clone_git_repo_pass(self):
+        """
+        A test to clone a Git repo, with listdir being empty.
+        """
+        with unittest.mock.patch(
+                'tempfile.mkdtemp',
+                new_callable=lambda: lambda prefix: "/foo/bar"
+        ), \
+        unittest.mock.patch(
+            'subprocess.run',
+            new_callable=lambda: lambda *args, **kwargs: ""
+        ), \
+        unittest.mock.patch(
+            'os.listdir',
+            new_callable=lambda: lambda x: ["a"]
+        ), \
+        unittest.mock.patch(
+            'os.path.isdir',
+            new_callable=lambda: lambda x: True
+        ):
+            result = coguard_cli.clone_git_repo("foo")
+            self.assertEqual(result, "/foo/bar/a")
