@@ -22,13 +22,15 @@ import coguard_cli.discovery.config_file_finder_factory as factory
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 from coguard_cli.print_colors import COLOR_RED, COLOR_TERMINATION, COLOR_CYAN, COLOR_YELLOW
 
-def extract_docker_file_and_store(image_name: str) -> Optional[Tuple[Dict, str]]:
+def extract_docker_file_and_store(
+        image_name: str,
+        is_container_scan: bool=False) -> Optional[Tuple[Dict, str]]:
     """
     Very similar output as the config file finder factory items. The idea
     is that we will store the Dockerfile on the file-system and scan it as
     well.
     """
-    docker_file = docker_dao.extract_docker_file(image_name)
+    docker_file = docker_dao.extract_docker_file(image_name, is_container_scan)
     if docker_file is None:
         return None
     manifest_entry = {
@@ -78,7 +80,7 @@ def find_configuration_files_and_collect(
         if len(discovered_config_files) > 0:
             collected_service_results_dicts[finder_instance.get_service_name()] = \
                 (finder_instance.is_cluster_service(), discovered_config_files)
-    dockerfile_entry = extract_docker_file_and_store(image_name) if not is_container_scan else None
+    dockerfile_entry = extract_docker_file_and_store(image_name, is_container_scan)
     image_name_no_special_chars = replace_special_chars_with_underscore(image_name, True)
     if dockerfile_entry is not None:
         collected_service_results_dicts[f"{image_name_no_special_chars}_dockerfile"] = (

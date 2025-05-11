@@ -171,21 +171,34 @@ def rm_temporary_container_name(temporary_container_name: Optional[str]) -> None
     except subprocess.CalledProcessError as exception:
         logging.error("Failed to remove the container or image: %s", str(exception))
 
-def extract_docker_file(image_name: str) -> Optional[str]:
+def extract_docker_file(
+        image_name: str,
+        is_container: bool=False) -> Optional[str]:
     """
     The extraction of the Docker file from a given image name
 
     :param image_name: The name of the image.
+    :param is_container: If the name refers to a container.
     :returns: The extracted Dockerfile from the history as string, or None.
     """
     try:
-        outp = subprocess.run(
-            f'docker history --no-trunc --format \'{{{{.CreatedBy}}}}\' "{image_name}"',
-            check=True,
-            shell=True,
-            capture_output=True,
-            timeout=DOCKER_CALL_TIMEOUT_S
-        ).stdout
+        if not is_container:
+            outp = subprocess.run(
+                f'docker history --no-trunc --format \'{{{{.CreatedBy}}}}\' "{image_name}"',
+                check=True,
+                shell=True,
+                capture_output=True,
+                timeout=DOCKER_CALL_TIMEOUT_S
+            ).stdout
+        else:
+            outp = subprocess.run(
+                ('docker history --no-trunc --format \'{{.CreatedBy}}\' '
+                 f'"$(docker inspect --format={{{{.Image}}}} {image_name})"'),
+                check=True,
+                shell=True,
+                capture_output=True,
+                timeout=DOCKER_CALL_TIMEOUT_S
+            ).stdout
         lines = outp.decode().split('\n')
         lines.reverse()
         lines = [re.sub(r"^.*#\(nop\)", "", line) for line in lines]
