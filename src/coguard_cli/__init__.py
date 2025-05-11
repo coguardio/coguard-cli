@@ -142,6 +142,37 @@ def docker_image_scan_handler(
         args.dry_run
     )
 
+def docker_container_scan_handler(
+        args,
+        auth_config,
+        deal_type,
+        token,
+        organization,
+        ruleset
+):
+    """
+    The helper function for `entrypoint` for the docker image scan.
+    """
+    if args.container_name:
+        docker_container = args.container_name
+    elif args.scan:
+        # A small hack to keep scan an optional argument.
+        docker_container = args.scan
+    else:
+        docker_container = None
+    image_check.perform_docker_container_scan(
+        docker_container,
+        auth_config,
+        deal_type,
+        token,
+        organization,
+        args.coguard_api_url,
+        args.output_format,
+        args.fail_level,
+        ruleset,
+        args.dry_run
+    )
+
 def handle_account_action(args, token, username, organization):
     """
     The helper function for `entrypoint` to handle account actions.
@@ -248,6 +279,15 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         return
     if args.subparsers_location == SubParserNames.DOCKER_IMAGE.value:
         docker_image_scan_handler(
+            args,
+            auth_config,
+            deal_type,
+            token,
+            organization,
+            ruleset
+        )
+    if args.subparsers_location == SubParserNames.DOCKER_CONTAINER.value:
+        docker_container_scan_handler(
             args,
             auth_config,
             deal_type,

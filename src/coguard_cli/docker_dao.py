@@ -220,6 +220,28 @@ def extract_all_installed_docker_images() -> List[str]:
         return []
     return []
 
+def extract_all_running_docker_containers() -> List[str]:
+    """
+    If we want a list of all installed Docker images, this function produces it.
+
+    :returns: A list of strings, where the strings are names of locally installed Docker images.
+    """
+    try:
+        outp = subprocess.run(
+            "docker container ls --format '{{.Names}}'",
+            check=True,
+            shell=True,
+            capture_output=True,
+            timeout=DOCKER_CALL_TIMEOUT_S
+        ).stdout
+        lines = outp.decode().split('\n')
+        lines = [line.strip() for line in lines if "<none>" not in line]
+        return lines
+    except subprocess.CalledProcessError as exception:
+        logging.error("Failed to list all containers: %s", str(exception))
+        return []
+    return []
+
 def get_kubernetes_translation_from_helm(path_to_repo: str, helm_dir: str) -> Optional[str]:
     """
     Helper function to call HELM and translate the directory directives

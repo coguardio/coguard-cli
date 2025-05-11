@@ -57,7 +57,8 @@ def find_configuration_files_and_collect(
         image_name: str,
         customer_id: str,
         file_system_store_location: str,
-        docker_config: Dict) -> Optional[Tuple[str, Dict]]:
+        docker_config: Dict,
+        is_container_scan: bool=False) -> Optional[Tuple[str, Dict]]:
     """
     This function consumes a file_system store location and the docker_config,
     and extracts services and files from that, and stores it at a common location
@@ -77,7 +78,10 @@ def find_configuration_files_and_collect(
         if len(discovered_config_files) > 0:
             collected_service_results_dicts[finder_instance.get_service_name()] = \
                 (finder_instance.is_cluster_service(), discovered_config_files)
-    dockerfile_entry = extract_docker_file_and_store(image_name)
+    if not is_container_scan:
+        dockerfile_entry = extract_docker_file_and_store(image_name)
+    else:
+        dockerfile_entry = None
     image_name_no_special_chars = replace_special_chars_with_underscore(image_name, True)
     if dockerfile_entry is not None:
         collected_service_results_dicts[f"{image_name_no_special_chars}_dockerfile"] = (
@@ -166,21 +170,34 @@ def extract_image_to_file_system(
             f"to pull this specific image.{COLOR_TERMINATION}"
         )
         return None
-    inspect_result = docker_dao.get_inspect_result(temp_image_name)
+    return extract_container_to_filesystem(temp_image_name, image_name)
+
+def extract_container_to_filesystem(
+        container_name: str, image_name: Optional[str]=None) -> Optional[Tuple[str, Dict, str]]:
+    """
+    This is a helper function to extract the file system of the
+    Docker container and put it into a folder. An optional tuple containing
+    the path to this folder, the result of a `docker inspect`
+    of that image and the temporary docker image created are returned.
+
+    Remark: It is the function's caller's resposibility to delete the generated
+    folder afterwards.
+    """
+    inspect_result = docker_dao.get_inspect_result(container_name)
     if inspect_result is None:
         logging.debug("The docker inspect result was empty for %s (%s)",
-                      temp_image_name, image_name)
+                      container_name, image_name)
         return None
-    file_system_store_location = docker_dao.store_image_file_system(temp_image_name)
+    file_system_store_location = docker_dao.store_image_file_system(container_name)
     if file_system_store_location is None:
         logging.debug("Could not extract file system location for %s (%s)",
-                      temp_image_name, image_name)
+                      container_name, image_name)
         return None
     for (dir_loc, _, _) in os.walk(file_system_store_location):
         # This is to ensure that all folders can be written. We noticed some issues there
         # before.
         os.chmod(dir_loc, os.stat(dir_loc).st_mode | stat.S_IWRITE)
-    return (file_system_store_location, inspect_result, temp_image_name)
+    return (file_system_store_location, inspect_result, container_name)
 
 def create_zip_to_upload_from_docker_image(
         collected_location_manifest_tuple: Optional[Tuple[str, Dict]]
@@ -272,6 +289,79 @@ def perform_docker_image_scan(
                 token,
                 coguard_api_url,
                 image,
+                output_format,
+                fail_level,
+                organization,
+                ruleset
+            )
+
+def perform_docker_container_scan(
+        docker_container: Optional[str],
+        auth_config: CoGuardCliConfig,
+        deal_type: DealEnum,
+        token: Token,
+        organization: str,
+        coguard_api_url: Optional[str],
+        output_format: str,
+        fail_level: int,
+        ruleset: str,
+        dry_run: bool = False):
+    """
+    The helper function to run a Docker image scan. It takes in all necessary parameters.
+    If the docker-image is None, then all Docker images found on the host system are being
+    scanned.
+    """
+    docker_version = docker_dao.check_docker_version()
+    if docker_version is None:
+        print(f'{COLOR_RED}Docker is not installed on your system. '
+              f'Please install Docker to proceed{COLOR_TERMINATION}')
+        return
+    print(f'{docker_version} detected.')
+    if docker_container:
+        containers = [docker_container]
+    else:
+        print(
+            f"{COLOR_CYAN}No image name provided, scanning all images "
+            f"installed on this machine.{COLOR_TERMINATION}"
+        )
+        containers = docker_dao.extract_all_running_docker_containers()
+    for container in containers:
+        print(f"{COLOR_CYAN}SCANNING CONTAINER {COLOR_TERMINATION}{container}")
+        temp_folder, temp_inspection, _ = extract_container_to_filesystem(
+            container
+        ) or (None, None, None)
+        if temp_folder is None or temp_inspection is None:
+            logging.error("Could not extract files from container %s", docker_container)
+            continue
+        collected_config_file_tuple = find_configuration_files_and_collect(
+            container,
+            auth_config.get_username(),
+            temp_folder,
+            temp_inspection,
+            True
+        )
+        if collected_config_file_tuple is None:
+            print(f"{COLOR_YELLOW}Container {container} - NO CONFIGURATION FILES FOUND.")
+            return
+        zip_candidate = create_zip_to_upload_from_docker_image(
+            collected_config_file_tuple
+        )
+        # cleanup
+        shutil.rmtree(collected_config_file_tuple[0], ignore_errors=True)
+        shutil.rmtree(temp_folder, ignore_errors=True)
+        if zip_candidate is None:
+            print(f"{COLOR_YELLOW}Container {container} - NO CONFIGURATION FILES FOUND.")
+            return
+        if dry_run:
+            dry_run_outp(zip_candidate)
+        else:
+            upload_and_evaluate_zip_candidate(
+                zip_candidate,
+                auth_config,
+                deal_type,
+                token,
+                coguard_api_url,
+                container,
                 output_format,
                 fail_level,
                 organization,
