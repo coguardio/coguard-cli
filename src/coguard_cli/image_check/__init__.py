@@ -78,10 +78,7 @@ def find_configuration_files_and_collect(
         if len(discovered_config_files) > 0:
             collected_service_results_dicts[finder_instance.get_service_name()] = \
                 (finder_instance.is_cluster_service(), discovered_config_files)
-    if not is_container_scan:
-        dockerfile_entry = extract_docker_file_and_store(image_name)
-    else:
-        dockerfile_entry = None
+    dockerfile_entry = extract_docker_file_and_store(image_name) if not is_container_scan else None
     image_name_no_special_chars = replace_special_chars_with_underscore(image_name, True)
     if dockerfile_entry is not None:
         collected_service_results_dicts[f"{image_name_no_special_chars}_dockerfile"] = (

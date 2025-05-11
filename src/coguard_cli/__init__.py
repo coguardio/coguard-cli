@@ -230,6 +230,7 @@ def clone_git_repo(url: str) -> str:
         return ""
 
 #pylint: disable=too-many-branches
+#pylint: disable=too-many-statements
 def entrypoint(args):
     """
     The main entrypoint for the CLI. Takes the :mod:`argparse` parsing
@@ -286,7 +287,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             organization,
             ruleset
         )
-    if args.subparsers_location == SubParserNames.DOCKER_CONTAINER.value:
+    elif args.subparsers_location == SubParserNames.DOCKER_CONTAINER.value:
         docker_container_scan_handler(
             args,
             auth_config,
