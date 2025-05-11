@@ -129,7 +129,7 @@ class TestConfigFileFinderTerraform(unittest.TestCase):
                 "foo.txt"
             ))
 
-    # def test_can_parse_tf_file_proper(self):
+#     def test_can_parse_tf_file_proper(self):
 #         """
 #         Testing the function to see if we can parse a tf file.
 #         """

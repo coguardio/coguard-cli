@@ -5,6 +5,7 @@ inside the image_check module.
 
 import unittest
 import unittest.mock
+from coguard_cli import auth
 from coguard_cli import folder_scan
 from coguard_cli.discovery.config_file_finders.config_file_finder_nginx \
     import ConfigFileFinderNginx
@@ -664,3 +665,134 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                 )
             }
         )
+
+    def test_perform_folder_fix_folder_scan_not_enterprise(self):
+        """
+        Testing the perform_folder_fix function when a non-enterprise license is used.
+        """
+        zip_upload = unittest.mock.Mock()
+        rmtree = unittest.mock.Mock()
+        upload_and_fix = unittest.mock.Mock()
+        with unittest.mock.patch(
+                'coguard_cli.folder_scan.find_configuration_files_and_collect',
+                new_callable=lambda: lambda a, b: (a, b)
+        ), \
+        unittest.mock.patch(
+                'coguard_cli.folder_scan.create_zip_to_upload_from_file_system',
+                new_callable=lambda: zip_upload
+        ), \
+        unittest.mock.patch(
+            'coguard_cli.util.upload_and_fix_zip_candidate',
+            new_callable=lambda: upload_and_fix), \
+        unittest.mock.patch(
+            'shutil.rmtree',
+            new_callable=lambda: rmtree
+        ):
+            folder_scan.perform_folder_fix(
+                "foo",
+                auth.enums.DealEnum.DEV,
+                "token",
+                "coguard",
+                "portal.coguard.io"
+            )
+            self.assertEqual(zip_upload.call_count, 0)
+            self.assertEqual(rmtree.call_count, 0)
+            self.assertEqual(upload_and_fix.call_count, 0)
+
+    def test_perform_folder_fix_folder_scan_none(self):
+        """
+        Testing the perform_folder_fix function when there are no collected config
+        files.
+        """
+        zip_upload = unittest.mock.Mock()
+        rmtree = unittest.mock.Mock()
+        upload_and_fix = unittest.mock.Mock()
+        with unittest.mock.patch(
+                'coguard_cli.folder_scan.find_configuration_files_and_collect',
+                new_callable=lambda: lambda a, b, ignore_list: None
+        ), \
+        unittest.mock.patch(
+                'coguard_cli.folder_scan.create_zip_to_upload_from_file_system',
+                new_callable=lambda: zip_upload
+        ), \
+        unittest.mock.patch(
+            'coguard_cli.util.upload_and_fix_zip_candidate',
+            new_callable=lambda: upload_and_fix), \
+        unittest.mock.patch(
+            'shutil.rmtree',
+            new_callable=lambda: rmtree
+        ):
+            folder_scan.perform_folder_fix(
+                "foo",
+                auth.enums.DealEnum.ENTERPRISE,
+                "token",
+                "coguard",
+                "portal.coguard.io"
+            )
+            self.assertEqual(zip_upload.call_count, 0)
+            self.assertEqual(rmtree.call_count, 0)
+            self.assertEqual(upload_and_fix.call_count, 0)
+
+    def test_perform_folder_fix_zip_candidate_none(self):
+        """
+        Testing the perform_folder_fix function when there are no collected config
+        files.
+        """
+        rmtree = unittest.mock.Mock()
+        upload_and_fix = unittest.mock.Mock()
+        with unittest.mock.patch(
+                'coguard_cli.folder_scan.find_configuration_files_and_collect',
+                new_callable=lambda: lambda a, b, ignore_list: ("location", "something else")
+        ), \
+        unittest.mock.patch(
+                'coguard_cli.folder_scan.create_zip_to_upload_from_file_system',
+                new_callable=lambda: lambda a: None
+        ), \
+        unittest.mock.patch(
+            'coguard_cli.util.upload_and_fix_zip_candidate',
+            new_callable=lambda: upload_and_fix), \
+        unittest.mock.patch(
+            'shutil.rmtree',
+            new_callable=lambda: rmtree
+        ):
+            folder_scan.perform_folder_fix(
+                "foo",
+                auth.enums.DealEnum.ENTERPRISE,
+                "token",
+                "coguard",
+                "portal.coguard.io"
+            )
+            self.assertEqual(rmtree.call_count, 1)
+            self.assertEqual(upload_and_fix.call_count, 0)
+
+    def test_perform_folder_fix_zip_candidate(self):
+        """
+        Testing the perform_folder_fix function when there are no collected config
+        files.
+        """
+        rmtree = unittest.mock.Mock()
+        upload_and_fix = unittest.mock.Mock()
+        with unittest.mock.patch(
+                'coguard_cli.folder_scan.find_configuration_files_and_collect',
+                new_callable=lambda: lambda a, b, ignore_list: ("location", "something else")
+        ), \
+        unittest.mock.patch(
+                'coguard_cli.folder_scan.create_zip_to_upload_from_file_system',
+                new_callable=lambda: lambda a: "foo.zip"
+        ), \
+        unittest.mock.patch(
+            'coguard_cli.util.upload_and_fix_zip_candidate',
+            new_callable=lambda: upload_and_fix), \
+        unittest.mock.patch(
+            'shutil.rmtree',
+            new_callable=lambda: rmtree
+        ):
+            folder_scan.perform_folder_fix(
+                "foo",
+                auth.enums.DealEnum.ENTERPRISE,
+                "token",
+                "coguard",
+                "portal.coguard.io"
+            )
+            self.assertEqual(rmtree.call_count, 1)
+            self.assertEqual(upload_and_fix.call_count, 1)

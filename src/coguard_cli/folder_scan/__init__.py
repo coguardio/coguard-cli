@@ -15,14 +15,9 @@ from flatten_dict import unflatten
 
 import coguard_cli.discovery.config_file_finder_factory as factory
 from coguard_cli.check_common_util import replace_special_chars_with_underscore
-from coguard_cli.util import create_service_identifier, \
-    convert_posix_path_to_os_path, \
-    retrieve_coguard_ignore_values, \
-    dry_run_outp, \
-    upload_and_evaluate_zip_candidate, \
-    merge_coguard_infrastructure_description_folders
+import coguard_cli.util
 from coguard_cli.print_colors import COLOR_TERMINATION, \
-    COLOR_CYAN, COLOR_YELLOW
+    COLOR_CYAN, COLOR_YELLOW, COLOR_RED
 from coguard_cli.cluster_rule_fail_util import is_ci_cd_there
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 from coguard_cli.auth.enums import DealEnum
@@ -152,7 +147,7 @@ def find_configuration_files_and_collect(
     already_used_identifiers = set()
     for (service_id, (is_cluster_service, tuple_list)) in collected_service_results_dicts.items():
         for (tuple_instance, tuple_dir) in tuple_list:
-            new_service_custom_identifier = create_service_identifier(
+            new_service_custom_identifier = coguard_cli.util.create_service_identifier(
                 service_id,
                 already_used_identifiers,
                 tuple_instance
@@ -280,7 +275,7 @@ def extract_included_docker_images(
             machine_name,
             service_name),
          os.path.join(
-            convert_posix_path_to_os_path(config_file["subPath"]),
+            coguard_cli.util.convert_posix_path_to_os_path(config_file["subPath"]),
             config_file["fileName"]
          )) for machine_name, machine_dict in collected_manifest.get("machines", {}).items()
         for service_name, service_dict in machine_dict.get("services", {}).items()
@@ -294,7 +289,7 @@ def extract_included_docker_images(
             service_name
         ),
          os.path.join(
-            convert_posix_path_to_os_path(config_file["subPath"]),
+            coguard_cli.util.convert_posix_path_to_os_path(config_file["subPath"]),
             config_file["fileName"]
          ))
         for service_name, service_dict in collected_manifest.get("clusterServices", {}).items()
@@ -333,7 +328,7 @@ def _find_and_merge_included_docker_images(
                 temp_folder,
                 temp_inspection
             )
-            merge_coguard_infrastructure_description_folders(
+            coguard_cli.util.merge_coguard_infrastructure_description_folders(
                 "included_docker_image",
                 collected_config_file_tuple,
                 collected_docker_config_file_tuple
@@ -365,7 +360,7 @@ def perform_folder_scan(
     the current working directory is being used.
     """
     folder_name = folder_name or os.path.abspath(".")
-    coguard_ignore_list = retrieve_coguard_ignore_values(folder_name)
+    coguard_ignore_list = coguard_cli.util.retrieve_coguard_ignore_values(folder_name)
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
     collected_config_file_tuple = find_configuration_files_and_collect(
@@ -393,9 +388,9 @@ def perform_folder_scan(
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
         return
     if dry_run:
-        dry_run_outp(zip_candidate)
+        coguard_cli.util.dry_run_outp(zip_candidate)
     else:
-        upload_and_evaluate_zip_candidate(
+        coguard_cli.util.upload_and_evaluate_zip_candidate(
             zip_candidate,
             auth_config,
             deal_type,
@@ -406,4 +401,90 @@ def perform_folder_scan(
             fail_level,
             organization,
             ruleset
+        )
+
+def folder_scan_handler(
+        args,
+        auth_config,
+        deal_type,
+        token,
+        organization,
+        ruleset
+):
+    """
+    The helper function for `entrypoint` for the folder scan.
+    """
+    folder_name = args.folder_name or \
+        args.scan or \
+        None # args.scan is a trick to
+    # think there is a positional argument
+    if folder_name is not None:
+        folder_name = os.path.abspath(folder_name)
+    if args.fix_flag:
+        perform_folder_fix(
+            folder_name,
+            deal_type,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.dry_run
+        )
+    else:
+        perform_folder_scan(
+            folder_name,
+            deal_type,
+            auth_config,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.output_format,
+            args.fail_level,
+            ruleset,
+            args.dry_run
+        )
+
+def perform_folder_fix(
+        folder_name: Optional[str],
+        deal_type: DealEnum,
+        token: Token,
+        organization: str,
+        coguard_api_url: Optional[str],
+        dry_run: bool = False):
+    """
+    Helper function to run a fix on a folder. If the folder_name parameter is None,
+    the current working directory is being used.
+    """
+    if deal_type != DealEnum.ENTERPRISE:
+        print(f"{COLOR_RED} AUTO-REMEDIATION is only available for Enterprise "
+              f"subscriptions {COLOR_TERMINATION}")
+        return
+    folder_name = folder_name or os.path.abspath(".")
+    coguard_ignore_list = coguard_cli.util.retrieve_coguard_ignore_values(folder_name)
+    printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
+    print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
+    collected_config_file_tuple = find_configuration_files_and_collect(
+        folder_name,
+        organization,
+        ignore_list = coguard_ignore_list
+    )
+    if collected_config_file_tuple is None:
+        print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
+        return
+    zip_candidate = create_zip_to_upload_from_file_system(
+        collected_config_file_tuple
+    )
+    collected_location, _ = collected_config_file_tuple
+    shutil.rmtree(collected_location, ignore_errors=True)
+    if zip_candidate is None:
+        print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
+        return
+    if dry_run:
+        coguard_cli.util.dry_run_outp(zip_candidate)
+    else:
+        coguard_cli.util.upload_and_fix_zip_candidate(
+            zip_candidate,
+            folder_name,
+            token,
+            coguard_api_url,
+            organization
         )

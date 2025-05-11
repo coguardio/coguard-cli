@@ -12,10 +12,15 @@ import tempfile
 from typing import Optional, Dict, Tuple
 import zipfile
 from coguard_cli.check_common_util import replace_special_chars_with_underscore
-from coguard_cli.util import create_service_identifier
+from coguard_cli.util import create_service_identifier, \
+    dry_run_outp, \
+    upload_and_evaluate_zip_candidate
+from coguard_cli.auth.token import Token
 from coguard_cli import docker_dao
+from coguard_cli.auth.enums import DealEnum
 import coguard_cli.discovery.config_file_finder_factory as factory
-from coguard_cli.print_colors import COLOR_RED, COLOR_TERMINATION
+from coguard_cli.auth.auth_config import CoGuardCliConfig
+from coguard_cli.print_colors import COLOR_RED, COLOR_TERMINATION, COLOR_CYAN, COLOR_YELLOW
 
 def extract_docker_file_and_store(image_name: str) -> Optional[Tuple[Dict, str]]:
     """
@@ -199,3 +204,76 @@ def create_zip_to_upload_from_docker_image(
                 file_path = os.path.join(dir_path, file_name)
                 upload_zip.write(file_path, arcname=file_path[len(collected_location):])
     return (temp_zip, manifest_dict)
+
+def perform_docker_image_scan(
+        docker_image: Optional[str],
+        auth_config: CoGuardCliConfig,
+        deal_type: DealEnum,
+        token: Token,
+        organization: str,
+        coguard_api_url: Optional[str],
+        output_format: str,
+        fail_level: int,
+        ruleset: str,
+        dry_run: bool = False):
+    """
+    The helper function to run a Docker image scan. It takes in all necessary parameters.
+    If the docker-image is None, then all Docker images found on the host system are being
+    scanned.
+    """
+    docker_version = docker_dao.check_docker_version()
+    if docker_version is None:
+        print(f'{COLOR_RED}Docker is not installed on your system. '
+              f'Please install Docker to proceed{COLOR_TERMINATION}')
+        return
+    print(f'{docker_version} detected.')
+    if docker_image:
+        images = [docker_image]
+    else:
+        print(
+            f"{COLOR_CYAN}No image name provided, scanning all images "
+            f"installed on this machine.{COLOR_TERMINATION}"
+        )
+        images = docker_dao.extract_all_installed_docker_images()
+    for image in images:
+        print(f"{COLOR_CYAN}SCANNING IMAGE {COLOR_TERMINATION}{image}")
+        temp_folder, temp_inspection, temp_image = extract_image_to_file_system(
+            image
+        ) or (None, None, None)
+        if temp_folder is None or temp_inspection is None or temp_image is None:
+            logging.error("Could not extract files from image %s", docker_image)
+            continue
+        collected_config_file_tuple = find_configuration_files_and_collect(
+            image,
+            auth_config.get_username(),
+            temp_folder,
+            temp_inspection
+        )
+        if collected_config_file_tuple is None:
+            print(f"{COLOR_YELLOW}Image {image} - NO CONFIGURATION FILES FOUND.")
+            return
+        zip_candidate = create_zip_to_upload_from_docker_image(
+            collected_config_file_tuple
+        )
+        # cleanup
+        shutil.rmtree(collected_config_file_tuple[0], ignore_errors=True)
+        shutil.rmtree(temp_folder, ignore_errors=True)
+        docker_dao.rm_temporary_container_name(temp_image)
+        if zip_candidate is None:
+            print(f"{COLOR_YELLOW}Image {image} - NO CONFIGURATION FILES FOUND.")
+            return
+        if dry_run:
+            dry_run_outp(zip_candidate)
+        else:
+            upload_and_evaluate_zip_candidate(
+                zip_candidate,
+                auth_config,
+                deal_type,
+                token,
+                coguard_api_url,
+                image,
+                output_format,
+                fail_level,
+                organization,
+                ruleset
+            )
