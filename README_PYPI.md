@@ -203,13 +203,19 @@ After completion, this image check will return the findings of CoGuard
 on this particular image. You can view the latest historical scan results
 when logging in to [https://portal.coguard.io](https://portal.coguard.io).
 
-### <a id="docker-scan"></a>Scanning Docker images
+### <a id="docker-scan"></a>Scanning Docker images and containers
 
 Using the CoGuard CLI, you can run a scan on your local Docker images
 using
 
 ```shell
 coguard docker-image [scan] [<YOUR-IMAGE-NAME-OR-ID>]
+```
+
+For containers, similarly, you would execute
+
+```shell
+coguard docker-container [scan] [<YOUR-CONTAINER-NAME-OR-ID>]
 ```
 
 ### <a id="repo-scan"></a>Scanning project repository folders
@@ -221,7 +227,7 @@ file repositories using
 coguard folder [scan] [<PATH-TO-FOLDER>]
 ```
 
-### <a id="cloud-scan"></a>Extracting and scanning cloud configurations (BETA)
+### <a id="cloud-scan"></a>Extracting and scanning cloud configurations
 
 Using the CoGuard CLI, you can run a scan a current snapshot of your
 cloud configurations. This requires you to have the respective
@@ -297,12 +303,15 @@ can be found
     - OpenTelemetry Collector
     - PostgreSQL
     - Redis
+    - RethinkDB
     - TerraForm
     - Ansible
     - Jenkins
     - OpenAPI
+    - Apache Cassandra
     - BitBucket Pipelines
     - Apache Druid
+    - Apache Spark
     - Flink
     - SystemD
 - Supported Cloud Hosts

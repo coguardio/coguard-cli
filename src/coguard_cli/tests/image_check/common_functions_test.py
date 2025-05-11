@@ -125,7 +125,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
                  new_callable=lambda: lambda x, y, z: []), \
              unittest.mock.patch(
                 ('coguard_cli.image_check.extract_docker_file_and_store'),
-                 new_callable=lambda: lambda x: None):
+                 new_callable=lambda: lambda x, y: None):
             self.assertIsNone(image_check.find_configuration_files_and_collect(
                 "image-name",
                 "foo",
@@ -166,7 +166,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              ), \
              unittest.mock.patch(
                 ('coguard_cli.image_check.extract_docker_file_and_store'),
-                 new_callable=lambda: lambda x: None):
+                 new_callable=lambda: lambda x, y: None):
             result, _ = image_check.find_configuration_files_and_collect(
                 "image-name",
                 "foo",
@@ -209,7 +209,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
              ), \
              unittest.mock.patch(
                 ('coguard_cli.image_check.extract_docker_file_and_store'),
-                 new_callable=lambda: lambda x: None):
+                 new_callable=lambda: lambda x, y: None):
             result, _ = image_check.find_configuration_files_and_collect(
                 "image-name",
                 "foo",
@@ -226,7 +226,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         """
         with unittest.mock.patch(
                 'coguard_cli.docker_dao.extract_docker_file',
-                new_callable=lambda: lambda x: None):
+                new_callable=lambda: lambda x, y: None):
             self.assertIsNone(image_check.extract_docker_file_and_store("foo"))
 
     def test_extract_docker_file_and_store(self):
@@ -235,7 +235,7 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
         """
         with unittest.mock.patch(
                 'coguard_cli.docker_dao.extract_docker_file',
-                new_callable=lambda: lambda x: "foo"), \
+                new_callable=lambda: lambda x, y: "foo"), \
              unittest.mock.patch(
                  'tempfile.mkdtemp',
                  new_callable=lambda: lambda prefix: "bar"
