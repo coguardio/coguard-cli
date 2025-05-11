@@ -18,8 +18,7 @@ from coguard_cli import cloud_scan
 from coguard_cli.ci_cd.ci_cd_provider_factory import ci_cd_provider_factory
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 from coguard_cli.auth.token import Token
-from coguard_cli.auth.util import retrieve_configuration_object, \
-    sign_in_or_sign_up
+import coguard_cli.auth.util
 from coguard_cli.auth.enums import DealEnum
 import coguard_cli.api_connection
 from coguard_cli.print_colors import COLOR_TERMINATION, \
@@ -48,7 +47,7 @@ def auth_token_retrieval(
     it returns the token as string. If the process fails,
     None is being returned.
     """
-    auth_config = retrieve_configuration_object(
+    auth_config = coguard_cli.auth.util.retrieve_configuration_object(
         arg_coguard_url = coguard_api_url,
         arg_auth_url = coguard_auth_url
     )
@@ -56,9 +55,9 @@ def auth_token_retrieval(
         print(f'{COLOR_YELLOW}Could not find authentication file. You can sign up right now '
               f'for your default account and continue with the requested scan.{COLOR_TERMINATION}')
         coguard_cli.api_connection.log("REGISTRATION_PROMPT", coguard_api_url)
-        token = sign_in_or_sign_up(coguard_api_url, coguard_auth_url)
+        token = coguard_cli.auth.util.sign_in_or_sign_up(coguard_api_url, coguard_auth_url)
         # Here is where we insert the authentication logic.
-        auth_config = retrieve_configuration_object()
+        auth_config = coguard_cli.auth.util.retrieve_configuration_object()
     else:
         logging.debug("Retrieving config with auth_config %s", str(auth_config))
         token = Token("", auth_config)
@@ -229,7 +228,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         if token is None:
             print(f"{COLOR_RED}Failed to authenticate.{COLOR_TERMINATION}")
             return
-        auth_config = retrieve_configuration_object(
+        auth_config = coguard_cli.auth.util.retrieve_configuration_object(
             arg_coguard_url = args.coguard_api_url,
             arg_auth_url = args.coguard_auth_url
         )
