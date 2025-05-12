@@ -130,7 +130,7 @@ docker image rm "amazon/aws-otel-collector:v0.22.1"
 
 # Docker container tests
 docker run --rm -d -e POSTGRES_PASSWORD=foo --name=demo-postgres postgres:15.1
-test_container_checksum demo-postgres "1230b7121922a5541cd4e617022192241f900f92"
+test_container_checksum demo-postgres "7fe9ddc73f747c5679de1bbd0dd8fc452cd1d43f"
 docker stop demo-postgres
 
 # Git repository tests
