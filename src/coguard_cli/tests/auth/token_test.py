@@ -7,7 +7,7 @@ import unittest.mock
 import requests
 from coguard_cli.auth.token import Token
 from coguard_cli.auth.auth_config import CoGuardCliConfig
-from coguard_cli.auth.util import DealEnum
+from coguard_cli.auth.enums import DealEnum
 
 class TestTokenClass(unittest.TestCase):
     """

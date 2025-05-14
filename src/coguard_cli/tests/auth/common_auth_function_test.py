@@ -6,7 +6,7 @@ import os
 import unittest
 import unittest.mock
 import requests
-import coguard_cli.auth
+import coguard_cli.auth.util
 
 class TestAuthClass(unittest.TestCase):
     """
@@ -24,7 +24,7 @@ class TestAuthClass(unittest.TestCase):
         Tests that the return value of get_auth_file is the empty dictionary
         if the path does not exist.
         """
-        res = coguard_cli.auth.get_auth_file(
+        res = coguard_cli.auth.util.get_auth_file(
             os.path.join(
                 self.path_to_resources, "I_WILL_NEVER_EXIST.json"
             )
@@ -36,7 +36,7 @@ class TestAuthClass(unittest.TestCase):
         Tests that the return value of get_auth_file represents the contents
         of the file if the path does exist.
         """
-        res = coguard_cli.auth.get_auth_file(
+        res = coguard_cli.auth.util.get_auth_file(
             os.path.join(
                 self.path_to_resources,
                 "sample_config"
@@ -53,7 +53,7 @@ class TestAuthClass(unittest.TestCase):
         Tests that the return value of get_auth_file represents the contents
         of the file if the path does exist.
         """
-        res = coguard_cli.auth.get_auth_file(
+        res = coguard_cli.auth.util.get_auth_file(
             os.path.join(
                 self.path_to_resources,
                 "sample_config_not_400"
@@ -66,7 +66,7 @@ class TestAuthClass(unittest.TestCase):
         Tests that the return value of get_auth_file is the empty dictionary
         if the contents of the file are not json
         """
-        res = coguard_cli.auth.get_auth_file(
+        res = coguard_cli.auth.util.get_auth_file(
             os.path.join(
                 self.path_to_resources,
                 "sample_config_not_json"
@@ -82,7 +82,7 @@ class TestAuthClass(unittest.TestCase):
         with unittest.mock.patch(
                 'os.environ.get',
                 new_callable=lambda: lambda x: None):
-            res = coguard_cli.auth.retrieve_configuration_object(
+            res = coguard_cli.auth.util.retrieve_configuration_object(
                 os.path.join(
                     self.path_to_resources, "I_WILL_NEVER_EXIST.json"
                 )
@@ -97,7 +97,7 @@ class TestAuthClass(unittest.TestCase):
         with unittest.mock.patch(
                 'os.environ.get',
                 new_callable=lambda: lambda x: None):
-            res = coguard_cli.auth.retrieve_configuration_object(
+            res = coguard_cli.auth.util.retrieve_configuration_object(
                 os.path.join(
                     self.path_to_resources,
                     "sample_config"
@@ -116,7 +116,7 @@ class TestAuthClass(unittest.TestCase):
         with unittest.mock.patch(
                 'os.environ.get',
                 new_callable=lambda: lambda x: None):
-            res = coguard_cli.auth.retrieve_configuration_object(
+            res = coguard_cli.auth.util.retrieve_configuration_object(
                 os.path.join(
                     self.path_to_resources,
                     "sample_config_not_json"
@@ -139,7 +139,7 @@ class TestAuthClass(unittest.TestCase):
             'builtins.open',
             unittest.mock.mock_open()
         ):
-            coguard_cli.auth.store_config_object_in_auth_file(
+            coguard_cli.auth.util.store_config_object_in_auth_file(
                 config_object,
                 "foo/bar/baz.conf"
             )

@@ -129,7 +129,27 @@ def main():
         type=str,
         default="",
         nargs='?',
-        help=("The name of the image. Defaults to empty string, "
+        help=("The name/id of the image. Defaults to empty string, "
+              "which means all images are being scanned.")
+    )
+    docker_container_parser = subparsers.add_parser(
+        SubParserNames.DOCKER_CONTAINER.value,
+        help="The sub-command to scan a Docker container",
+    )
+    docker_container_parser.add_argument(
+        'scan',
+        type=str,
+        default="",
+        nargs='?',
+        help=("The indicator that we are aiming to do a scan.")
+    )
+    docker_container_parser.add_argument(
+        'container_name',
+        metavar="container_name",
+        type=str,
+        default="",
+        nargs='?',
+        help=("The name/id of the container. Defaults to empty string, "
               "which means all images are being scanned.")
     )
     folder_scanning_parser = subparsers.add_parser(
@@ -158,6 +178,25 @@ def main():
         default="",
         nargs='?',
         help=("The path to the folder. Defaults to the current working directory.")
+    )
+    repo_scanning_parser = subparsers.add_parser(
+        SubParserNames.REPO_SCAN.value,
+        help="The sub-command to download a repository and scan configuration files within it."
+    )
+    repo_scanning_parser.add_argument(
+        SubParserNames.SCAN.value,
+        type=str,
+        default="",
+        nargs='?',
+        help=("The indicator that we are aiming to do a scan.")
+    )
+    repo_scanning_parser.add_argument(
+        'repo_url',
+        metavar="repo_url",
+        type=str,
+        default="",
+        nargs='?',
+        help=("The url of the repository.")
     )
     cloud_scanning_parser = subparsers.add_parser(
         SubParserNames.CLOUD_SCAN.value,

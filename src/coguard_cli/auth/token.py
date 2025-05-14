@@ -7,7 +7,8 @@ import logging
 from typing import Optional
 import requests
 import jwt
-from coguard_cli.auth import auth_config, util
+from coguard_cli.auth.auth_config import CoGuardCliConfig
+from coguard_cli.auth.enums import DealEnum
 
 COGUARD_REALM_TOKEN_URL = "/realms/coguard/protocol/openid-connect/token"
 
@@ -16,7 +17,7 @@ class Token():
     A simple representation of an access token.
     """
 
-    def __init__(self, token: str, inp_auth_config: auth_config.CoGuardCliConfig):
+    def __init__(self, token: str, inp_auth_config: CoGuardCliConfig):
         """
         Initialization of this object with a valid token,
         and an auth_config in case we need to renew it.
@@ -158,7 +159,7 @@ class Token():
 
     def extract_deal_type_from_token(
             self
-    ) -> util.DealEnum:
+    ) -> DealEnum:
         """
         This function uses a token, and a configuruation object, and extracts the deal
         type of the account stored in the JWT token.
@@ -169,12 +170,12 @@ class Token():
             logging.error(
                 "Assuming free account, as we could not find the public key of the auth server."
             )
-            return util.DealEnum.FREE
+            return DealEnum.FREE
         jwt_decoded = self.get_decoded_jwt_token(public_key)
         deal_identifiers = jwt_decoded.get('realm_access', {}).get('roles', [])
-        for deal_enum in list(util.DealEnum):
+        for deal_enum in list(DealEnum):
             if deal_enum.value.upper() in deal_identifiers:
                 return deal_enum
         logging.debug("No valid deal enum in decoded JWT token. Assuming free: %s",
                       str(jwt_decoded))
-        return util.DealEnum.FREE
+        return DealEnum.FREE

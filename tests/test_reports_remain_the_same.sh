@@ -37,6 +37,30 @@ test_image_checksum() {
     rm -rf "${TEMP_DIR:-?}/image_check.txt"
 }
 
+test_container_checksum() {
+    CONTAINER_NAME="$1";
+    EXPECTED_CHECKSUM="$2"
+    COMPLIANCE=${3:-""}
+    ACTUAL_CHECKSUM=$( (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --ruleset="$COMPLIANCE" --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth docker-container "$CONTAINER_NAME") | sed 1,18d | tee "$TEMP_DIR/container_check.txt" | sort | sha1sum | awk '{print $1}' );
+    if [ "$IS_TEST" == "true" ]
+    then
+        echo "ACTUAL: $ACTUAL_CHECKSUM";
+        echo "EXPECTED: $EXPECTED_CHECKSUM"
+    else
+        if [ "$ACTUAL_CHECKSUM" == "$EXPECTED_CHECKSUM" ]
+        then
+            echo "ACTUAL checksum matched EXPECTED checksum for $CONTAINER_NAME";
+        else
+            echo "ACTUAL: $ACTUAL_CHECKSUM";
+            echo "EXPECTED: $EXPECTED_CHECKSUM";
+            echo "ACTUAL OUTPUT:";
+            cat "$TEMP_DIR/container_check.txt";
+            exit 1;
+        fi
+    fi
+    rm -rf "${TEMP_DIR:-?}/container_check.txt"
+}
+
 test_folder_checksum() {
     GIT_REPO="$1";
     GIT_HASH="$2";
@@ -103,6 +127,11 @@ test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "728e5bff42a891911520e394a04
 docker image rm "rethinkdb:2.4.4-bookworm-slim"
 test_image_checksum "amazon/aws-otel-collector:v0.22.1" "9a8076467bd2e789f61c72a828633b29477bdca9"
 docker image rm "amazon/aws-otel-collector:v0.22.1"
+
+# Docker container tests
+docker run --rm -d -e POSTGRES_PASSWORD=foo --name=demo-postgres postgres:15.1
+test_container_checksum demo-postgres "7fe9ddc73f747c5679de1bbd0dd8fc452cd1d43f"
+docker stop demo-postgres
 
 # Git repository tests
 
