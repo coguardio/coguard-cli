@@ -107,6 +107,13 @@ def main():
         default='',
         help=("The non-default rule-set to use.")
     )
+    parser.add_argument(
+        '--additional-scan-result',
+        action='append',
+        choices=[], #empty for now, because we have not added any additional tooling yet.
+        help='Additional scan result files or identifiers',
+        dest='additional_scan_results'
+    )
     subparsers = parser.add_subparsers(
         required=True,
         #Do not remove the next line. This is a workaround for https://bugs.python.org/issue29298

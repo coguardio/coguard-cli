@@ -24,6 +24,7 @@ from coguard_cli.auth.enums import DealEnum
 from coguard_cli.auth.token import Token
 from coguard_cli import docker_dao
 from coguard_cli import image_check
+from coguard_cli.additional_scan_results import perform_external_scans_and_return_folders
 
 def filter_config_file_list(
         config_file_list: List[Tuple[Dict, str]],
@@ -354,7 +355,8 @@ def perform_folder_scan(
         output_format: str,
         fail_level: int,
         ruleset: str,
-        dry_run: bool = False):
+        dry_run: bool = False,
+        external_results_to_send = None):
     """
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
@@ -378,6 +380,10 @@ def perform_folder_scan(
         auth_config,
         additional_failed_rules
     )
+    coguard_cli.util.merge_external_scan_results_with_final_folder(
+        collected_config_file_tuple,
+        external_results_to_send
+    )
     zip_candidate = create_zip_to_upload_from_file_system(
         collected_config_file_tuple,
         additional_failed_rules
@@ -400,7 +406,7 @@ def perform_folder_scan(
             output_format,
             fail_level,
             organization,
-            ruleset
+            ruleset,
         )
 
 def folder_scan_handler(
@@ -420,6 +426,11 @@ def folder_scan_handler(
     # think there is a positional argument
     if folder_name is not None:
         folder_name = os.path.abspath(folder_name)
+    external_results_to_send = perform_external_scans_and_return_folders(
+        folder_name,
+        None,
+        args.additional_scan_results
+    )
     if args.fix_flag:
         perform_folder_fix(
             folder_name,
@@ -440,7 +451,8 @@ def folder_scan_handler(
             args.output_format,
             args.fail_level,
             ruleset,
-            args.dry_run
+            args.dry_run,
+            external_results_to_send
         )
 
 def perform_folder_fix(

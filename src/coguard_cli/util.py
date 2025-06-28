@@ -486,3 +486,32 @@ def apply_fixes_to_folder(fix_folder: str, target_folder: str, zip_manifest: Dic
         print(f"You can review the extracted and fixed files at {fix_folder}.{COLOR_TERMINATION}")
     else:
         shutil.rmtree(fix_folder)
+
+def merge_external_scan_results_with_final_folder(
+        collected_config_file_tuple: Tuple[str, Dict],
+        external_results_to_send: Optional[Dict]) -> None:
+    """
+    Helper function to merge a tuple of a file-path and a manifest
+    dictionary with the external scan results.
+    """
+    if not external_results_to_send:
+        return
+    coguard_folder_path, manifest_dict = collected_config_file_tuple
+    manifest_dict["externalResults"] = []
+    external_results_list = manifest_dict["externalResults"]
+    for ext_name, ext_path in external_results_to_send.items():
+        external_results_list.append(ext_name)
+        for subfolder in pathlib.Path(ext_path).iterdir():
+            dest=pathlib.Path(coguard_folder_path).joinpath(subfolder)
+            if subfolder.is_dir():
+                shutil.copytree(subfolder, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(subfolder, dest)
+    # Update the manifest file
+    with open(
+            os.path.join(coguard_folder_path,
+                         "manifest.json"),
+            "w",
+            encoding='utf-8') \
+         as manifest_file:
+        json.dump(manifest_dict, manifest_file)
