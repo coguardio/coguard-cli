@@ -406,7 +406,7 @@ def perform_folder_scan(
             output_format,
             fail_level,
             organization,
-            ruleset,
+            ruleset
         )
 
 def folder_scan_handler(

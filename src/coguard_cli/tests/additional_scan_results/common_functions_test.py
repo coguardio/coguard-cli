@@ -12,7 +12,10 @@ class TestCommonFunctionsAdditionalScans(unittest.TestCase):
     The class to test the functions in coguard_cli.additional_scan_results.__init__
     """
 
-    @unittest.mock.patch('coguard_cli.discovery.additional_scan_results.additional_scan_result_factory.additional_scan_result_factory')
+    @unittest.mock.patch(
+        'coguard_cli.discovery.additional_scan_results.additional_scan'
+        '_result_factory.additional_scan_result_factory'
+    )
     def test_perform_external_scans_and_return_folders(self, mock_factory):
         """
         Testing the external_scans_and_return_folders function

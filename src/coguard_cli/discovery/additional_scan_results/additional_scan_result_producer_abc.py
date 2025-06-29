@@ -23,15 +23,23 @@ class AdditionalScanResult(ABC):
             path_to_file_system: str,
             additional_parameters: Optional[Dict]=None) -> Optional[str]:
         """
-        The main function to perform the external scan function.
-        It consumes a path where the external scanner needs to point at, and some additional
-        optional parameters, if provided or necessary.
-        This function is expected to create a temporary folder where the results of the
-        additional scan is stored. It returns `None` if an error occurred.
-        The output is meant to be forwarded to the `translate_external_scan_result` function
-        for further processing. Any additional communication protocols between these functions
-        needs to be captured in the classes inheriting from this abstract base class.
-        """
+        Executes an external scan on the given file system path using an external scanning tool.
+
+        Parameters:
+        path_to_file_system (str): The root path of the file system to be scanned.
+        additional_parameters (Optional[Dict]): Optional parameters to customize the scan behavior.
+
+        Returns:
+        Optional[str]: The path to a temporary directory containing the scan results,
+        or `None` if the scan failed.
+
+        Notes:
+        - This method must be implemented by subclasses.
+        - The resulting output is expected to be passed to the `translate_external_scan_result`
+          method for parsing and enrichment.
+        - Any communication protocol or contract between this method and
+          `translate_external_scan_result` must be defined and enforced by the subclass.
+    """
 
 
     @abstractmethod
@@ -39,17 +47,36 @@ class AdditionalScanResult(ABC):
             self,
             path_to_scan_result: str) -> Optional[str]:
         """
-        This abstract function contains the functionality to translate the scan result
-        produced by `perform_external_scan`, and create a new temporary folder where
-        a JSON is stored with CoGuard compatible JSON objects which can be fed into a result.
-        If an error occurs, this function returns None.
+        Translates the raw results produced by `perform_external_scan` into a
+        CoGuard-compatible format.
+
+        Parameters:
+        path_to_scan_result (str): Path to the directory containing the raw scan output.
+
+        Returns:
+        Optional[str]: Path to a temporary directory containing one or more
+        CoGuard-compatible JSON files,
+        or `None` if an error occurred during translation.
+
+        Notes:
+        - This method must be implemented by subclasses.
+        - The translated results are expected to conform to CoGuard’s expected input format
+          and can be consumed directly by CoGuard’s result processing pipeline.
         """
 
     @abstractmethod
     def get_external_scan_identifier(self) -> str:
-        """
-        The string representation of the scan result.
-        This is important for the later categorization.
+         """
+         Returns a unique string identifier for the type of external scan performed.
+
+         Returns:
+         str: A short, descriptive identifier used for categorizing and distinguishing
+         the external scan results (e.g., the name of the external tool).
+
+         Notes:
+         - This identifier is used internally for organizing scan results and associating
+          them with the correct translation logic.
+         - Must be implemented by all subclasses.
         """
 
     def perform_external_scan_and_translation(
@@ -57,9 +84,21 @@ class AdditionalScanResult(ABC):
             path_to_filesystem: str,
             additional_parameters: Optional[Dict]) -> Optional[str]:
         """
-        This is the main function to perform the external scans, produce the results
-        and return the folder where the JSON is stored with the external scan result.
-        It returns None if an error occurred.
+        Orchestrates the full external scanning workflow: performs the scan and
+        translates the results.
+
+        Parameters:
+        path_to_filesystem (str): Path to the file system to be scanned.
+        additional_parameters (Optional[Dict]): Optional parameters passed to the external scanner.
+
+        Returns:
+        Optional[str]: Path to a temporary directory containing CoGuard-compatible JSON scan
+        results, or `None` if an error occurred during scanning or translation.
+
+        Notes:
+        - This method coordinates both the scan execution and result translation.
+        - Temporary scan artifacts are automatically cleaned up after translation.
+        - Errors during either phase are logged and result in a `None` return value.
         """
         if path_to_filesystem is None:
             logging.error(
@@ -77,7 +116,8 @@ class AdditionalScanResult(ABC):
         coguard_folder_result = self.translate_external_scan_result(temp_results)
         if coguard_folder_result is None:
             logging.error(
-                "An error occurred while trying to translate the external scanner results."
+                "An error occurred while trying to translate the external scanner results for %s.",
+                self.get_external_scan_identifier()
             )
         shutil.rmtree(temp_results)
         return coguard_folder_result
