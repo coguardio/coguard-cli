@@ -3,7 +3,10 @@ Testing module for the util.py section
 """
 
 import unittest
+import unittest.mock
+from typing import Dict, Tuple
 from io import StringIO
+import pathlib
 
 from coguard_cli import util
 from coguard_cli import auth
@@ -722,3 +725,92 @@ class TestUtilRoot(unittest.TestCase):
                 }
             }, {})
             self.assertIn("not even talk", new_stdout.getvalue())
+
+
+    def test_merge_with_external_results(self):
+        """
+        Testing a proper scenario
+        """
+        with unittest.mock.patch(
+                'builtins.open',
+                new_callable=unittest.mock.mock_open
+        ) as mock_file, \
+        unittest.mock.patch(
+            "json.dump"
+        ) as mock_json_dump, \
+        unittest.mock.patch(
+            "shutil.copy2"
+        ) as shutil_copy_2, \
+        unittest.mock.patch(
+            "shutil.copytree"
+        ) as shutil_copytree, \
+        unittest.mock.patch(
+            "pathlib.Path.iterdir"
+        ) as mock_iterdir, \
+        unittest.mock.patch(
+            "pathlib.Path.is_dir"
+        ):
+            coguard_folder_path = "/fake/coguard"
+            manifest_dict = {}
+            collected_tuple: Tuple[str, Dict] = (coguard_folder_path, manifest_dict)
+            external_results = {
+                "scannerA": "/fake/ext/scannerA",
+                "scannerB": "/fake/ext/scannerB"
+            }
+            fake_dirs = [
+                unittest.mock.MagicMock(spec=pathlib.Path, name='dir1'),
+                unittest.mock.MagicMock(spec=pathlib.Path, name='file1')
+            ]
+
+            # Simulate one directory and one file
+            mock_iterdir.side_effect = [fake_dirs, fake_dirs]  # Once per scanner
+            fake_dirs[0].is_dir.return_value = True
+            fake_dirs[1].is_dir.return_value = False
+
+            util.merge_external_scan_results_with_final_folder(collected_tuple, external_results)
+
+            # Check that "externalResults" got populated
+            assert "externalResults" in collected_tuple[1]
+            assert collected_tuple[1]["externalResults"] == ["scannerA", "scannerB"]
+
+            # Check copytree and copy2 calls
+            assert shutil_copytree.call_count == 2
+            assert shutil_copy_2.call_count == 2
+
+            # Check manifest.json was written
+            mock_file.assert_called_once_with("/fake/coguard/manifest.json", "w", encoding="utf-8")
+            mock_json_dump.assert_called_once()
+
+    def test_merge_with_none_external_results(self):
+        """
+        Test None right away return.
+        """
+        with unittest.mock.patch(
+                'builtins.open',
+                new_callable=unittest.mock.mock_open
+        ) as mock_file, \
+        unittest.mock.patch(
+            "json.dump"
+        ) as mock_json_dump:
+            collected_tuple = ("/fake/coguard", {})
+            util.merge_external_scan_results_with_final_folder(collected_tuple, None)
+            assert "externalResults" not in collected_tuple[1]
+            mock_file.assert_not_called()
+            mock_json_dump.assert_not_called()
+
+    def test_merge_with_empty_external_results(self):
+        """
+        Test with empty external results.
+        """
+        with unittest.mock.patch(
+                'builtins.open',
+                new_callable=unittest.mock.mock_open
+        ) as mock_file, \
+        unittest.mock.patch(
+            "json.dump"
+        ) as mock_json_dump:
+            collected_tuple = ("/fake/coguard", {})
+            util.merge_external_scan_results_with_final_folder(collected_tuple, {})
+            assert "externalResults" not in collected_tuple[1]
+            mock_file.assert_not_called()
+            mock_json_dump.assert_not_called()
