@@ -66,17 +66,17 @@ class AdditionalScanResult(ABC):
 
     @abstractmethod
     def get_external_scan_identifier(self) -> str:
-         """
-         Returns a unique string identifier for the type of external scan performed.
+        """
+        Returns a unique string identifier for the type of external scan performed.
 
-         Returns:
-         str: A short, descriptive identifier used for categorizing and distinguishing
-         the external scan results (e.g., the name of the external tool).
+        Returns:
+        str: A short, descriptive identifier used for categorizing and distinguishing
+        the external scan results (e.g., the name of the external tool).
 
-         Notes:
-         - This identifier is used internally for organizing scan results and associating
-          them with the correct translation logic.
-         - Must be implemented by all subclasses.
+        Notes:
+        - This identifier is used internally for organizing scan results and associating
+         them with the correct translation logic.
+        - Must be implemented by all subclasses.
         """
 
     def perform_external_scan_and_translation(
