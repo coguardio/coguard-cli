@@ -3,6 +3,8 @@ This is the factory for additional scan result producer functions.
 """
 
 from typing import Generator
+from coguard_cli.discovery.additional_scan_results.trivy_sbom_scanning_result_producer import \
+    TrivyCveProducer
 
 from coguard_cli.discovery.additional_scan_results.additional_scan_result_producer_abc \
     import AdditionalScanResult

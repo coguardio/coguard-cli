@@ -26,8 +26,10 @@ def perform_external_scans_and_return_folders(
                      "external scanners and will be overwritten."),
                     ext_scan_identifier
                 )
-            result[ext_scan_identifier] = add_scan_result.perform_external_scan_and_translation(
+            translation_success = add_scan_result.perform_external_scan_and_translation(
                 path_to_filesystem,
                 additional_parameters
             )
+            if translation_success:
+                result[ext_scan_identifier] = translation_success
     return result
