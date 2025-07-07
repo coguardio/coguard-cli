@@ -736,6 +736,12 @@ class TestUtilRoot(unittest.TestCase):
                 new_callable=unittest.mock.mock_open
         ) as mock_file, \
         unittest.mock.patch(
+                'os.mkdir'
+        ), \
+        unittest.mock.patch(
+                'pathlib.Path.mkdir'
+        ), \
+        unittest.mock.patch(
             "json.dump"
         ) as mock_json_dump, \
         unittest.mock.patch(

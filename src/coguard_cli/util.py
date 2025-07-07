@@ -502,7 +502,8 @@ def merge_external_scan_results_with_final_folder(
     for ext_name, ext_path in external_results_to_send.items():
         external_results_list.append(ext_name)
         for subfolder in pathlib.Path(ext_path).iterdir():
-            dest=pathlib.Path(coguard_folder_path).joinpath(subfolder)
+            dest=pathlib.Path(coguard_folder_path).joinpath("externalResults").joinpath(ext_name)
+            dest.mkdir(parents=True, exist_ok=True)
             if subfolder.is_dir():
                 shutil.copytree(subfolder, dest, dirs_exist_ok=True)
             else:

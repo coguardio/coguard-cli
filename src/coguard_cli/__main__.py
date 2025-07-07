@@ -110,7 +110,8 @@ def main():
     parser.add_argument(
         '--additional-scan-result',
         action='append',
-        choices=[], #empty for now, because we have not added any additional tooling yet.
+        choices=["trivy_cve_scan", ""],
+        default=[],
         help='Additional scan result files or identifiers',
         dest='additional_scan_results'
     )

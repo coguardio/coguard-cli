@@ -111,7 +111,6 @@ class AdditionalScanResult(ABC):
         if temp_results is None:
             logging.error("An error occurred while scanning with the external method for %s.",
                           self.get_external_scan_identifier())
-            shutil.rmtree(temp_results)
             return None
         coguard_folder_result = self.translate_external_scan_result(temp_results)
         if coguard_folder_result is None:

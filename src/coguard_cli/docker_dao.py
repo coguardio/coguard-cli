@@ -322,3 +322,38 @@ def terraformer_wrapper(location_to_mount: str,
         logging.error("Failed to run the terraformer wrapper: %s", str(exception))
         return False
     return False
+
+def run_external_scanner_container(image_name: str,
+                                   version: str,
+                                   additional_parameters: str,
+                                   environment_variables: Dict[str, str],
+                                   mounts: List[Tuple[str, str]]):
+    """
+    Runs an external scanner container (image name and version are provided, as well as a list
+    of possible environment variables and mounts.
+    """
+    try:
+        if not version or version == 'latest':
+            raise ValueError("You should not use thoughtlessly the latest version.")
+        logging.info("Running external result creator. This may take a while.")
+        container_name = re.sub(r"[^a-zA-Z0-9]", "_", f"{image_name}:{version}")
+        subprocess.run(
+            f"docker container stop {container_name} || true && " + \
+            f"docker container rm {container_name} || true && " + \
+            f"docker run --rm --name={container_name} " + \
+            " ".join(f"-v \"{k}\":\"{v}\"" for k, v in mounts) + \
+            " ".join(f"-e \"{k}\"='{v}'" for k, v in environment_variables.items()) + \
+            f" {image_name}:{version} {additional_parameters}",
+            check=True,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=DOCKER_CALL_TIMEOUT_S * 100
+        )
+        return True
+    except subprocess.CalledProcessError as exception:
+        logging.error("Failed to run the external_result_creator: %s", str(exception))
+        return False
+    except ValueError:
+        return False
+    return False
