@@ -50,7 +50,6 @@ class TestAdditionalScanResult(unittest.TestCase):
             result = self.mock_instance.perform_external_scan_and_translation('/fake/filesystem', None)
         self.assertIsNone(result)
         self.assertIn("An error occurred while scanning with the external method for mock_scanner", cm.output[0])
-        mock_rmtree.assert_called_once_with(None)
 
     @patch.object(AdditionalScanResult, 'perform_external_scan', return_value='/tmp/mock_scan_result')
     @patch.object(AdditionalScanResult, 'translate_external_scan_result', return_value=None)

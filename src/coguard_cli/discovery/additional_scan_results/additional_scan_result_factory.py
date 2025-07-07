@@ -2,6 +2,7 @@
 This is the factory for additional scan result producer functions.
 """
 
+# pylint: disable=unused-import
 from typing import Generator
 from coguard_cli.discovery.additional_scan_results.trivy_sbom_scanning_result_producer import \
     TrivyCveProducer
