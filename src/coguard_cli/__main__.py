@@ -111,6 +111,7 @@ def main():
         '--additional-scan-result',
         action='append',
         choices=["trivy_cve_scan", ""],
+        default=[],
         help='Additional scan result files or identifiers',
         dest='additional_scan_results'
     )
