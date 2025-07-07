@@ -739,6 +739,9 @@ class TestUtilRoot(unittest.TestCase):
                 'os.mkdir'
         ), \
         unittest.mock.patch(
+                'pathlib.Path.mkdir'
+        ), \
+        unittest.mock.patch(
             "json.dump"
         ) as mock_json_dump, \
         unittest.mock.patch(
