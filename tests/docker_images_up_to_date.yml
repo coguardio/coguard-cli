@@ -21,6 +21,7 @@
         known_images:
           - "alpine/helm:3.15.2"
           - "{terraformer_wrapper_image_name}"
+          - "{image_name}"
     - name: Check for 'docker run' expression in Python files
       ansible.builtin.command:
         argv:
