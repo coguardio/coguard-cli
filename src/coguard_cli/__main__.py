@@ -110,7 +110,7 @@ def main():
     parser.add_argument(
         '--additional-scan-result',
         action='append',
-        choices=["trivy_cve_scan", ""],
+        choices=["trivy_cve_scan", "phpstan_sast_scan", ""],
         default=[],
         help='Additional scan result files or identifiers',
         dest='additional_scan_results'
