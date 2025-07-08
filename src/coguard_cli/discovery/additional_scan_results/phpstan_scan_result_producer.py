@@ -74,10 +74,10 @@ class PhpStanSastProducer(AdditionalScanResult):
                 cog_res_rule["severity"] = 3
                 cog_res_rule["documentation"] = {
                     "documentation": ("The given file contained a SAST scanning error:  "
-                                      f"{message['message']}."),
+                                      f"{message['message']}"),
                     "remediation": "Change the code in the given file to address this finding.",
                     "sources": [
-                        "https://github.com/phpstan/phpstan-strict-rules"
+                        "https://cwe.mitre.org/data/index.html"
                     ]
                 }
                 res_failed.append(cog_res)
