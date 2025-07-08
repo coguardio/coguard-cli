@@ -142,7 +142,7 @@ test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d
 test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 791ab1b8b5c522e7a4ebbda5c28a3751caa8426d
 test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 8d6f5d059215b339dd19218aa073048039ac5f52
 test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 4dbf1a5ebeeb397660d1bd57a2b694a938561d69
-test_folder_checksum https://github.com/yiisoft/yii2.git 778d708c4f028c6997ff42ee2e1aead86cce3a64 f59ba784348a8350f447d0109fabf8e4a68e1340 "" phpstan_sast_scan
+test_folder_checksum https://github.com/yiisoft/yii2.git 778d708c4f028c6997ff42ee2e1aead86cce3a64 f79b02fcc1f5e992a4fbe1a0e0daaf799ae67588 "" phpstan_sast_scan
 test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
 # Test with a weird name

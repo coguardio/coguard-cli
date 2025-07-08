@@ -52,7 +52,10 @@ class PhpStanSastProducer(AdditionalScanResult):
                 f"{path_to_scan_result}{os.path.sep}result.json",
                 'r',
                 encoding='utf-8') as sast_json_stream:
-            phpstan_results = json.load(sast_json_stream)
+            try:
+                phpstan_results = json.load(sast_json_stream)
+            except json.decoder.JSONDecodeError:
+                phpstan_results = {}
 
         result = {"failed": []}
         res_failed = result["failed"]
@@ -74,10 +77,10 @@ class PhpStanSastProducer(AdditionalScanResult):
                 cog_res_rule["severity"] = 3
                 cog_res_rule["documentation"] = {
                     "documentation": ("The given file contained a SAST scanning error:  "
-                                      f"{message['message']}."),
+                                      f"{message['message']}"),
                     "remediation": "Change the code in the given file to address this finding.",
                     "sources": [
-                        "https://github.com/phpstan/phpstan-strict-rules"
+                        "https://cwe.mitre.org/data/index.html"
                     ]
                 }
                 res_failed.append(cog_res)
