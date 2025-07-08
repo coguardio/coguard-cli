@@ -52,7 +52,10 @@ class TrivyCveProducer(AdditionalScanResult):
                 f"{path_to_scan_result}{os.path.sep}sbom.json",
                 'r',
                 encoding='utf-8') as sbom_json_stream:
-            trivy_results = json.load(sbom_json_stream)
+            try:
+                trivy_results = json.load(sbom_json_stream)
+            except json.decoder.JSONDecodeError:
+                trivy_results = {}
 
         result = {"failed": []}
         res_failed = result["failed"]

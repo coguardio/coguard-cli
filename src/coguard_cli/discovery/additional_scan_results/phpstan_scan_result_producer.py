@@ -52,7 +52,10 @@ class PhpStanSastProducer(AdditionalScanResult):
                 f"{path_to_scan_result}{os.path.sep}result.json",
                 'r',
                 encoding='utf-8') as sast_json_stream:
-            phpstan_results = json.load(sast_json_stream)
+            try:
+                phpstan_results = json.load(sast_json_stream)
+            except json.decoder.JSONDecodeError:
+                phpstan_results = {}
 
         result = {"failed": []}
         res_failed = result["failed"]
