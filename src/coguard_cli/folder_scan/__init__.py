@@ -375,6 +375,7 @@ def _find_and_extract_cdk_json(folder_name: str):
                 result.returncode,
                 result.stderr.strip(),
             )
+    #pylint: disable=broad-exception-caught
     except Exception as ex:
         logging.error("Unexpected errorrunning cdk synth: %s", ex)
 
