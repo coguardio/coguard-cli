@@ -5,6 +5,8 @@ inside the image_check module.
 
 import unittest
 import unittest.mock
+import pathlib
+import subprocess
 from coguard_cli import auth
 from coguard_cli import folder_scan
 from coguard_cli.discovery.config_file_finders.config_file_finder_nginx \
@@ -796,3 +798,58 @@ class TestCommonImageCheckingFunc(unittest.TestCase):
             )
             self.assertEqual(rmtree.call_count, 1)
             self.assertEqual(upload_and_fix.call_count, 1)
+
+    @unittest.mock.patch.object(pathlib.Path, "exists", return_value=False)
+    @unittest.mock.patch("subprocess.run")
+    def test_cdk_synth_not_existing(self, mock_run, mock_exists):
+        mock_result = unittest.mock.MagicMock()
+        mock_result.returncode = 0
+        mock_result.stderr = b""
+        mock_run.return_value = mock_result
+        folder_scan._find_and_extract_cdk_json("/fake/path")
+        mock_run.assert_not_called()
+
+    @unittest.mock.patch.object(pathlib.Path, "exists", return_value=True)
+    @unittest.mock.patch("subprocess.run")
+    def test_cdk_synth_success(self, mock_run, mock_exists):
+        mock_result = unittest.mock.MagicMock()
+        mock_result.returncode = 0
+        mock_result.stderr = b""
+        mock_run.return_value = mock_result
+
+        with self.assertLogs(level="INFO") as cm:
+            folder_scan._find_and_extract_cdk_json("/fake/path")
+
+        self.assertIn("cdk synth succeeded", "\n".join(cm.output))
+        mock_run.assert_called_once_with(
+            ["cdk", "synth"],
+            cwd="/fake/path",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
+    @unittest.mock.patch.object(pathlib.Path, "exists", return_value=True)
+    @unittest.mock.patch("subprocess.run")
+    def test_cdk_synth_failure(self, mock_run, mock_exists):
+        mock_result = unittest.mock.MagicMock()
+        mock_result.returncode = 1
+        mock_result.stderr = b"something went wrong"
+        mock_run.return_value = mock_result
+
+        with self.assertLogs(level="WARNING") as cm:
+            folder_scan._find_and_extract_cdk_json("/fake/path")
+
+        log_output = "\n".join(cm.output)
+        self.assertIn("cdk synth failed", log_output)
+        self.assertIn("something went wrong", log_output)
+
+    @unittest.mock.patch.object(pathlib.Path, "exists", return_value=True)
+    @unittest.mock.patch("subprocess.run", side_effect=OSError("cdk not found"))
+    def test_cdk_synth_exception(self, mock_run, mock_exists):
+        with self.assertLogs(level="ERROR") as cm:
+            folder_scan._find_and_extract_cdk_json("/fake/path")
+
+        log_output = "\n".join(cm.output)
+        self.assertIn("Unexpected error", log_output)
+        self.assertIn("cdk not found", log_output)

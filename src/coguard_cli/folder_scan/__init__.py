@@ -5,9 +5,11 @@ This is the area where common functionality for scanning folders is collected.
 import json
 import logging
 import os
+import pathlib
 import tempfile
 import shutil
 import zipfile
+import subprocess
 import fnmatch
 from typing import Optional, Tuple, Dict, List, Union
 import yaml
@@ -345,6 +347,38 @@ def _find_and_merge_included_docker_images(
     if to_add:
         additional_failed_rules.append("cluster_docker_images_with_failed_checks_included")
 
+def _find_and_extract_cdk_json(folder_name: str):
+    """
+    Helper function to see if there is a CDK.json and performing the
+    extraction.
+    """
+    cdk_config_path = pathlib.Path(folder_name).joinpath('cdk.json')
+    if not cdk_config_path.exists():
+        return
+    try:
+        logging.info("Running `cdk synth` in %s", folder_name)
+
+        # Run cdk synth, suppressing interactive prompts
+        result = subprocess.run(
+            ["cdk", "synth"],
+            cwd=str(folder_name),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False
+        )
+
+        if result.returncode == 0:
+            logging.info("cdk synth succeeded")
+        else:
+            logging.warning(
+                "cdk synth failed (exit %d). stderr: %s",
+                result.returncode,
+                result.stderr.strip(),
+            )
+    except Exception as ex:
+        logging.error("Unexpected errorrunning cdk synth: %s", ex)
+
+
 def perform_folder_scan(
         folder_name: Optional[str],
         deal_type: DealEnum,
@@ -380,6 +414,7 @@ def perform_folder_scan(
         auth_config,
         additional_failed_rules
     )
+    _find_and_extract_cdk_json(folder_name)
     coguard_cli.util.merge_external_scan_results_with_final_folder(
         collected_config_file_tuple,
         external_results_to_send
