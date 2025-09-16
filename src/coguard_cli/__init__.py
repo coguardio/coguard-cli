@@ -246,7 +246,9 @@ def download_single_config_file(url: str, filename: str) -> str:
     try:
         urllib.request.urlretrieve(url, dest.joinpath(filename))
         return str(dest)
-    except subprocess.CalledProcessError:
+    #pylint: disable=broad-exception-caught
+    except Exception:
+        logging.error("Failed to retrieve the provided URL.")
         return ""
 
 #pylint: disable=too-many-branches
