@@ -9,8 +9,8 @@ import copy
 import shutil
 import tempfile
 from typing import Optional, Dict, List, Tuple, Union, Callable
-import yaml
 import json
+import yaml
 from flatten_dict import unflatten
 from coguard_cli.util import convert_string_to_posix_path
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
