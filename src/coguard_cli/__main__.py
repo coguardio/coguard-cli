@@ -206,6 +206,25 @@ def main():
         nargs='?',
         help=("The url of the repository.")
     )
+    open_api_endpoint_parser = subparsers.add_parser(
+        SubParserNames.OPEN_API_SCAN.value,
+        help="The sub-command to download an OpenAPI spec and scan it directly."
+    )
+    open_api_endpoint_parser.add_argument(
+        SubParserNames.SCAN.value,
+        type=str,
+        default="",
+        nargs='?',
+        help=("The indicator that we are aiming to do a scan.")
+    )
+    open_api_endpoint_parser.add_argument(
+        'open_api_url',
+        metavar="open_api_url",
+        type=str,
+        default="",
+        nargs='?',
+        help=("The url to the OpenAPI JSON.")
+    )
     cloud_scanning_parser = subparsers.add_parser(
         SubParserNames.CLOUD_SCAN.value,
         help="The sub-command to extract a cloud snapshot as Terraform files and scan them."

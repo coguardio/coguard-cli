@@ -9,6 +9,7 @@ import copy
 import shutil
 import tempfile
 from typing import Optional, Dict, List, Tuple, Union, Callable
+import json
 import yaml
 from flatten_dict import unflatten
 from coguard_cli.util import convert_string_to_posix_path
@@ -611,4 +612,27 @@ def does_config_yaml_contain_required_keys(file_path: str, required_fields: List
                   str(config))
     return config and all(config_instance and required_field in config_instance
                           for config_instance in config
+                          for required_field in required_fields)
+
+def does_config_json_contain_required_keys(file_path: str, required_fields: List[str]) -> bool:
+    """
+    Helper function to check if a yaml file as defined by `file_path` contains a set of
+    mandatory keys as provided by `required_fields`.
+    """
+    config = []
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file_stream:
+            config_res = json.load(file_stream)
+            config = {} if config_res is None else config_res
+        config = unflatten(config, splitter='dot')
+    #pylint: disable=bare-except
+    except:
+        logging.debug(
+            "Failed to load %s",
+            file_path
+        )
+        return False
+    logging.debug("The config object looks like: %s",
+                  str(config))
+    return config and all(required_field in config
                           for required_field in required_fields)

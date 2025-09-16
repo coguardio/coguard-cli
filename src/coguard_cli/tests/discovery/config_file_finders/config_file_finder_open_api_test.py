@@ -4,6 +4,7 @@ Tests for the functions in the ConfigFileFinderOpenApi class
 
 import unittest
 import unittest.mock
+import json
 from coguard_cli.discovery.config_file_finders.config_file_finder_openapi \
     import ConfigFileFinderOpenApi
 
@@ -52,6 +53,13 @@ class TestConfigFileFinderOpenApi(unittest.TestCase):
         This checks for the standard location test and sees if the file is
         existent or not.
         """
+        mock_data = json.dumps({
+            "openapi": "3.0.0",
+            "info": {
+                "title": "Test API",
+                "version": "1.0.0"
+            }
+        })
         with unittest.mock.patch(
                 "os.walk",
                 new_callable=lambda: lambda location: [("etc", [], ["openapi.json"])]), \
@@ -59,6 +67,9 @@ class TestConfigFileFinderOpenApi(unittest.TestCase):
                     ("coguard_cli.discovery.config_file_finders.create_temp_"
                      "location_and_manifest_entry"),
                     new_callable=lambda: lambda a, b, c, d, e, f: [({"foo": "bar"}, "/etc/bar")]
+                ), \
+                unittest.mock.patch(
+                    "builtins.open", unittest.mock.mock_open(read_data=mock_data)
                 ):
             config_file_finder_open_api = ConfigFileFinderOpenApi()
             result = config_file_finder_open_api.check_for_config_files_filesystem_search(

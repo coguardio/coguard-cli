@@ -391,7 +391,8 @@ def perform_folder_scan(
         fail_level: int,
         ruleset: str,
         dry_run: bool = False,
-        external_results_to_send = None):
+        external_results_to_send = None,
+        collect_additional_failed_rules = True):
     """
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
@@ -409,7 +410,8 @@ def perform_folder_scan(
         print(f"{COLOR_YELLOW}FOLDER {printed_folder_name} - NO CONFIGURATION FILES FOUND.")
         return
     additional_failed_rules = []
-    is_ci_cd_there(folder_name, additional_failed_rules)
+    if collect_additional_failed_rules:
+        is_ci_cd_there(folder_name, additional_failed_rules)
     _find_and_merge_included_docker_images(
         collected_config_file_tuple,
         auth_config,

@@ -10,11 +10,14 @@ import sys
 import logging
 import tempfile
 import subprocess
+import urllib.request
+import pathlib
 from pathlib import Path
 from typing import Optional
 from coguard_cli import image_check
 from coguard_cli import folder_scan
 from coguard_cli import cloud_scan
+from coguard_cli.check_common_util import replace_special_chars_with_underscore
 from coguard_cli.ci_cd.ci_cd_provider_factory import ci_cd_provider_factory
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 from coguard_cli.auth.token import Token
@@ -33,6 +36,7 @@ class SubParserNames(Enum):
     FOLDER_SCAN = "folder"
     CLOUD_SCAN = "cloud"
     REPO_SCAN = "repository"
+    OPEN_API_SCAN = "open-api"
     CI_CD_GEN = "pipeline"
     ACCOUNT = "account"
     SCAN = "scan"
@@ -229,6 +233,24 @@ def clone_git_repo(url: str) -> str:
     except subprocess.CalledProcessError:
         return ""
 
+def download_single_config_file(url: str, filename: str) -> str:
+    """
+    Downloads a single config file into a temporary folder with a given filename and
+    returns the path.
+    Returns the empty string if an error occurs.
+    """
+    tmpdir = tempfile.mkdtemp(prefix = "coguard_single_config_file")
+    subpath = replace_special_chars_with_underscore(url)
+    dest = pathlib.Path(tmpdir).joinpath(subpath)
+    dest.mkdir(exist_ok=True)
+    try:
+        urllib.request.urlretrieve(url, dest.joinpath(filename))
+        return str(dest)
+    #pylint: disable=broad-exception-caught
+    except Exception:
+        logging.error("Failed to retrieve the provided URL.")
+        return ""
+
 #pylint: disable=too-many-branches
 #pylint: disable=too-many-statements
 def entrypoint(args):
@@ -344,6 +366,32 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.dry_run
         )
         shutil.rmtree(git_repo_dir)
+    elif args.subparsers_location == SubParserNames.OPEN_API_SCAN.value:
+        endpoint_url = args.open_api_url or args.scan or None
+        if not endpoint_url:
+            print(f"{COLOR_RED} Open API spec URL needs to be provided.{COLOR_TERMINATION}")
+            return
+        open_api_file_dir = download_single_config_file(
+            endpoint_url,
+            "openapi.json" if endpoint_url.endswith("json") else "openapi.yml"
+        )
+        if not open_api_file_dir:
+            print(f"{COLOR_RED} Could not download requested openapi spec.{COLOR_TERMINATION}")
+            return
+        folder_scan.perform_folder_scan(
+            open_api_file_dir,
+            deal_type,
+            auth_config,
+            token,
+            organization,
+            args.coguard_api_url,
+            args.output_format,
+            args.fail_level,
+            ruleset,
+            args.dry_run,
+            collect_additional_failed_rules = False
+        )
+        shutil.rmtree(open_api_file_dir)
     elif args.subparsers_location == SubParserNames.CI_CD_GEN.value:
         ci_cd_provider = args.ci_cd_provider_name
         ci_cd_command = args.ci_cd_command
