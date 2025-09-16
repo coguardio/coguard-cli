@@ -137,7 +137,7 @@ docker stop demo-postgres
 # Git repository tests
 
 test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
-test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df e0e3b880a91fc182849577c9b9912b536dec8782 "" trivy_cve_scan
+test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 9ee97acdd91b1d23bc39f502e89d7c2f73505009 "" trivy_cve_scan
 test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f6cdbb9311430a4f356255ae2a44298ef077054a
 test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 791ab1b8b5c522e7a4ebbda5c28a3751caa8426d
 test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 8d6f5d059215b339dd19218aa073048039ac5f52
