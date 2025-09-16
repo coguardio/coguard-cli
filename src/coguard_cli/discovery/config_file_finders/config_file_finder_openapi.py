@@ -5,6 +5,7 @@ inside a folder structure.
 
 import os
 import logging
+import re
 from typing import Dict, List, Optional, Tuple
 from coguard_cli.discovery.config_file_finder_abc import ConfigFileFinder
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_TERMINATION
@@ -30,16 +31,39 @@ class ConfigFileFinderOpenApi(ConfigFileFinder):
         """
         See the documentation of ConfigFileFinder for reference.
         """
-        standard_names = ["openapi.json", "openapi.yml", "openapi.yaml"]
+        standard_names = ["^.*\\.(ya?ml|json)$"]
         result_files = []
+        required_fields = [
+            "openapi",
+            "info"
+        ]
         logging.debug("Trying to find the file by searching"
                       " for the standard name in the filesystem.")
         for (dir_path, _, file_names) in os.walk(path_to_file_system):
             for standard_name in standard_names:
-                if standard_name in file_names:
-                    logging.debug("Found an entry: %s",
-                                  os.path.join(dir_path, standard_name))
-                    result_files.append(os.path.join(dir_path, standard_name))
+                matching_file_names = [file_name for file_name in file_names
+                                       if re.match(standard_name, file_name)]
+                joined_filter = [
+                    file_name for file_name in matching_file_names
+                    if (file_name.endswith("yaml") or file_name.endswith("yml"))
+                    and cff_util.does_config_yaml_contain_required_keys(
+                        os.path.join(dir_path, file_name),
+                        required_fields
+                    )] + [
+                        file_name for file_name in matching_file_names
+                        if file_name.endswith("json")
+                        and cff_util.does_config_json_contain_required_keys(
+                            os.path.join(dir_path, file_name),
+                            required_fields
+                        )]
+                if joined_filter:
+                    mapped_file_names = [
+                        os.path.join(dir_path, file_name)
+                        for file_name in joined_filter
+                    ]
+                    logging.debug("Found entries: %s",
+                                  mapped_file_names)
+                    result_files.extend(mapped_file_names)
         results = []
         for result_file in result_files:
             print(
