@@ -2,6 +2,7 @@
 The tests for the functions in __init__ of the config_file_finders module.
 """
 
+import os
 import unittest
 import unittest.mock
 import coguard_cli.discovery.config_file_finders as cff_util
@@ -424,3 +425,99 @@ spec:
         )
         for key_val in result:
             self.assertListEqual(result[key_val], expected_result[key_val])
+
+    @unittest.mock.patch("tempfile.mkdtemp", return_value="/tmp/coguard-cli-testservice123")
+    @unittest.mock.patch("os.makedirs")
+    @unittest.mock.patch("os.path.exists", return_value=True)
+    @unittest.mock.patch("shutil.copy")
+    @unittest.mock.patch("coguard_cli.discovery.config_file_finders.get_path_behind_symlinks", return_value="/resolved/path/config.yaml")
+    @unittest.mock.patch("coguard_cli.discovery.config_file_finders.convert_string_to_posix_path", side_effect=lambda s: s.replace(os.sep, "/"))
+    def test_happy_path(
+        self,
+        mock_convert,
+        mock_get_path,
+        mock_copy,
+        mock_exists,
+        mock_makedirs,
+        mock_mkdtemp,
+    ):
+        file_tuples = [
+            ("config.yaml", "/etc/service/config.yaml", "default.yaml", "yaml"),
+            ("config.json", "/etc/service/config.json", "default.json", "json")
+        ]
+        manifest, temp_location = cff_util.create_temp_location_and_manifest_entry_same_service(
+            "/etc", file_tuples, "testservice"
+        )
+
+        # Assert temp dir
+        self.assertEqual(temp_location, "/tmp/coguard-cli-testservice123")
+        mock_mkdtemp.assert_called_once_with(prefix="coguard-cli-testservice")
+
+        # Assert get_path_behind_symlinks called
+        self.assertEqual(mock_get_path.call_count, 2)
+
+        # Assert shutil.copy called for both files
+        self.assertEqual(mock_copy.call_count, 2)
+
+        # Validate manifest structure
+        self.assertEqual(manifest["version"], "1.0")
+        self.assertEqual(manifest["serviceName"], "testservice")
+        self.assertEqual(len(manifest["configFileList"]), 2)
+        self.assertEqual(manifest["configFileList"][0]["fileName"], "config.yaml")
+        self.assertEqual(manifest["configFileList"][1]["configFileType"], "json")
+
+    @unittest.mock.patch("tempfile.mkdtemp", return_value="/tmp/coguard-cli-testservice123")
+    @unittest.mock.patch("os.makedirs")
+    @unittest.mock.patch("os.path.exists", return_value=False)  # Simulate missing file
+    @unittest.mock.patch("coguard_cli.discovery.config_file_finders.get_path_behind_symlinks", return_value="/resolved/path/missing.yaml")
+    @unittest.mock.patch("logging.error")
+    def test_file_not_found(
+        self,
+        mock_log,
+        mock_get_path,
+        mock_exists,
+        mock_makedirs,
+        mock_mkdtemp
+    ):
+        file_tuples = [
+            ("missing.yaml", "/etc/service/missing.yaml", "default.yaml", "yaml")
+        ]
+        result = cff_util.create_temp_location_and_manifest_entry_same_service(
+            "/etc", file_tuples, "testservice"
+        )
+
+        # Function should return None
+        self.assertIsNone(result)
+
+        # Error should be logged
+        mock_log.assert_called_once()
+        self.assertIn("Could not find the file", mock_log.call_args[0][0])
+
+    @unittest.mock.patch("tempfile.mkdtemp", return_value="/tmp/coguard-cli-testservice123")
+    @unittest.mock.patch("os.makedirs")
+    @unittest.mock.patch("os.path.exists", return_value=True)
+    @unittest.mock.patch("shutil.copy")
+    @unittest.mock.patch("coguard_cli.discovery.config_file_finders.get_path_behind_symlinks", return_value="/resolved/path/config.yaml")
+    @unittest.mock.patch("coguard_cli.discovery.config_file_finders.convert_string_to_posix_path", return_value="etc/service")
+    def test_subpath_conversion(
+        self,
+        mock_convert,
+        mock_get_path,
+        mock_copy,
+        mock_exists,
+        mock_makedirs,
+        mock_mkdtemp
+    ):
+        file_tuples = [
+            ("config.yaml", "/etc/service/config.yaml", "default.yaml", "yaml"),
+        ]
+        manifest, _ = cff_util.create_temp_location_and_manifest_entry_same_service(
+            "/etc", file_tuples, "testservice"
+        )
+
+        # SubPath should use converted posix path
+        self.assertEqual(
+            manifest["configFileList"][0]["subPath"],
+            "./etc/service"
+        )
+        mock_convert.assert_called_once_with("service/")
