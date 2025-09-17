@@ -585,6 +585,69 @@ def create_temp_location_and_manifest_entry(
         temp_location
     )
 
+def create_temp_location_and_manifest_entry_same_service(
+            path_to_file_system: str,
+            file_tuples: Tuple[str, str, str, str],
+            service_name: str) -> Optional[Tuple[Dict, str]]:
+    """
+    Common helper function which creates a temporary folder location for the
+    configuration files. It returns
+    a tuple containing a manifest for a kubernetes service and the path to the
+    temporary location.
+    Difference to the create_temp_location_and_manifest_entry is that it has
+    a bunch of files for the same service, with different configuration file types.
+    The file-tuples cotain
+    """
+    temp_location = tempfile.mkdtemp(prefix=f"coguard-cli-{service_name}")
+    manifest_entry = {
+        "version": "1.0",
+        "serviceName": service_name,
+        "configFileList": [
+        ],
+        "complimentaryFileList": []
+    }
+    config_file_list = manifest_entry["configFileList"]
+    for file_name, location_on_current_machine, default_file_name, config_file_type \
+            in file_tuples:
+        to_copy = get_path_behind_symlinks(
+            path_to_file_system,
+            location_on_current_machine
+        )
+        # The reason we added os.sep at the end is because the file location may be
+        # at the root of the path_to_file_system. In this case, if there is a separation
+        # character at the end of path_to_file_system, the replace may not work.
+        # That is why we just add it here.
+        loc_within_machine = (os.path.dirname(location_on_current_machine)+os.sep).replace(
+            path_to_file_system,
+            ''
+        )
+        loc_within_machine = loc_within_machine[1:] \
+            if loc_within_machine.startswith(os.sep) \
+               else loc_within_machine
+        os.makedirs(os.path.join(temp_location, loc_within_machine), exist_ok=True)
+        if not os.path.exists(to_copy):
+            logging.error("Could not find the file or resolve the symlink at `%s`",
+                          location_on_current_machine)
+            return None
+        shutil.copy(
+            to_copy,
+            os.path.join(
+                temp_location,
+                loc_within_machine,
+                os.path.basename(location_on_current_machine)
+            )
+        )
+        config_file_list.append({
+            "fileName": file_name,
+            "defaultFileName": default_file_name,
+            "subPath": f"./{convert_string_to_posix_path(loc_within_machine)}",
+            "configFileType": config_file_type
+        })
+    return (
+        manifest_entry,
+        temp_location
+    )
+
 def does_config_yaml_contain_required_keys(file_path: str, required_fields: List[str]) -> bool:
     """
     Helper function to check if a yaml file as defined by `file_path` contains a set of
