@@ -44,7 +44,7 @@ jobs:
         run: make integration-test IS_TEST=${{ inputs.istest }}
       - name: Check for ZIP and upload if exists
         if: always()   # runs even if previous step failed
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-zip
           path: /tmp/coguard_cli_zip_to_upload*.zip
