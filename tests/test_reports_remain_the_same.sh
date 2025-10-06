@@ -114,7 +114,7 @@ time docker image rm "mongo:6.0.2"
 time test_image_checksum "mariadb:10.9.4" "2e5b980ae82cba3ab798fb1ac19e60f0db73a7f0"
 time test_image_checksum "mariadb:10.9.4" "22ce36152412aaf1d16daf325ca276251e6f4cff" hipaa
 time docker image rm "mariadb:10.9.4"
-time test_image_checksum "bitnamilegacy/kafka:3.3.1" "15a723fd1a7e6786be15102f1b5b1ed947fad4b0"
+time test_image_checksum "bitnamilegacy/kafka:3.3.1" "b15fa38b8a05564ae5ecb52705c14b1a036ec426"
 time docker image rm "bitnamilegacy/kafka:3.3.1"
 time test_image_checksum "httpd:2.4.54" "42100c7b7095c6ef33ee0a9cd673807ab8d3daa6"
 time docker image rm "httpd:2.4.54"
