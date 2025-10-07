@@ -114,8 +114,8 @@ time docker image rm "mongo:6.0.2"
 time test_image_checksum "mariadb:10.9.4" "2e5b980ae82cba3ab798fb1ac19e60f0db73a7f0"
 time test_image_checksum "mariadb:10.9.4" "22ce36152412aaf1d16daf325ca276251e6f4cff" hipaa
 time docker image rm "mariadb:10.9.4"
-time test_image_checksum "bitnami/kafka:3.3.1" "15a723fd1a7e6786be15102f1b5b1ed947fad4b0"
-time docker image rm "bitnami/kafka:3.3.1"
+time test_image_checksum "bitnamilegacy/kafka:3.3.1" "b15fa38b8a05564ae5ecb52705c14b1a036ec426"
+time docker image rm "bitnamilegacy/kafka:3.3.1"
 time test_image_checksum "httpd:2.4.54" "42100c7b7095c6ef33ee0a9cd673807ab8d3daa6"
 time docker image rm "httpd:2.4.54"
 time test_image_checksum "elasticsearch:8.5.0" "7dc3f7114703006cf8de53cfda6058c98438e930"
@@ -137,7 +137,7 @@ time docker stop demo-postgres
 # Git repository tests
 
 time test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
-time test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 9ee97acdd91b1d23bc39f502e89d7c2f73505009 "" trivy_cve_scan
+time test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 57a98be04b74a08a73efe77f8c713fc288e9975b "" trivy_cve_scan
 time test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f6cdbb9311430a4f356255ae2a44298ef077054a
 time test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 791ab1b8b5c522e7a4ebbda5c28a3751caa8426d
 time test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 8d6f5d059215b339dd19218aa073048039ac5f52
