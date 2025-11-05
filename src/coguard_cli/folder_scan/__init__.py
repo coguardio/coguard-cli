@@ -8,6 +8,7 @@ import os
 import pathlib
 import tempfile
 import shutil
+import copy
 import zipfile
 import subprocess
 import fnmatch
@@ -27,6 +28,7 @@ from coguard_cli.auth.token import Token
 from coguard_cli import docker_dao
 from coguard_cli import image_check
 from coguard_cli.additional_scan_results import perform_external_scans_and_return_folders
+from coguard_cli.discovery.config_file_finders import create_temp_location_and_manifest_entry
 
 def filter_config_file_list(
         config_file_list: List[Tuple[Dict, str]],
@@ -379,7 +381,6 @@ def _find_and_extract_cdk_json(folder_name: str):
     except Exception as ex:
         logging.error("Unexpected errorrunning cdk synth: %s", ex)
 
-
 def perform_folder_scan(
         folder_name: Optional[str],
         deal_type: DealEnum,
@@ -400,6 +401,7 @@ def perform_folder_scan(
     folder_name = folder_name or os.path.abspath(".")
     coguard_ignore_list = coguard_cli.util.retrieve_coguard_ignore_values(folder_name)
     printed_folder_name = os.path.basename(os.path.dirname(folder_name + os.sep))
+    _find_and_extract_cdk_json(folder_name)
     print(f"{COLOR_CYAN}SCANNING FOLDER {COLOR_TERMINATION}{printed_folder_name}")
     collected_config_file_tuple = find_configuration_files_and_collect(
         folder_name,
@@ -417,7 +419,6 @@ def perform_folder_scan(
         auth_config,
         additional_failed_rules
     )
-    _find_and_extract_cdk_json(folder_name)
     coguard_cli.util.merge_external_scan_results_with_final_folder(
         collected_config_file_tuple,
         external_results_to_send
