@@ -115,15 +115,9 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
                     check=True
                 )
                 return result.stdout
-            except FileNotFoundError:
+            except (FileNotFoundError, subprocess.CalledProcessError):
                 # Pulumi CLI not installed
                 return None
-            except subprocess.CalledProcessError:
-                return None
-
-        pulumi_yaml = os.path.join(folder_path, "Pulumi.yaml")
-        if not os.path.isfile(pulumi_yaml):
-            return None
 
         try:
             stack_list_raw = run_cmd(["pulumi", "stack", "ls", "--json"])
