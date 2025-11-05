@@ -104,7 +104,6 @@ class CloudProviderAWS(CloudProvider):
             "PROVIDER": self.get_cloud_provider_name(),
             "AWS_ACCESS_KEY_ID": self._aws_access_key_id,
             "AWS_SECRET_ACCESS_KEY": self._aws_secret_access_key,
-            "AWS_ROLE_ARN": "arn:aws:iam::470421895671:role/Audit",
             "REGIONS": ",".join(all_regions)
         }
         res = docker_dao.terraformer_wrapper(
