@@ -95,81 +95,78 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
     def _process_pulumi_project(self, folder_path):
         """
         Given a folder path, detects whether it contains a Pulumi project
-        (by checking for Pulumi.yaml).
-        If not, returns None without doing anything.
+        (by checking for Pulumi.yaml). If not, returns None.
 
-        If it is a Pulumi project:
-          1. Ensures that a Pulumi stack exists, or initializes it with name "dev" if none exists.
-          2. Captures:
-             - `pulumi stack export` output (as a Python dict)
-             - `pulumi preview --non-interactive --json` output (as a Python dict)
-          3. Calls merge_states(stack_export_output, preview_output) which returns a dict.
-          4. Stores that merged dict in a temporary JSON file and returns the file path.
-
-        Returns:
-            str: Path to the temporary JSON file containing the merged result, or
-            None if the directory is not a Pulumi project.
+        Runs Pulumi CLI commands if available; otherwise, returns None gracefully.
         """
 
-        # Local helper (not separate function)
         def run_cmd(cmd, env_extra=None):
             env = os.environ.copy()
             if env_extra:
                 env.update(env_extra)
-            result = subprocess.run(
-                cmd,
-                cwd=folder_path,
-                env=env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=True
-            )
-            return result.stdout
+            try:
+                result = subprocess.run(
+                    cmd,
+                    cwd=folder_path,
+                    env=env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    check=True
+                )
+                return result.stdout
+            except FileNotFoundError:
+                # Pulumi CLI not installed
+                return None
+            except subprocess.CalledProcessError:
+                return None
 
-        # Check if this is a Pulumi project
         pulumi_yaml = os.path.join(folder_path, "Pulumi.yaml")
         if not os.path.isfile(pulumi_yaml):
             return None
 
-        # Determine existing stacks (if any)
         try:
             stack_list_raw = run_cmd(["pulumi", "stack", "ls", "--json"])
+            if stack_list_raw is None:
+                return None
             existing_stacks = json.loads(stack_list_raw)
-        except subprocess.CalledProcessError:
+        # pylint: disable=broad-exception-caught
+        except Exception:
             existing_stacks = []
 
         # If no stacks present, initialize default "dev" stack
         if not existing_stacks:
-            run_cmd(
+            if run_cmd(
                 [
                     "pulumi",
                     "stack",
                     "init",
                     "dev",
                     "--non-interactive",
-                    "--secrets-provider=plaintext"
-                ]
-            )
+                    "--secrets-provider=plaintext"]
+            ) is None:
+                return None
 
-        # Export and preview must run with a passphrase env (empty is fine)
         env_pp = {"PULUMI_CONFIG_PASSPHRASE": ""}
 
-        # Export current stack state
         stack_export_raw = run_cmd(["pulumi", "stack", "export"], env_extra=env_pp)
-        stack_export_output = json.loads(stack_export_raw)
-        # Run preview in JSON form
+        if stack_export_raw is None:
+            return None
+
         preview_raw = run_cmd(
-            [
-                "pulumi", "preview", "--non-interactive", "--json"
-            ],
-            env_extra=env_pp)
+            ["pulumi", "preview", "--non-interactive", "--json"],
+            env_extra=env_pp
+        )
+        if preview_raw is None:
+            return None
 
-        preview_output = json.loads(preview_raw)
+        try:
+            stack_export_output = json.loads(stack_export_raw)
+            preview_output = json.loads(preview_raw)
+        except json.JSONDecodeError:
+            return None
 
-        # Black-box merge function (assumed available)
         merged = self._merge_pulumi_states(stack_export_output, preview_output)
-
         return merged
 
     def _create_temp_location_and_manifest_entry(

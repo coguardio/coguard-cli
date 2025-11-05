@@ -190,3 +190,47 @@ class TestConfigFileFinderPulumi(unittest.TestCase):
         self.assertEqual(result[0], ({"serviceName": "pulumi"}, "/tmp/fake"))
         mock_find.assert_called_once_with("/project")
         mock_create.assert_called_once()
+
+    @patch("subprocess.run")
+    def test_process_pulumi_project_pulumi_not_installed(self, mock_run):
+        """Simulate Pulumi CLI not installed (FileNotFoundError)."""
+        mock_run.side_effect = FileNotFoundError
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            pulumi_yaml = os.path.join(tmp, "Pulumi.yaml")
+            with open(pulumi_yaml, "w") as f:
+                f.write("name: test")
+
+            output = self.finder._process_pulumi_project(tmp)
+            self.assertIsNone(output)
+
+    @patch("subprocess.run")
+    def test_process_pulumi_project_command_error(self, mock_run):
+        """Simulate Pulumi CLI command failure (CalledProcessError)."""
+        from subprocess import CalledProcessError
+
+        mock_run.side_effect = CalledProcessError(returncode=1, cmd="pulumi stack ls --json")
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            pulumi_yaml = os.path.join(tmp, "Pulumi.yaml")
+            with open(pulumi_yaml, "w") as f:
+                f.write("name: test")
+
+            output = self.finder._process_pulumi_project(tmp)
+            self.assertIsNone(output)
+
+    @patch("subprocess.run")
+    def test_process_pulumi_project_invalid_json(self, mock_run):
+        """Simulate Pulumi returning invalid JSON."""
+        mock_run.return_value = MagicMock(stdout="not-a-json")
+
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            pulumi_yaml = os.path.join(tmp, "Pulumi.yaml")
+            with open(pulumi_yaml, "w") as f:
+                f.write("name: test")
+
+            output = self.finder._process_pulumi_project(tmp)
+            self.assertIsNone(output)
