@@ -278,6 +278,8 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
                     "--non-interactive",
                     "--secrets-provider=plaintext"]
             ) is None:
+                logging.error("Could not init stack in Pulumi project (maybe pulumi "
+                              "CLI not installed?)")
                 return None
 
         stack_export_raw = run_cmd(["pulumi", "stack", "export"], env_extra=env_pp)
