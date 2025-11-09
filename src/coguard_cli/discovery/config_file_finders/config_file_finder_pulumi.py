@@ -21,8 +21,37 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
 
     def _extract_desired_resources(self, preview_json: dict) -> dict:
         """
-        Convert Pulumi preview JSON into a simplified URN → resource mapping.
-        Only considers create/update steps.
+        Extract a simplified mapping of desired Pulumi resources from a Pulumi preview JSON result.
+
+        This processes the preview JSON and collects all resources that are expected to exist after
+        the deployment. Only resources with operations indicating they are being created, updated,
+        unchanged, or replaced (`create`, `update`, `same`, `replace`) are included.
+
+        Parameters
+        ----------
+        preview_json : dict
+            The parsed JSON output from `pulumi preview --json`. Expected to contain a
+            top-level "steps" list where each step describes an operation on a resource.
+
+        Returns
+        -------
+        dict
+            A mapping of resource URNs to a simplified structure containing:
+            - "type": The Pulumi resource type (e.g., "aws:s3/bucket:Bucket")
+            - "inputs": The resolved input properties for the resource
+
+            Example:
+            {
+                "urn:pulumi:stack::project::aws:s3/bucket:Bucket::my-bucket": {
+                    "type": "aws:s3/bucket:Bucket",
+                    "inputs": { ... }
+                }
+            }
+
+        Notes
+        -----
+        - Resources that are being deleted are intentionally excluded.
+        - If a step does not contain URN or newState data, it is skipped.
         """
         desired = {}
 
@@ -43,7 +72,51 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
         return desired
 
     def _merge_pulumi_state_helper(self, old_state: dict, desired: dict, deleted_urns: set) -> dict:
-        """Merge desired resources into the existing Pulumi state."""
+        """
+        Merge a set of desired Pulumi resources into an existing Pulumi state snapshot.
+
+        This function takes the currently known Pulumi state (typically from `pulumi stack export`)
+        and updates it to reflect what should exist after a planned deployment. It ensures that:
+        - Resources in `desired` are added or updated.
+        - Resources in `deleted_urns` are removed.
+        - Providers and the stack resource are preserved correctly.
+        - Inputs are replaced with the desired inputs, while outputs are retained from the old
+          state.
+
+        Parameters
+        ----------
+        old_state : dict
+            The current Pulumi state, expected to contain a top-level "deployment" key with a
+            "resources" list. Each resource entry must include at least:
+            - "urn": Unique resource name
+            - "type": Pulumi resource type identifier
+            - "inputs"/"outputs" optional structures
+
+        desired : dict
+            A mapping of URNs to resource specifications, typically produced by examining a
+            `pulumi preview` output. Each entry should contain:
+            - "type": The Pulumi resource type
+            - "inputs": Desired resource input properties
+
+        deleted_urns : set
+            A set of URNs that should no longer exist in the resulting state. These URNs will
+            be removed from the resource list unless they represent providers or the stack
+            (which are always preserved).
+
+        Returns
+        -------
+        dict
+            A new Pulumi state dict with resources updated to match `desired`, removed entries
+            filtered by `deleted_urns`, and necessary provider/stack resources retained.
+
+        Notes
+        -----
+        - This does not validate inputs for runtime correctness. It assumes `desired` entries
+          correspond to valid Pulumi resource types.
+        - Outputs are intentionally preserved from the old state to avoid destructive refreshes.
+        - Newly created entries get empty outputs as placeholders.
+
+        """
         new_state = copy.deepcopy(old_state)
         deployment = new_state.setdefault("deployment", {})
         resources = deployment.setdefault("resources", [])
@@ -80,7 +153,38 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
 
     def _merge_pulumi_states(self, stack_export_output, preview_output):
         """
-        placeholder
+        Produce a synthesized Pulumi state representing the desired post-deployment state.
+
+        This function takes:
+        - The current exported Pulumi stack state (from `pulumi stack export`)
+        - The Pulumi preview output (from `pulumi preview --json`)
+
+        It extracts the set of resources that *should* exist after deployment, identifies
+        which resources are scheduled for deletion, and delegates to `_merge_pulumi_state_helper`
+        to construct the final merged state.
+
+        Parameters
+        ----------
+        stack_export_output : dict
+            Parsed JSON from `pulumi stack export`. Expected to contain a `deployment.resources`
+            list representing the current known state.
+
+        preview_output : dict
+            Parsed JSON from `pulumi preview --json`. Used to determine which resources will be
+            created, updated, kept, or deleted.
+
+        Returns
+        -------
+        dict
+            A new Pulumi state JSON structure that reflects the desired state after deployment,
+            incorporating new/updated resources, removing deleted resources, and preserving
+            providers and stack metadata.
+
+        Notes
+        -----
+        - This does not apply any changes to the real stack. The returned dict is suitable for
+          re-importing via `pulumi stack import` or further inspection.
+        - Resources marked with operation `"delete"` in the preview output will be removed.
         """
         desired = self._extract_desired_resources(preview_output)
 
@@ -94,12 +198,46 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
 
     def _process_pulumi_project(self, folder_path):
         """
-        Given a folder path, detects whether it contains a Pulumi project
-        (by checking for Pulumi.yaml). If not, returns None.
+        Inspect and process a Pulumi project located at a given folder path.
 
-        Runs Pulumi CLI commands if available; otherwise, returns None gracefully.
+        This function attempts to:
+        1. Detect whether the folder contains a Pulumi project (implicitly via the Pulumi CLI).
+        2. Ensure at least one stack exists (initializing a default "dev" stack
+           if none are present).
+        3. Export the current Pulumi stack state.
+        4. Run a Pulumi preview to determine the desired resource state.
+        5. Merge the preview results with the existing state to produce a synthesized,
+           post-deployment state representation.
+
+        Pulumi CLI commands are invoked if available. If the Pulumi CLI is not installed, or
+        if any step fails (including invalid JSON output), the function returns `None` gracefully
+        without raising exceptions.
+
+        Parameters
+        ----------
+        folder_path : str
+            Path to the directory that may contain a Pulumi project. Expected to be a directory
+            where `pulumi stack ...` and `pulumi preview` can be executed.
+
+        Returns
+        -------
+        dict or None
+            A merged Pulumi state representation that reflects the desired state after deployment,
+            suitable for inspection or use with `pulumi stack import`.
+
+            Returns `None` if:
+            - The Pulumi CLI is not available
+            - The folder is not a Pulumi project
+            - No export/preview output can be obtained
+            - Output JSON cannot be parsed
+
+        Notes
+        -----
+        - The function does not modify the real stack on disk. It constructs an in-memory
+          representation based on CLI output.
+        - When initializing a default stack, the secrets provider is set to plaintext.
+          This is intentional for offline/state synthesis workflows.
         """
-
         def run_cmd(cmd, env_extra=None):
             env = os.environ.copy()
             if env_extra:
@@ -118,7 +256,7 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
             except (FileNotFoundError, subprocess.CalledProcessError):
                 # Pulumi CLI not installed
                 return None
-
+        env_pp = {}
         try:
             stack_list_raw = run_cmd(["pulumi", "stack", "ls", "--json"])
             if stack_list_raw is None:
@@ -130,6 +268,7 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
 
         # If no stacks present, initialize default "dev" stack
         if not existing_stacks:
+            env_pp = {"PULUMI_CONFIG_PASSPHRASE": ""}
             if run_cmd(
                 [
                     "pulumi",
@@ -140,8 +279,6 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
                     "--secrets-provider=plaintext"]
             ) is None:
                 return None
-
-        env_pp = {"PULUMI_CONFIG_PASSPHRASE": ""}
 
         stack_export_raw = run_cmd(["pulumi", "stack", "export"], env_extra=env_pp)
         if stack_export_raw is None:
@@ -168,8 +305,7 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
             path_to_file_system: str,
             pulumi_file: str) -> Optional[Tuple[Dict, str]]:
         """
-        Helper function to extract the Pulumi files from a file system and
-        put it into a folder.
+        Helper function to create a temp location and CoGuard manifest entry.
         """
         logging.debug("The path to the filesystem is: %s",
                       path_to_file_system)
