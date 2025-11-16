@@ -282,6 +282,10 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
                               "CLI not installed?)")
                 return None
 
+        # only if the user hasn't set it
+        if "PULUMI_CONFIG_PASSPHRASE" not in os.environ:
+            env_pp["PULUMI_CONFIG_PASSPHRASE"] = ""
+
         stack_export_raw = run_cmd(["pulumi", "stack", "export"], env_extra=env_pp)
         if stack_export_raw is None:
             return None
