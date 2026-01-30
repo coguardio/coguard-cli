@@ -110,7 +110,11 @@ def store_image_file_system(temporary_container_name: str) -> Optional[str]:
     try:
         with tarfile.open(content_tar) as tarf:
             members_to_extract = [tar_info for tar_info in tarf.getmembers()
-                                  if not tar_info.isdev()]
+                                  if not tar_info.isdev()
+                                  and not os.path.isabs(tar_info.name)
+                                  and not ".." in os.path.normpath(tar_info.name).split(os.sep)
+                                  and not (tar_info.issym() and os.path.isabs(tar_info.linkname))
+                                  and not (tar_info.islnk() and os.path.isabs(tar_info.linkname))]
             tarf.extractall(path=tmpdir_path, members=members_to_extract)
     except Exception as exception:
         logging.error("Failed to extract the image filesystem: %s",
