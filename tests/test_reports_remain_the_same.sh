@@ -117,7 +117,7 @@ time test_image_checksum "mariadb:10.9.4" "a6d375e07bfa0d16b2b02e6eee7323bc218bc
 time test_image_checksum "mariadb:10.9.4" "7292bb041c90962ccfe737ea2b8c18cf3686c894" fedramp
 time test_image_checksum "mariadb:10.9.4" "2af133f8352ab118f5a96fb2e447dd545110723e" iso27001
 time docker image rm "mariadb:10.9.4"
-time test_image_checksum "bitnamilegacy/kafka:3.3.1" "b15fa38b8a05564ae5ecb52705c14b1a036ec426"
+time test_image_checksum "bitnamilegacy/kafka:3.3.1" "a17511e39d71c202412a1118588b3e4819f5ca5d"
 time docker image rm "bitnamilegacy/kafka:3.3.1"
 time test_image_checksum "httpd:2.4.54" "42100c7b7095c6ef33ee0a9cd673807ab8d3daa6"
 time docker image rm "httpd:2.4.54"
