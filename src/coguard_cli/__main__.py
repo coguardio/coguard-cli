@@ -103,7 +103,15 @@ def main():
         '--ruleset',
         type=str,
         dest='ruleset',
-        choices=["soc2", "hipaa", "stig", ""],
+        choices=[
+            "fedramp",
+            "hipaa",
+            "iso27001",
+            "nist800-53",
+            "pcidss",
+            "soc2",
+            "stig",
+            ""],
         default='',
         help=("The non-default rule-set to use.")
     )
