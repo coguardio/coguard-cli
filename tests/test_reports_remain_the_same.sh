@@ -104,7 +104,7 @@ test_folder_fix() {
 time test_image_checksum "nginx:1.23.2" "18117f00e2d81fc214bd6a9020932d24cf3a47a6"
 time docker image rm "nginx:1.23.2"
 time test_image_checksum "mysql:8.0.31" "c736e8532a709eda8324f9374d0318862a733b0d"
-time test_image_checksum "mysql:8.0.31" "3467be663daf828b03ffc7fad2b54e7ec1909603" stig
+time test_image_checksum "mysql:8.0.31" "9033734e8f63cc6fc39b5ea9c5e3f1c6ce6fe32f" stig
 time docker image rm "mysql:8.0.31"
 time test_image_checksum "postgres:15.1" "be855ac9c322fe1085d65df7878403f58c3d034d"
 time test_image_checksum "postgres:15.1" "7838a4ec2dedf30eb5951d29473b95b9fc722394" soc2
