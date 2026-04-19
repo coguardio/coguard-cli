@@ -101,18 +101,18 @@ test_folder_fix() {
 
 # Docker image tests
 
-time test_image_checksum "nginx:1.23.2" "8f3b10ad53968ece9ce635beecfe4259b919adc0"
+time test_image_checksum "nginx:1.23.2" "18117f00e2d81fc214bd6a9020932d24cf3a47a6"
 time docker image rm "nginx:1.23.2"
-time test_image_checksum "mysql:8.0.31" "71f537de576b9d9d703e9d8a2e1d881859a42f30"
+time test_image_checksum "mysql:8.0.31" "c736e8532a709eda8324f9374d0318862a733b0d"
 time test_image_checksum "mysql:8.0.31" "3467be663daf828b03ffc7fad2b54e7ec1909603" stig
 time docker image rm "mysql:8.0.31"
-time test_image_checksum "postgres:15.1" "0b91145e2803d583660a0c9fe35b38eb4b237ba9"
-time test_image_checksum "postgres:15.1" "2a57a740527dc764ae5f1c5ec1ca33569af04f42" soc2
+time test_image_checksum "postgres:15.1" "be855ac9c322fe1085d65df7878403f58c3d034d"
+time test_image_checksum "postgres:15.1" "7838a4ec2dedf30eb5951d29473b95b9fc722394" soc2
 time docker image rm "postgres:15.1"
-time test_image_checksum "mongo:6.0.2" "cb58c236cad99d58cdd101e35e58b1c630e61d3f"
+time test_image_checksum "mongo:6.0.2" "5fef05856d385ba92f8ea223383b99e682d03fc2"
 time docker image rm "mongo:6.0.2"
-time test_image_checksum "mariadb:10.9.4" "d69552c47c06c4233fb796db855ffbb5be1cea0c"
-time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" hipa
+time test_image_checksum "mariadb:10.9.4" "f95e6591b09610a75f50e3967f7c7abf1525dd71"
+time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" hipaa
 time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" nist800-53
 time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" fedramp
 time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" iso27001
