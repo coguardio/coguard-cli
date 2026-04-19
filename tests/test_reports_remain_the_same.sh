@@ -113,7 +113,7 @@ time test_image_checksum "mongo:6.0.2" "5fef05856d385ba92f8ea223383b99e682d03fc2
 time docker image rm "mongo:6.0.2"
 time test_image_checksum "mariadb:10.9.4" "f95e6591b09610a75f50e3967f7c7abf1525dd71"
 time test_image_checksum "mariadb:10.9.4" "797845ab3a1b74f0ae38fbd63c02ac41613024e9" hipaa
-time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" nist800-53
+time test_image_checksum "mariadb:10.9.4" "a6d375e07bfa0d16b2b02e6eee7323bc218bc570" nist800-53
 time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" fedramp
 time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" iso27001
 time docker image rm "mariadb:10.9.4"
