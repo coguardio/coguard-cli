@@ -112,7 +112,10 @@ time docker image rm "postgres:15.1"
 time test_image_checksum "mongo:6.0.2" "cb58c236cad99d58cdd101e35e58b1c630e61d3f"
 time docker image rm "mongo:6.0.2"
 time test_image_checksum "mariadb:10.9.4" "d69552c47c06c4233fb796db855ffbb5be1cea0c"
-time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" hipaa
+time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" hipa
+time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" nist800-53
+time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" fedramp
+time test_image_checksum "mariadb:10.9.4" "d8cc82a676d7f19cd5f1dadd84914b0ddc94c2d1" iso27001
 time docker image rm "mariadb:10.9.4"
 time test_image_checksum "bitnamilegacy/kafka:3.3.1" "b15fa38b8a05564ae5ecb52705c14b1a036ec426"
 time docker image rm "bitnamilegacy/kafka:3.3.1"
