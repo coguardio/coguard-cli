@@ -53,7 +53,7 @@ class CloudProviderAzure(CloudProvider):
             environment_variables,
             mounts,
             self.get_cloud_provider_name(),
-            "google")
+            "azure")
         if not res:
             return None
         return temp_location

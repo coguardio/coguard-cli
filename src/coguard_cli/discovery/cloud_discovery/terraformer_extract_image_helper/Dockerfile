@@ -30,22 +30,30 @@ RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|
 RUN yum install -y yum-utils-4.0.21-3.el8
 RUN yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
 RUN yum -y install terraform-1.6.4-1
-RUN yum -y install jq-1.5-12.el8
+RUN yum -y install jq-1.5-12.el8 unzip
 
 # Install Azure CLI
 RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc
 RUN dnf install -y https://packages.microsoft.com/config/rhel/8/packages-microsoft-prod.rpm
 RUN dnf install -y azure-cli-2.54.0-1.el8
 
-# Install Terraformer
-
 ENV CURRENT_TERRAFORMER_VERSION=0.8.22
+ENV CURRENT_AZTFEXPORT_VERSION=0.19.0
 ARG PROVIDER=aws
 ARG PROVIDER_ALT=""
+
+# Install aztfexport for Azure, or Terraformer for other providers
 #coguard-config-checker: disable dockerfile_always_verify_downloads The Github release does not have a checksum included
-RUN curl -f -LO "https://github.com/GoogleCloudPlatform/terraformer/releases/download/$CURRENT_TERRAFORMER_VERSION/terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64"
-RUN chmod +x "terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64"
-RUN mv "terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64" /usr/local/bin/terraformer
+RUN if [ "$PROVIDER" = "azure" ]; then \
+      curl -f -LO "https://github.com/Azure/aztfexport/releases/download/v${CURRENT_AZTFEXPORT_VERSION}/aztfexport_v${CURRENT_AZTFEXPORT_VERSION}_linux_amd64.zip" && \
+      unzip "aztfexport_v${CURRENT_AZTFEXPORT_VERSION}_linux_amd64.zip" -d /usr/local/bin/ && \
+      chmod +x /usr/local/bin/aztfexport && \
+      rm "aztfexport_v${CURRENT_AZTFEXPORT_VERSION}_linux_amd64.zip"; \
+    else \
+      curl -f -LO "https://github.com/GoogleCloudPlatform/terraformer/releases/download/${CURRENT_TERRAFORMER_VERSION}/terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64" && \
+      chmod +x "terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64" && \
+      mv "terraformer-${PROVIDER_ALT:-$PROVIDER}-linux-amd64" /usr/local/bin/terraformer; \
+    fi
 
 ENV TERRAFORMER_EXPORT_DATA=/opt/terraformer_export_data
 
