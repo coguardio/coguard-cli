@@ -12,8 +12,12 @@ from coguard_cli.discovery.cloud_discovery.cloud_provider_abc import CloudProvid
 from coguard_cli import docker_dao
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 
-_SP_ENV_VARS = ("ARM_CLIENT_ID", "ARM_CLIENT_SECRET",
-                "ARM_TENANT_ID", "ARM_SUBSCRIPTION_ID")
+_SP_JSON_TO_ENV = {
+    "clientId": "ARM_CLIENT_ID",
+    "clientSecret": "ARM_CLIENT_SECRET",
+    "tenantId": "ARM_TENANT_ID",
+    "subscriptionId": "ARM_SUBSCRIPTION_ID"
+}
 
 class CloudProviderAzure(CloudProvider):
     """
@@ -34,18 +38,15 @@ class CloudProviderAzure(CloudProvider):
         try:
             with open(credentials_file, 'r', encoding='utf-8') as cred_json:
                 creds = json.load(cred_json)
-            required_keys = ("clientId", "clientSecret", "tenantId", "subscriptionId")
-            if not all(k in creds for k in required_keys):
+            missing = [k for k in _SP_JSON_TO_ENV if k not in creds]
+            if missing:
                 logging.error("Azure credentials file missing required keys: %s",
-                              ", ".join(k for k in required_keys if k not in creds))
+                              ", ".join(missing))
                 return None
-            return {
-                "auth_mode": "service_principal",
-                "ARM_CLIENT_ID": creds["clientId"],
-                "ARM_CLIENT_SECRET": creds["clientSecret"],
-                "ARM_TENANT_ID": creds["tenantId"],
-                "ARM_SUBSCRIPTION_ID": creds["subscriptionId"]
-            }
+            result = {"auth_mode": "service_principal"}
+            for json_key, env_var in _SP_JSON_TO_ENV.items():
+                result[env_var] = creds[json_key]
+            return result
         except (json.JSONDecodeError, OSError) as err:
             logging.error("Failed to read Azure credentials file: %s", err)
             return None
@@ -54,7 +55,8 @@ class CloudProviderAzure(CloudProvider):
         """
         Reads Azure service principal credentials from environment variables.
         """
-        values = {var: os.environ.get(var, "") for var in _SP_ENV_VARS}
+        env_vars = _SP_JSON_TO_ENV.values()
+        values = {var: os.environ.get(var, "") for var in env_vars}
         if all(values.values()):
             return {"auth_mode": "service_principal", **values}
         return None
@@ -105,7 +107,7 @@ class CloudProviderAzure(CloudProvider):
         }
         mounts = []
         if extracted_credentials["auth_mode"] == "service_principal":
-            for var in _SP_ENV_VARS:
+            for var in _SP_JSON_TO_ENV.values():
                 environment_variables[var] = extracted_credentials[var]
         else:
             mounts.append(
