@@ -140,7 +140,7 @@ time docker stop demo-postgres
 # Git repository tests
 
 time test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
-time test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df da65d490150dda83ee533b807e56b7b2e78838e0 "" trivy_cve_scan
+time test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 6870903ffbaeac8f6ee004614f5c3170dfd3899b "" trivy_cve_scan
 time test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f9b52882df586ea828c230285c773bd005ea7d7e
 time test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 89cfb1d435b276c308cbed275dbf38f76fca1544
 time test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a61ace3dd693cbe4e3408f943b2d94770df88f2f

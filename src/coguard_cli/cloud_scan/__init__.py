@@ -54,6 +54,9 @@ def perform_cloud_provider_scan(
         organization or auth_config.get_username(),
         f"{provider_name}_extraction"
     )
+    if collected_config_file_tuple is None:
+        print(f"{COLOR_YELLOW}Cloud Provider {provider_name} - NO CONFIGURATION FILES FOUND.")
+        return
     zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
         collected_config_file_tuple
     )

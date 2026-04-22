@@ -304,7 +304,7 @@ def terraformer_wrapper(location_to_mount: str,
             check=True,
             shell=True,
             capture_output=True,
-            timeout=DOCKER_CALL_TIMEOUT_S
+            timeout=DOCKER_CALL_TIMEOUT_S * 3
         )
         logging.info("Extracting your cloud configurations. This may take a while.")
         subprocess.run(
@@ -313,7 +313,7 @@ def terraformer_wrapper(location_to_mount: str,
             f"docker run --name={terraformer_container_name} " + \
             f"-v \"{location_to_mount}\":/opt/terraformer_export_data " + \
             " ".join(f"-v \"{k}\":\"{v}\"" for k, v in mounts) + \
-            " ".join(f"-e \"{k}\"='{v}'" for k, v in environment_variables.items()) + \
+            " " + " ".join(f"-e \"{k}\"='{v}'" for k, v in environment_variables.items()) + \
             f" {terraformer_wrapper_image_name}",
             check=True,
             shell=True,

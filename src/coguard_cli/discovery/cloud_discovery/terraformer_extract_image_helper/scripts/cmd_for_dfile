@@ -2,23 +2,29 @@
 
 set -ex
 
-UPDATED_TERRAFORMER_VERSION="$(curl -s https://api.github.com/repos/GoogleCloudPlatform/terraformer/releases/latest | grep tag_name | cut -d '"' -f 4)"
-if [ "$CURRENT_TERRAFORMER_VERSION" != "$UPDATED_TERRAFORMER_VERSION" ]; then
-    echo "WARNING: Newer terraformer version available";
-fi;
+check_for_newer_version () {
+    local repo="$1"
+    local current_version="$2"
+    local tool_name="$3"
+    local latest
+    latest="$(curl -s "https://api.github.com/repos/${repo}/releases/latest" | grep tag_name | cut -d '"' -f 4 | sed 's/^v//')"
+    if [ "$current_version" != "$latest" ]; then
+        echo "WARNING: Newer ${tool_name} version available (${latest})";
+    fi
+}
 
 # Checking if all the necessary environment variables are set
 if [ "$PROVIDER" = "aws" ]
 then
+    check_for_newer_version "GoogleCloudPlatform/terraformer" "$CURRENT_TERRAFORMER_VERSION" "terraformer"
     test -n "$AWS_ACCESS_KEY_ID"
     test -n "$AWS_SECRET_ACCESS_KEY"
     test -n "$REGIONS"
-    # Comment here: Normally, any AWS SDK is using primarily the environment variables.
-    # Terraformer seems to insist on that credentials file, and we are writing it here
-    # using the environment variables.
+    # Terraformer insists on a credentials file in addition to environment variables.
     echo -e "[default]\naws_access_key_id=$AWS_ACCESS_KEY_ID\naws_secret_access_key=$AWS_SECRET_ACCESS_KEY" > /home/"$(whoami)"/.aws/credentials
 elif [ "$PROVIDER" = "gcp" ]
 then
+    check_for_newer_version "GoogleCloudPlatform/terraformer" "$CURRENT_TERRAFORMER_VERSION" "terraformer"
     test -n "$PROJECTS";
     test -n "$REGIONS";
     test -n "$CREDENTIALS";
@@ -27,8 +33,16 @@ then
     export GOOGLE_APPLICATION_CREDENTIALS;
 elif [ "$PROVIDER" = "azure" ]
 then
-    ARM_SUBSCRIPTION_ID=$(az account show | jq -r '.id');
-    export ARM_SUBSCRIPTION_ID
+    check_for_newer_version "Azure/aztfexport" "$CURRENT_AZTFEXPORT_VERSION" "aztfexport"
+    # The host's MSAL HTTP cache may be incompatible with the container's Azure CLI version.
+    rm -f /home/terraformerUser/.azure/msal_http_cache.bin
+    if [ -n "$ARM_CLIENT_ID" ] && [ -n "$ARM_CLIENT_SECRET" ] && [ -n "$ARM_TENANT_ID" ] && [ -n "$ARM_SUBSCRIPTION_ID" ]; then
+        az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
+        export ARM_SUBSCRIPTION_ID
+    else
+        ARM_SUBSCRIPTION_ID=$(az account show | jq -r '.id');
+        export ARM_SUBSCRIPTION_ID
+    fi
 else
     echo "No supported provider used: $PROVIDER";
     exit 1;
@@ -88,19 +102,27 @@ cleanup () {
 
 # In the case where the export data was already there, we should empty its contents
 rm -rf "${TERRAFORMER_EXPORT_DATA:-?}"/*
-cp /opt/tmp/versions.tf "$TERRAFORMER_EXPORT_DATA"
-terraform init
-for region in ${REGIONS//,/ }; do
-    if [ "$PROVIDER" = "aws" ]
-    then
-        terraformer import "$PROVIDER" --resources=* --regions="$region" --retry-number=1 --retry-sleep-ms=10;
-    elif [ "$PROVIDER" = "gcp" ]
-    then
-        terraformer import google --resources=* --regions="$region" --projects="$PROJECTS"  --retry-number=1 --retry-sleep-ms=10;
-    elif [ "$PROVIDER" = "azure" ]
-    then
-        terraformer import azure -r "$(az group list | jq -r 'map(.name) | join(",")')"  --retry-number=1 --retry-sleep-ms=10;
-    fi
-    mv generated "$region";
-    cleanup "$region";
-done
+
+if [ "$PROVIDER" = "azure" ]
+then
+    # Azure uses aztfexport instead of terraformer
+    for rg in $(az group list | jq -r '.[].name'); do
+        rg_dir="$TERRAFORMER_EXPORT_DATA"/"$rg"
+        mkdir -p "$rg_dir"
+        (cd "$rg_dir" && aztfexport resource-group --non-interactive --hcl-only "$rg") || true
+    done
+else
+    cp /opt/tmp/versions.tf "$TERRAFORMER_EXPORT_DATA"
+    terraform init
+    for region in ${REGIONS//,/ }; do
+        if [ "$PROVIDER" = "aws" ]
+        then
+            terraformer import "$PROVIDER" --resources=* --regions="$region" --retry-number=1 --retry-sleep-ms=10;
+        elif [ "$PROVIDER" = "gcp" ]
+        then
+            terraformer import google --resources=* --regions="$region" --projects="$PROJECTS"  --retry-number=1 --retry-sleep-ms=10;
+        fi
+        mv generated "$region";
+        cleanup "$region";
+    done
+fi
