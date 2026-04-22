@@ -32,8 +32,15 @@ then
     if [ "$CURRENT_AZTFEXPORT_VERSION" != "$UPDATED_AZTFEXPORT_VERSION" ]; then
         echo "WARNING: Newer aztfexport version available";
     fi;
-    ARM_SUBSCRIPTION_ID=$(az account show | jq -r '.id');
-    export ARM_SUBSCRIPTION_ID
+    # The host's MSAL HTTP cache may be incompatible with the container's Azure CLI version.
+    rm -f /home/terraformerUser/.azure/msal_http_cache.bin
+    if [ -n "$ARM_CLIENT_ID" ] && [ -n "$ARM_CLIENT_SECRET" ] && [ -n "$ARM_TENANT_ID" ] && [ -n "$ARM_SUBSCRIPTION_ID" ]; then
+        az login --service-principal -u "$ARM_CLIENT_ID" -p "$ARM_CLIENT_SECRET" --tenant "$ARM_TENANT_ID"
+        export ARM_SUBSCRIPTION_ID
+    else
+        ARM_SUBSCRIPTION_ID=$(az account show | jq -r '.id');
+        export ARM_SUBSCRIPTION_ID
+    fi
 else
     echo "No supported provider used: $PROVIDER";
     exit 1;
