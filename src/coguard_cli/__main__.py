@@ -5,7 +5,7 @@ interface
 
 import argparse
 import logging
-import pkg_resources
+from importlib.metadata import version
 from coguard_cli import entrypoint, SubParserNames, validate_output_format
 from coguard_cli.util import CiCdProviderNames
 from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL
@@ -325,7 +325,7 @@ def main():
     parser.add_argument(
         '-v', '--version',
         action='version',
-        version=pkg_resources.get_distribution("coguard-cli").version
+        version=version("coguard-cli")
     )
     args = parser.parse_args()
     set_logging_config(args.logging_level)
