@@ -164,7 +164,7 @@ timed "folder jaeger-operator" test_folder_checksum https://github.com/jaegertra
 timed "folder opentelemetry-collector" test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 89cfb1d435b276c308cbed275dbf38f76fca1544
 timed "folder prisma" test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a61ace3dd693cbe4e3408f943b2d94770df88f2f
 timed "folder zabbix" test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 4dbf1a5ebeeb397660d1bd57a2b694a938561d69
-timed "folder yii2 (phpstan_sast_scan)" test_folder_checksum https://github.com/yiisoft/yii2.git 778d708c4f028c6997ff42ee2e1aead86cce3a64 f68aeaed13248c1ccd2541dcf39a5d36330beadd "" phpstan_sast_scan
+timed "folder yii2 (phpstan_sast_scan)" test_folder_checksum https://github.com/yiisoft/yii2.git 778d708c4f028c6997ff42ee2e1aead86cce3a64 a1a29bb3949cd479652ad81189a5af22303486d5 "" phpstan_sast_scan
 timed "folder zabbix (fix)" test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
 # Test with a weird name
