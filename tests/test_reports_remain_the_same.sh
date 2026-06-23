@@ -13,6 +13,25 @@ TEMP_DIR="$(mktemp -d)";
 
 echo "Created temp directory $TEMP_DIR to store the temporary directory results."
 
+# File in which per-scan durations are recorded as "label<TAB>seconds".
+# Overridable via the TIMING_FILE env var (the CI workflow points it at a path
+# that survives the cleanup of TEMP_DIR so it can be rendered into the job summary).
+TIMING_FILE="${TIMING_FILE:-$SCRIPTPATH/scan_timings.tsv}"
+: > "$TIMING_FILE"
+
+# Run a labelled command, record how long it took, and propagate its exit code.
+timed() {
+    local label="$1"; shift
+    local start end dur status
+    start=$(date +%s.%N)
+    "$@"
+    status=$?
+    end=$(date +%s.%N)
+    dur=$(awk "BEGIN{printf \"%.2f\", $end - $start}")
+    printf '%s\t%s\n' "$label" "$dur" >> "$TIMING_FILE"
+    return $status
+}
+
 test_image_checksum() {
     IMAGE_NAME="$1";
     EXPECTED_CHECKSUM="$2"
@@ -101,55 +120,55 @@ test_folder_fix() {
 
 # Docker image tests
 
-time test_image_checksum "nginx:1.23.2" "18117f00e2d81fc214bd6a9020932d24cf3a47a6"
+timed "image nginx:1.23.2" test_image_checksum "nginx:1.23.2" "18117f00e2d81fc214bd6a9020932d24cf3a47a6"
 time docker image rm "nginx:1.23.2"
-time test_image_checksum "mysql:8.0.31" "c736e8532a709eda8324f9374d0318862a733b0d"
-time test_image_checksum "mysql:8.0.31" "9033734e8f63cc6fc39b5ea9c5e3f1c6ce6fe32f" stig
+timed "image mysql:8.0.31" test_image_checksum "mysql:8.0.31" "c736e8532a709eda8324f9374d0318862a733b0d"
+timed "image mysql:8.0.31 (stig)" test_image_checksum "mysql:8.0.31" "9033734e8f63cc6fc39b5ea9c5e3f1c6ce6fe32f" stig
 time docker image rm "mysql:8.0.31"
-time test_image_checksum "postgres:15.1" "be855ac9c322fe1085d65df7878403f58c3d034d"
-time test_image_checksum "postgres:15.1" "7838a4ec2dedf30eb5951d29473b95b9fc722394" soc2
+timed "image postgres:15.1" test_image_checksum "postgres:15.1" "be855ac9c322fe1085d65df7878403f58c3d034d"
+timed "image postgres:15.1 (soc2)" test_image_checksum "postgres:15.1" "7838a4ec2dedf30eb5951d29473b95b9fc722394" soc2
 time docker image rm "postgres:15.1"
-time test_image_checksum "mongo:6.0.2" "5fef05856d385ba92f8ea223383b99e682d03fc2"
+timed "image mongo:6.0.2" test_image_checksum "mongo:6.0.2" "5fef05856d385ba92f8ea223383b99e682d03fc2"
 time docker image rm "mongo:6.0.2"
-time test_image_checksum "mariadb:10.9.4" "f95e6591b09610a75f50e3967f7c7abf1525dd71"
-time test_image_checksum "mariadb:10.9.4" "797845ab3a1b74f0ae38fbd63c02ac41613024e9" hipaa
-time test_image_checksum "mariadb:10.9.4" "a6d375e07bfa0d16b2b02e6eee7323bc218bc570" nist800-53
-time test_image_checksum "mariadb:10.9.4" "7292bb041c90962ccfe737ea2b8c18cf3686c894" fedramp
-time test_image_checksum "mariadb:10.9.4" "2af133f8352ab118f5a96fb2e447dd545110723e" iso27001
+timed "image mariadb:10.9.4" test_image_checksum "mariadb:10.9.4" "f95e6591b09610a75f50e3967f7c7abf1525dd71"
+timed "image mariadb:10.9.4 (hipaa)" test_image_checksum "mariadb:10.9.4" "797845ab3a1b74f0ae38fbd63c02ac41613024e9" hipaa
+timed "image mariadb:10.9.4 (nist800-53)" test_image_checksum "mariadb:10.9.4" "a6d375e07bfa0d16b2b02e6eee7323bc218bc570" nist800-53
+timed "image mariadb:10.9.4 (fedramp)" test_image_checksum "mariadb:10.9.4" "7292bb041c90962ccfe737ea2b8c18cf3686c894" fedramp
+timed "image mariadb:10.9.4 (iso27001)" test_image_checksum "mariadb:10.9.4" "2af133f8352ab118f5a96fb2e447dd545110723e" iso27001
 time docker image rm "mariadb:10.9.4"
-time test_image_checksum "bitnamilegacy/kafka:3.3.1" "a17511e39d71c202412a1118588b3e4819f5ca5d"
+timed "image bitnamilegacy/kafka:3.3.1" test_image_checksum "bitnamilegacy/kafka:3.3.1" "a17511e39d71c202412a1118588b3e4819f5ca5d"
 time docker image rm "bitnamilegacy/kafka:3.3.1"
-time test_image_checksum "httpd:2.4.54" "6db5cf33e439ae9bc0fe7205501c13f2efc97f8b"
+timed "image httpd:2.4.54" test_image_checksum "httpd:2.4.54" "6db5cf33e439ae9bc0fe7205501c13f2efc97f8b"
 time docker image rm "httpd:2.4.54"
-time test_image_checksum "elasticsearch:8.5.0" "96b704bc7492995fab8a1834af68cf9d97b5438d"
+timed "image elasticsearch:8.5.0" test_image_checksum "elasticsearch:8.5.0" "96b704bc7492995fab8a1834af68cf9d97b5438d"
 time docker image rm "elasticsearch:8.5.0"
-time test_image_checksum "tomcat:9.0.69-jre17" "af93b8cc268f1a0e22b5438da3e40ed7a805b925"
+timed "image tomcat:9.0.69-jre17" test_image_checksum "tomcat:9.0.69-jre17" "af93b8cc268f1a0e22b5438da3e40ed7a805b925"
 time docker image rm "tomcat:9.0.69-jre17"
-time test_image_checksum "redis:7.0.5" "fe13e5d82996adfe8728a79ebd2df098c14ffcf9"
+timed "image redis:7.0.5" test_image_checksum "redis:7.0.5" "fe13e5d82996adfe8728a79ebd2df098c14ffcf9"
 time docker image rm "redis:7.0.5"
-time test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "c8dd0bf5cf40ca0dbe48604d3ab81aa4fa36d0ec"
+timed "image rethinkdb:2.4.4-bookworm-slim" test_image_checksum "rethinkdb:2.4.4-bookworm-slim" "c8dd0bf5cf40ca0dbe48604d3ab81aa4fa36d0ec"
 time docker image rm "rethinkdb:2.4.4-bookworm-slim"
-time test_image_checksum "amazon/aws-otel-collector:v0.22.1" "58ed7564f64973d9da9c02e1f62f831c462f56ab"
+timed "image amazon/aws-otel-collector:v0.22.1" test_image_checksum "amazon/aws-otel-collector:v0.22.1" "58ed7564f64973d9da9c02e1f62f831c462f56ab"
 time docker image rm "amazon/aws-otel-collector:v0.22.1"
 time
 # Docker container tests
 time docker run --rm -d -e POSTGRES_PASSWORD=foo --name=demo-postgres postgres:15.1
-time test_container_checksum demo-postgres "b8865f36a96d93378ef0e8fe44953040ee0e60e7"
+timed "container demo-postgres" test_container_checksum demo-postgres "b8865f36a96d93378ef0e8fe44953040ee0e60e7"
 time docker stop demo-postgres
 
 # Git repository tests
 
-time test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
-time test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 6870903ffbaeac8f6ee004614f5c3170dfd3899b "" trivy_cve_scan
-time test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f9b52882df586ea828c230285c773bd005ea7d7e
-time test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 89cfb1d435b276c308cbed275dbf38f76fca1544
-time test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a61ace3dd693cbe4e3408f943b2d94770df88f2f
-time test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 4dbf1a5ebeeb397660d1bd57a2b694a938561d69
-time test_folder_checksum https://github.com/yiisoft/yii2.git 778d708c4f028c6997ff42ee2e1aead86cce3a64 f68aeaed13248c1ccd2541dcf39a5d36330beadd "" phpstan_sast_scan
-time test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
+timed "folder remix-project" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
+timed "folder remix-project (trivy_cve_scan)" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 17846a0f5ef77a2a4bb7a70d37824434b3d3ca35 "" trivy_cve_scan
+timed "folder jaeger-operator" test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f9b52882df586ea828c230285c773bd005ea7d7e
+timed "folder opentelemetry-collector" test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 89cfb1d435b276c308cbed275dbf38f76fca1544
+timed "folder prisma" test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a61ace3dd693cbe4e3408f943b2d94770df88f2f
+timed "folder zabbix" test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 4dbf1a5ebeeb397660d1bd57a2b694a938561d69
+timed "folder yii2 (phpstan_sast_scan)" test_folder_checksum https://github.com/yiisoft/yii2.git 778d708c4f028c6997ff42ee2e1aead86cce3a64 a1a29bb3949cd479652ad81189a5af22303486d5 "" phpstan_sast_scan
+timed "folder zabbix (fix)" test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
 # Test with a weird name
 time git clone https://github.com/ethereum/remix-project.git "$TEMP_DIR"/"tmp_repo_dir (1)";
-time (cd "$SCRIPTPATH"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/"tmp_repo_dir (1)") | sed 1,18d | tee "$TEMP_DIR/folder_check.txt" | sort | sha1sum | awk '{print $1}'
+timed "folder remix-project (weird name)" bash -c '(cd "'"$SCRIPTPATH"'"/../src && python3 -m coguard_cli --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "'"${TEMP_DIR:-?}"'"/"tmp_repo_dir (1)") | sed 1,18d | tee "'"$TEMP_DIR"'/folder_check.txt" | sort | sha1sum | awk "{print \$1}"'
 
 time rm -rf "$TEMP_DIR"

@@ -41,7 +41,28 @@ jobs:
       - env:
           COGUARD_USER_NAME: ${{secrets.CoGuardTestUserName}}
           COGUARD_PASSWORD: ${{secrets.CoGuardTestPassword}}
+          TIMING_FILE: /tmp/scan_timings.tsv
         run: make integration-test IS_TEST=${{ inputs.istest }}
+      - name: Render scan durations into the job summary
+        if: always()   # show timings even if a checksum mismatch failed the run
+        env:
+          TIMING_FILE: /tmp/scan_timings.tsv
+        run: |
+          if [ ! -s "$TIMING_FILE" ]; then
+            echo "No scan timings were recorded." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          total=$(awk -F'\t' '{sum += $2} END {printf "%.2f", sum}' "$TIMING_FILE")
+          {
+            echo "## Scan durations"
+            echo ""
+            echo "Total scan time: **${total}s** across $(wc -l < "$TIMING_FILE") scans."
+            echo ""
+            echo "| Scan target | Duration (s) |"
+            echo "| --- | ---: |"
+            sort -t$'\t' -k2 -nr "$TIMING_FILE" \
+              | awk -F'\t' '{printf "| %s | %s |\n", $1, $2}'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Check for ZIP and upload if exists
         if: always()   # runs even if previous step failed
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
