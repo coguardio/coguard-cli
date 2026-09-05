@@ -67,7 +67,8 @@ files.
    have either not yet started using IaC tools, or have a hybrid model
    of part IaC, part manual management. For these cases, we can
    extract cloud configurations for AWS, Azure or GCP, and scan them
-   as well.
+   as well. The same applies to platforms with their own management
+   layer, such as a Cloudera cluster managed by Cloudera Manager.
 
 ## <a id="introduction"></a> Introduction to the CoGuard CLI
 
@@ -230,9 +231,9 @@ coguard folder [scan] [<PATH-TO-FOLDER>]
 ### <a id="cloud-scan"></a>Extracting and scanning cloud configurations
 
 Using the CoGuard CLI, you can run a scan a current snapshot of your
-cloud configurations. This requires you to have the respective
-cloud CLI tools (`aws-cli` for AWS, `gcloud` for GCP or `az` for
-Azure) installed and authenticated on your device.
+cloud configurations. For AWS, Azure and GCP, this requires you to
+have the respective cloud CLI tools (`aws-cli` for AWS, `gcloud` for
+GCP or `az` for Azure) installed and authenticated on your device.
 
 ```shell
 coguard cloud [scan] {aws, azure, gcp}
@@ -240,6 +241,23 @@ coguard cloud [scan] {aws, azure, gcp}
 
 The extraction may take a couple of minutes, depending on your
 internet speed.
+
+#### <a id="cloudera-scan"></a>Cloudera
+
+Cloudera deployments are inspected through the Cloudera Manager API
+instead of a cloud CLI. CoGuard walks the services and roles of the
+managed cluster and retrieves the *generated* configuration files of
+each role, i.e. the configuration as it is actually deployed on the
+hosts.
+
+```shell
+coguard cloud [scan] cloudera --cloudera-manager-url https://cm.example.com --cloudera-manager-user admin
+```
+
+The password is read from the `CLOUDERA_MANAGER_PASSWORD` environment
+variable, and prompted for interactively if it is not set. Details and
+all available options can be found in the
+[Cloudera integration documentation](./doc/integrations/cloudera.md).
 
 ### <a id="general-scan"></a>General scan
 
@@ -318,6 +336,7 @@ can be found
     - AWS
     - Azure
     - GCP
+    - Cloudera (via Cloudera Manager)
     - OVH Cloud
     - Hetzner Cloud
     - Vultr

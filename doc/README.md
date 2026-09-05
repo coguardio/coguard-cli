@@ -11,6 +11,7 @@ This folder contains several documentation items of CoGuard.
   - [Pre-defined rule-sets](./features/pre_defined_rules.md)
   - [Custom rules](./features/custom_rules.md)
 - Integrations
+  - [Cloudera](./integrations/cloudera.md)
   - [Coverity](./integrations/coverity.md)
   - [JFrog](./integrations/jfrog.md)
 - [FAQ](./faq.md)

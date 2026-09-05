@@ -233,6 +233,29 @@ def clone_git_repo(url: str) -> str:
     except subprocess.CalledProcessError:
         return ""
 
+def extract_cloudera_options(args) -> dict:
+    """
+    Collects the Cloudera Manager connection parameters from the parsed command
+    line arguments, so that they can be passed to the Cloudera cloud provider.
+
+    Only values which were actually provided are included, so that the provider
+    can fall back to a credentials file or environment variables.
+    """
+    option_by_argument = {
+        "cloudera_manager_url": "url",
+        "cloudera_manager_user": "username",
+        "cloudera_manager_ca_cert": "ca_cert",
+        "cloudera_cluster": "cluster",
+    }
+    result = {}
+    for argument_name, option_name in option_by_argument.items():
+        value = getattr(args, argument_name, None)
+        if value:
+            result[option_name] = value
+    if getattr(args, "cloudera_manager_no_verify_tls", False):
+        result["verify_tls"] = False
+    return result
+
 def download_single_config_file(url: str, filename: str) -> str:
     """
     Downloads a single config file into a temporary folder with a given filename and
@@ -342,7 +365,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             args.output_format,
             args.fail_level,
             ruleset,
-            args.dry_run
+            args.dry_run,
+            extract_cloudera_options(args)
         )
     elif args.subparsers_location == SubParserNames.REPO_SCAN.value:
         repository_url = args.repo_url or args.scan or None
