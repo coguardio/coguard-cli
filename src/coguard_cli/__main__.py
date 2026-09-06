@@ -240,7 +240,7 @@ def main():
     cloud_scanning_parser.add_argument(
         SubParserNames.SCAN.value,
         type=str,
-        choices=["aws", "gcp", "azure", "scan", ""],
+        choices=["aws", "gcp", "azure", "cloudera", "scan", ""],
         default="",
         nargs='?',
         help=("The indicator that we are aiming to do a scan.")
@@ -248,12 +248,12 @@ def main():
     cloud_scanning_parser.add_argument(
         'cloud_provider_name',
         metavar="cloud_provider_name",
-        choices=["aws", "gcp", "azure", ""],
+        choices=["aws", "gcp", "azure", "cloudera", ""],
         type=str,
         default="",
         nargs='?',
         help=("The name of the cloud providers. The choices are \"gcp\", "
-              "\"aws\" and \"azure\". Defaults to \"aws.\"")
+              "\"aws\", \"azure\" and \"cloudera\". Defaults to \"aws.\"")
     )
     cloud_scanning_parser.add_argument(
         '--credentials-file',
@@ -261,6 +261,53 @@ def main():
         dest='credentials_file',
         required=False,
         help=("A credentials file, if it is available.")
+    )
+    cloud_scanning_parser.add_argument(
+        '--cloudera-manager-url',
+        type=str,
+        dest='cloudera_manager_url',
+        required=False,
+        help=("Only for the `cloudera` provider: the URL of the Cloudera "
+              "Manager instance, e.g. `https://cm.example.com`. Can also be "
+              "provided via the CLOUDERA_MANAGER_URL environment variable.")
+    )
+    cloud_scanning_parser.add_argument(
+        '--cloudera-manager-user',
+        type=str,
+        dest='cloudera_manager_user',
+        required=False,
+        help=("Only for the `cloudera` provider: the Cloudera Manager user to "
+              "authenticate as. Can also be provided via the "
+              "CLOUDERA_MANAGER_USER environment variable.")
+    )
+    cloud_scanning_parser.add_argument(
+        '--cloudera-manager-ca-cert',
+        type=str,
+        dest='cloudera_manager_ca_cert',
+        required=False,
+        help=("Only for the `cloudera` provider: the path to a CA certificate "
+              "bundle to trust when connecting to Cloudera Manager. Can also "
+              "be provided via the CLOUDERA_MANAGER_CA_CERT environment "
+              "variable.")
+    )
+    cloud_scanning_parser.add_argument(
+        '--cloudera-manager-no-verify-tls',
+        action='store_true',
+        dest='cloudera_manager_no_verify_tls',
+        default=False,
+        required=False,
+        help=("Only for the `cloudera` provider: do not verify the TLS "
+              "certificate of Cloudera Manager. Useful for deployments behind "
+              "a reverse proxy with a self-signed certificate.")
+    )
+    cloud_scanning_parser.add_argument(
+        '--cloudera-cluster',
+        type=str,
+        dest='cloudera_cluster',
+        required=False,
+        help=("Only for the `cloudera` provider: the name of the cluster to "
+              "scan. Only required if the Cloudera Manager instance manages "
+              "more than one cluster.")
     )
     ci_cd_parser = subparsers.add_parser(
         SubParserNames.CI_CD_GEN.value,

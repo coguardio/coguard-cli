@@ -1,0 +1,346 @@
+"""
+This module contains the mapping logic between the Cloudera Manager domain model
+(service types, role types and generated configuration file names) and the
+CoGuard domain model (service names, cluster service identifiers and
+configuration file types).
+
+Keeping this translation in one place means that support for an additional
+configuration file format, or for a service type Cloudera adds, is a single-line
+addition here, without touching the extraction logic.
+"""
+
+import logging
+import posixpath
+import re
+from typing import Iterable, List, Optional
+
+# The Cloudera service types whose identifier is not the name of the software
+# being configured, because Cloudera packages that software under a name of its
+# own. Every key is an identifier Cloudera fixes in a service descriptor, not a
+# name observed in one deployment, and the coverage of this table is checked at
+# scan time against the type vocabulary the cluster itself declares -- see
+# `unreviewed_service_types`. The entries also serve as the vocabulary that the
+# structural readings in `packaged_software` are allowed to resolve to, which is
+# why `LIVY_FOR_SPARK3` is listed even though `HIVE_ON_TEZ` alone would already
+# demonstrate the pattern: it is what establishes `livy` as a piece of software.
+CLOUDERA_SERVICE_TYPE_TO_SOFTWARE = {
+    # HiveServer2 with a Tez execution engine. Writes the Hive configuration.
+    "HIVE_ON_TEZ": "hive",
+    # Hive with the LLAP execution mode.
+    "HIVE_LLAP": "hive",
+    # Spark scheduled by YARN. Cloudera carries the major version in the type.
+    "SPARK_ON_YARN": "spark",
+    "SPARK2_ON_YARN": "spark",
+    "SPARK3_ON_YARN": "spark",
+    # Livy, the REST front end for Spark.
+    "LIVY_FOR_SPARK3": "livy",
+    # The Sqoop 1 client gateway.
+    "SQOOP_CLIENT": "sqoop",
+}
+
+# The major version of the packaged software, where Cloudera carries it in the
+# service type: the `3` of `SPARK3_ON_YARN` and of `LIVY_FOR_SPARK3`.
+CLOUDERA_MAJOR_VERSION_IN_TYPE = re.compile(r"(?<=[A-Z])\d+(?=_|$)")
+
+
+def _without_major_version(cloudera_service_type: str) -> str:
+    """
+    Removes the major version from an upper-case Cloudera service type, so that
+    `SPARK3_ON_YARN` becomes `SPARK_ON_YARN` and `LIVY_FOR_SPARK3` becomes
+    `LIVY_FOR_SPARK`.
+    """
+    return CLOUDERA_MAJOR_VERSION_IN_TYPE.sub("", cloudera_service_type)
+
+
+# The same table, keyed without the major version. Cloudera releases a new major
+# version of the software it packages, and `SPARK4_ON_YARN` will exist before
+# this table has heard of it. Only the *lookup* is relaxed to account for that:
+# the answer still has to be an entry of the table above, so the worst this can
+# do is call a future Spark `spark`, and it cannot invent a service name for a
+# type nobody described. `SPARK4_ON_MESOS` stays `spark4_on_mesos`.
+CLOUDERA_SERVICE_TYPE_TO_SOFTWARE_WITHOUT_VERSION = {
+    _without_major_version(cloudera_service_type): software
+    for cloudera_service_type, software
+    in CLOUDERA_SERVICE_TYPE_TO_SOFTWARE.items()
+}
+
+# The service type vocabulary as declared by `GET /clusters/{cluster}/serviceTypes`
+# on Cloudera Runtime 7.3.2, i.e. the types which have been looked at and found to
+# name their software already (`KAFKA`, `OZONE`), to be a distinct component
+# (`RANGER_KMS`), or to not be software with a configuration surface at all
+# (`CORE_SETTINGS`, `AWS_S3`). This list carries no behaviour; it exists so that a
+# type Cloudera adds later can be pointed out instead of passing unnoticed.
+REVIEWED_CLOUDERA_SERVICE_TYPES = frozenset([
+    "ADLS_CONNECTOR", "ATLAS", "AWS_IDBROKER_EXTERNAL_ACCOUNTS", "AWS_S3",
+    "CORE_SETTINGS", "CRUISE_CONTROL", "DATA_CONTEXT_CONNECTOR", "GCS", "HBASE",
+    "HDFS", "HIVE", "HUE", "ICEBERG_REPLICATION", "IMPALA", "KAFKA", "KMS",
+    "KNOX", "KS_INDEXER", "KUDU", "LAKEHOUSE_OPTIMIZER", "LAKEHOUSE_UI",
+    "METERINGV2", "NAVENCRYPT", "OMID", "OOZIE", "OZONE", "PHOENIX",
+    "PROFILER_MANAGER", "PROFILER_SCHEDULER", "QUERY_PROCESSOR", "QUEUEMANAGER",
+    "RANGER", "RANGER_KMS", "RANGER_RAZ", "RANGER_RMS", "SCHEMAREGISTRY", "SOLR",
+    "STREAMS_MESSAGING_MANAGER", "STREAMS_REPLICATION_MANAGER", "STUB_DFS",
+    "TEZ", "YARN", "ZOOKEEPER",
+])
+
+# The qualifiers with which Cloudera composes a service type out of the software
+# and the engine it runs on: `HIVE_ON_TEZ`, `SPARK3_ON_YARN`, `LIVY_FOR_SPARK3`.
+CLOUDERA_SERVICE_TYPE_QUALIFIERS = ("_ON_", "_FOR_")
+
+# The service names Cloudera's own vocabulary establishes: the software the
+# translation table names, plus the types which are the identity of their
+# software by themselves. Splitting a composite type is only ever resolved to one
+# of these, so the split can *confirm* a service name but never introduce one.
+KNOWN_SOFTWARE_NAMES = frozenset(
+    list(CLOUDERA_SERVICE_TYPE_TO_SOFTWARE.values()) +
+    [service_type.lower() for service_type in REVIEWED_CLOUDERA_SERVICE_TYPES]
+)
+
+# The CoGuard configuration file type, keyed by the file extension of the
+# configuration file as generated by Cloudera Manager.
+CONFIG_FILE_TYPE_BY_EXTENSION = {
+    ".properties": "properties",
+    ".xml": "xml",
+    ".json": "json",
+    ".yaml": "yaml",
+    ".yml": "yaml",
+    ".ini": "ini",
+    ".toml": "toml",
+    # Cloudera uses `.cfg` for key-value files such as ZooKeeper's `zoo.cfg`.
+    ".cfg": "properties",
+    # A generic `.conf` cannot be assumed to be key-value, hence `custom`.
+    ".conf": "custom",
+}
+
+# Configuration file types keyed by the exact base name. These take precedence
+# over the extension based lookup.
+CONFIG_FILE_TYPE_BY_NAME = {
+    "krb5.conf": "krb",
+    "jaas.conf": "custom",
+    "log4j.properties": "properties",
+    "httpd.conf": "httpd",
+    "nginx.conf": "nginx",
+}
+
+# Extensions which are never configuration files in the CoGuard sense. Cloudera
+# Manager returns control scripts, Jinja templates, key material and tabular
+# data from the same `configFiles` listing as the real configuration files.
+NON_CONFIG_EXTENSIONS = frozenset([
+    ".sh", ".py", ".pyc", ".j2", ".jar", ".csv", ".map", ".txt", ".md",
+    ".key", ".keytab", ".jceks", ".localjceks", ".jks", ".p12", ".pem",
+    ".crt", ".cer", ".der", ".log", ".pid", ".so", ".zip", ".gz", ".tar",
+])
+
+# Directory prefixes (as they appear in the Cloudera `configFiles` listing)
+# which only ever contain helper scripts or templates.
+NON_CONFIG_PATH_PREFIXES = (
+    "scripts/",
+    "aux/templates/",
+)
+
+
+def coguard_service_name(cloudera_service_type: str) -> str:
+    """
+    Determines the CoGuard service name of a Cloudera service, i.e. the rule set
+    which applies to its configuration files, from the Cloudera service *type*.
+
+    The service type is the signal, rather than the service name or the names of
+    the generated configuration files:
+
+    - The service *name* is chosen freely by whoever created the service. The
+      same Kafka service may be called `kafka`, `messaging` or `prod-1`, so it
+      says nothing about the software it runs.
+    - The service *type* is the identifier of the service descriptor Cloudera
+      ships. The descriptor reference specifies it as "the logical name of the
+      service. In CM it is the service type. Cloudera Manager validates that
+      this name is globally unique". It is what Cloudera Manager uses to decide
+      which roles, configuration parameters and generated files a service has to
+      begin with.
+    - The generated *file names* cannot serve as the signal, because roles
+      legitimately ship the configuration of the services they talk to. A Kafka
+      broker is handed an `atlas-application.properties`, and YARN and Spark
+      roles receive `hive-site.xml` and `hdfs-site.xml`.
+
+    Most types already name their software, and are simply lower-cased: `KAFKA`
+    becomes `kafka`, `OZONE` becomes `ozone`, `RANGER_KMS` becomes `ranger_kms`.
+    The exceptions are the types under which Cloudera packages software of a
+    different name, and they are translated via
+    :data:`CLOUDERA_SERVICE_TYPE_TO_SOFTWARE`, so that `HIVE_ON_TEZ` becomes
+    `hive` and `SPARK3_ON_YARN` becomes `spark`.
+
+    That table is a translation of a vocabulary Cloudera controls, not a guess
+    about a customer's cluster: the type of a service is fixed by its descriptor,
+    and Cloudera Manager enumerates the types it knows for a cluster via
+    `GET /clusters/{cluster}/serviceTypes`.
+
+    A type the table does not list is also read for the structure Cloudera builds
+    composite types with -- the major version in `SPARK3_ON_YARN`, and the
+    "software on engine" of `HIVE_ON_TEZ` -- so that a combination or a release
+    which postdates this code is still recognized. Crucially, that reading is
+    only ever used to *look up* a service name, never to construct one: the
+    result has to be either an entry of the table or a Cloudera service type in
+    its own right. `HIVE_ON_FLINK` therefore becomes `hive`, while
+    `WIDGET_ON_YARN` keeps its own name and is reported by
+    :func:`unreviewed_service_types`, since nothing establishes that a `widget`
+    is a piece of software. See :func:`packaged_software`.
+
+    The descriptor reference does not specify this structure -- it requires a
+    type only to be globally unique, upper-case and made of letters, digits and
+    underscores -- so it is a reading of Cloudera's naming rather than a contract
+    it has to honour. Constraining the outcome to known service names is what
+    bounds the consequence if a descriptor ever uses the same shape for something
+    else.
+    """
+    if not cloudera_service_type:
+        return ""
+    normalized = cloudera_service_type.strip()
+    software = packaged_software(normalized.upper())
+    if software is not None:
+        logging.debug(
+            "The Cloudera service type `%s` configures %s.",
+            normalized,
+            software
+        )
+        return software
+    return normalized.lower()
+
+
+def _software_of_qualified_type(
+        upper_case_service_type: str) -> Optional[str]:
+    """
+    Reads a composite Cloudera service type as "software, running on engine", and
+    returns the software if -- and only if -- Cloudera's own vocabulary
+    establishes it as a service name. `HIVE_ON_FLINK` therefore resolves to
+    `hive`, because `HIVE` is a Cloudera service type in its own right, while
+    `WIDGET_ON_YARN` resolves to nothing.
+    """
+    for qualifier in CLOUDERA_SERVICE_TYPE_QUALIFIERS:
+        software, _, engine = upper_case_service_type.partition(qualifier)
+        if not engine or not software:
+            continue
+        candidate = _without_major_version(software).lower()
+        if candidate in KNOWN_SOFTWARE_NAMES:
+            return candidate
+    return None
+
+
+def packaged_software(upper_case_service_type: str) -> Optional[str]:
+    """
+    Returns the software an upper-case Cloudera service type packages under a
+    name of its own, or `None` if the type is not one of those.
+
+    Three lookups are attempted, in descending order of certainty:
+
+    1. the type as it is, against :data:`CLOUDERA_SERVICE_TYPE_TO_SOFTWARE`;
+    2. the type with its major version removed, so that a Spark release which
+       postdates this code is recognized;
+    3. the type read as "software on engine", for a combination which is new but
+       whose software is not.
+
+    Each of them is a lookup into a vocabulary rather than a construction: every
+    answer is either stated by the translation table or is a Cloudera service
+    type in its own right. That is what keeps the last two from inventing a
+    service name for a type nobody described.
+    """
+    exact_match = CLOUDERA_SERVICE_TYPE_TO_SOFTWARE.get(upper_case_service_type)
+    if exact_match is not None:
+        return exact_match
+    versionless_match = CLOUDERA_SERVICE_TYPE_TO_SOFTWARE_WITHOUT_VERSION.get(
+        _without_major_version(upper_case_service_type)
+    )
+    if versionless_match is not None:
+        return versionless_match
+    qualified_match = _software_of_qualified_type(upper_case_service_type)
+    if qualified_match is not None:
+        logging.debug(
+            "Reading the Cloudera service type `%s` as a deployment of %s, "
+            "which Cloudera also offers as a service type of its own.",
+            upper_case_service_type,
+            qualified_match
+        )
+    return qualified_match
+
+
+def unreviewed_service_types(
+        declared_service_types: Iterable[str]) -> List[str]:
+    """
+    Compares the service types a cluster declares against the types this
+    integration knows about, and returns the ones it does not.
+
+    Cloudera Manager enumerates the service types available for a cluster, which
+    makes the vocabulary behind :data:`CLOUDERA_SERVICE_TYPE_TO_SOFTWARE`
+    verifiable instead of assumed. Services of an unknown type are still
+    collected and reported under their type name; the point of this check is that
+    a type Cloudera or a third-party descriptor added after these tables were
+    written can be noticed and translated deliberately.
+    """
+    return sorted(
+        service_type
+        for service_type in {
+            declared.strip().upper()
+            for declared in declared_service_types or []
+            if declared and declared.strip()
+        }
+        if service_type not in REVIEWED_CLOUDERA_SERVICE_TYPES
+        and packaged_software(service_type) is None
+    )
+
+
+def create_cluster_service_identifier(cloudera_service_name_in_cluster: str,
+                                      cloudera_role_type: str) -> str:
+    """
+    Produces the key under which a (Cloudera service, Cloudera role type) pair
+    is stored in the CoGuard manifest, e.g. (`kafka`, `KAFKA_BROKER`) becomes
+    `kafka_broker`, and (`hdfs`, `NAMENODE`) becomes `hdfs_namenode`.
+
+    A redundant service prefix inside the role type is stripped, since Cloudera
+    role types frequently repeat the service name (`KAFKA_BROKER`), which would
+    otherwise produce identifiers like `kafka_kafka_broker`.
+    """
+    service_part = (cloudera_service_name_in_cluster or "").lower()
+    role_part = (cloudera_role_type or "").lower()
+    if not role_part:
+        return service_part
+    if not service_part:
+        return role_part
+    if role_part.startswith(f"{service_part}_"):
+        role_part = role_part[len(service_part) + 1:]
+    elif role_part == service_part:
+        return service_part
+    return f"{service_part}_{role_part}"
+
+
+def config_file_type(config_file_name: str) -> Optional[str]:
+    """
+    Determines the CoGuard configuration file type for a configuration file as
+    listed by the Cloudera Manager process resource. `None` is returned if the
+    file is not a configuration file CoGuard is able to consume.
+    """
+    if not config_file_name:
+        return None
+    normalized = config_file_name.replace("\\", "/").lstrip("/")
+    for prefix in NON_CONFIG_PATH_PREFIXES:
+        if normalized.startswith(prefix):
+            logging.debug("Skipping %s: located in a non-configuration path.",
+                          config_file_name)
+            return None
+    base_name = posixpath.basename(normalized)
+    if base_name in CONFIG_FILE_TYPE_BY_NAME:
+        return CONFIG_FILE_TYPE_BY_NAME[base_name]
+    extension = posixpath.splitext(base_name)[1].lower()
+    if extension in NON_CONFIG_EXTENSIONS:
+        logging.debug("Skipping %s: `%s` is not a configuration file extension.",
+                      config_file_name,
+                      extension)
+        return None
+    result = CONFIG_FILE_TYPE_BY_EXTENSION.get(extension)
+    if result is None:
+        logging.debug("Skipping %s: unrecognized configuration file extension.",
+                      config_file_name)
+    return result
+
+
+def is_scannable_config_file(config_file_name: str) -> bool:
+    """
+    Convenience predicate around :func:`config_file_type`.
+    """
+    return config_file_type(config_file_name) is not None

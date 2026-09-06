@@ -4,7 +4,7 @@ and have some basic functions defined.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 
 class CloudProvider(ABC):
@@ -40,3 +40,24 @@ class CloudProvider(ABC):
 
         If the process failed, None is returned.
         """
+
+    # pylint: disable=unused-argument
+    def extract_cluster_representation(
+            self,
+            cli_config: CoGuardCliConfig,
+            credentials_file: Optional[str] = None,
+            customer_id: Optional[str] = None) -> Optional[Tuple[str, Dict]]:
+        """
+        Optional counterpart to :func:`extract_iac_files_for_account` for
+        providers which are able to produce a CoGuard infrastructure
+        description, i.e. a folder and its manifest, directly.
+
+        This is the case for providers whose API already exposes a cluster of
+        services with their configuration files, so that the auto-discovery of
+        configuration files inside an Infrastructure as Code export would only
+        lose information.
+
+        Providers which do not support this return `None`, which is the default,
+        and are then processed through the Infrastructure as Code path.
+        """
+        return None

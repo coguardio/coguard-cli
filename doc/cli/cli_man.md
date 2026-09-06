@@ -147,7 +147,8 @@ file system, not to the referenced Docker images.
 
 Using the CLI, snapshots of your current cloud setup can be extracted
 as Terraform files and subsequently scanned. Currently, AWS, Azure and GCP are
-supported.
+supported. Cloudera is supported as well, through the Cloudera Manager
+API instead of a Terraform export.
 
 Authentication and credentials access vary for each service. Please see details below
 for your service configuration.
@@ -215,6 +216,51 @@ using the
 The minimum requirement for the chosen account is the
 [`Reader`](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#reader)
 role.
+
+##### Cloudera
+
+Cloudera is not extracted as Terraform. Instead, the cluster managed by
+Cloudera Manager is queried through its REST API, and the generated
+configuration files of every service and role are turned directly into a
+CoGuard cluster representation. To scan a Cloudera cluster, type
+
+```
+coguard cloud cloudera --cloudera-manager-url https://cm.example.com --cloudera-manager-user admin
+```
+
+The following options are specific to this provider.
+
+| Option                             | Parameter | Environment variable            | Documentation                                                                        |
+|------------------------------------|-----------|---------------------------------|--------------------------------------------------------------------------------------|
+| --cloudera-manager-url             | URL       | CLOUDERA_MANAGER_URL            | The URL of the Cloudera Manager instance, e.g. `https://cm.example.com`.              |
+| --cloudera-manager-user            | USER      | CLOUDERA_MANAGER_USER           | The Cloudera Manager user to authenticate as.                                         |
+| --cloudera-manager-ca-cert         | PATH      | CLOUDERA_MANAGER_CA_CERT        | A CA certificate bundle to trust when connecting to Cloudera Manager.                 |
+| --cloudera-manager-no-verify-tls   | N/A       | CLOUDERA_MANAGER_VERIFY_TLS     | Do not verify the TLS certificate of Cloudera Manager.                                |
+| --cloudera-cluster                 | NAME      | CLOUDERA_CLUSTER                | The cluster to scan. Only required if Cloudera Manager manages more than one cluster. |
+
+###### Cloudera Credentials
+
+The password is not accepted as a command line option. It is read from
+the `CLOUDERA_MANAGER_PASSWORD` environment variable, and prompted for
+interactively if that variable is not set and the CLI is attached to a
+terminal. Cloudera Manager has no API token mechanism; authentication via
+a Kerberos keytab (SPNEGO) is planned, and documented as a TODO in the
+[Cloudera integration documentation](../integrations/cloudera.md).
+
+Alternatively, all of the above values, including `password`, can be
+placed into a JSON or YAML file and passed via `--credentials-file`.
+
+The user only needs to read; the integration never writes to Cloudera
+Manager. The Cloudera Manager API reference does not document a specific
+[user
+role](https://docs.cloudera.com/cloudera-manager/7.13.1/user-accounts/topics/cm-user-roles.html)
+for the process configuration file endpoints, and the required role may
+differ between Cloudera Manager versions. If a `Read-Only` user cannot
+retrieve the generated configuration files, escalate the role until the
+scan succeeds.
+
+Further details can be found in the [Cloudera integration
+documentation](../integrations/cloudera.md).
 
 
 #### Adding to CI/CD pipelines

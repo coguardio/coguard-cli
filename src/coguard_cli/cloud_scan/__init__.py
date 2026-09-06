@@ -3,7 +3,7 @@ Helper functions for cloud provider scan functionality.
 """
 import logging
 import shutil
-from typing import Optional
+from typing import Dict, Optional
 
 from coguard_cli.auth.enums import DealEnum
 from coguard_cli.discovery.cloud_discovery.cloud_provider_factory import cloud_provider_factory
@@ -26,7 +26,8 @@ def perform_cloud_provider_scan(
         output_format: str,
         fail_level: int,
         ruleset: str,
-        dry_run: bool = False):
+        dry_run: bool = False,
+        provider_options: Optional[Dict] = None):
     """
     Helper function to run a scan on a folder. If the folder_name parameter is None,
     the current working directory is being used.
@@ -41,28 +42,43 @@ def perform_cloud_provider_scan(
     if not cloud_provider or cloud_provider.get_cloud_provider_name() != provider_name:
         logging.error("The cloud provider you requested is not implemented yet.")
         return
-    folder_name = cloud_provider.extract_iac_files_for_account(
+    if provider_options and hasattr(cloud_provider, "set_options"):
+        cloud_provider.set_options(provider_options)
+    # Providers whose API already exposes a cluster of services with their
+    # configuration files produce the CoGuard infrastructure description
+    # directly. Everything else is exported as Infrastructure as Code first, and
+    # then handed to the configuration file auto-discovery.
+    folder_name = None
+    collected_config_file_tuple = cloud_provider.extract_cluster_representation(
         auth_config,
-        credentials_file
-    )
-    if not folder_name:
-        logging.error("Unable to extract the requested cloud provider %s.",
-                      provider_name)
-        return
-    collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
-        folder_name,
-        organization or auth_config.get_username(),
-        f"{provider_name}_extraction"
+        credentials_file,
+        organization or auth_config.get_username()
     )
     if collected_config_file_tuple is None:
+        folder_name = cloud_provider.extract_iac_files_for_account(
+            auth_config,
+            credentials_file
+        )
+        if not folder_name:
+            logging.error("Unable to extract the requested cloud provider %s.",
+                          provider_name)
+            return
+        collected_config_file_tuple = folder_scan.find_configuration_files_and_collect(
+            folder_name,
+            organization or auth_config.get_username(),
+            f"{provider_name}_extraction"
+        )
+    if collected_config_file_tuple is None:
         print(f"{COLOR_YELLOW}Cloud Provider {provider_name} - NO CONFIGURATION FILES FOUND.")
+        shutil.rmtree(folder_name, ignore_errors=True)
         return
     zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
         collected_config_file_tuple
     )
     collected_location, _ = collected_config_file_tuple
     shutil.rmtree(collected_location, ignore_errors=True)
-    shutil.rmtree(folder_name)
+    if folder_name:
+        shutil.rmtree(folder_name, ignore_errors=True)
     if zip_candidate is None:
         print(f"{COLOR_YELLOW}Cloud Provider {provider_name} - NO CONFIGURATION FILES FOUND.")
         return
