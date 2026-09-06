@@ -253,9 +253,13 @@ def extract_cloudera_cluster_representation(
             logging.info("Service %s has no roles. Skipping.", service_name)
             continue
         for role_type, role in sorted(group_roles_by_type(roles).items()):
-            identifier = create_cluster_service_identifier(service_name, role_type)
+            base_identifier = create_cluster_service_identifier(service_name,
+                                                               role_type)
+            identifier = base_identifier
+            duplicate_index = 0
             while identifier in cluster_services:
-                identifier = f"{identifier}_0"
+                identifier = f"{base_identifier}_{duplicate_index}"
+                duplicate_index += 1
             service_folder = os.path.join(
                 final_location,
                 "clusterServices",

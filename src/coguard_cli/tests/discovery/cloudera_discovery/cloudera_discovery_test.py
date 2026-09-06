@@ -291,6 +291,40 @@ class TestClouderaDiscovery(unittest.TestCase):
         finally:
             shutil.rmtree(folder, ignore_errors=True)
 
+    def test_extract_cloudera_cluster_representation_colliding_identifiers(self):
+        """
+        Two (service, role type) pairs which produce the same identifier are
+        counted up, rather than each suffix being appended to the previous one.
+        """
+        api = unittest.mock.MagicMock()
+        api.list_clusters.return_value = [{"name": "cluster"}]
+        # Three services whose names only differ in case all produce the
+        # identifier `kafka_broker` for their broker role.
+        api.list_services.return_value = [
+            {"name": "kafka", "type": "KAFKA"},
+            {"name": "Kafka", "type": "KAFKA"},
+            {"name": "KAFKA", "type": "KAFKA"}
+        ]
+        api.list_roles.side_effect = lambda cluster, service: [
+            {"name": f"{service}-KAFKA_BROKER-a", "type": "KAFKA_BROKER"}
+        ]
+        api.get_role_process.return_value = {"configFiles": ["some.properties"]}
+        api.get_config_file.return_value = "a=b"
+        result = extract_cloudera_cluster_representation(api, "customer")
+        self.assertIsNotNone(result)
+        folder, manifest = result
+        try:
+            self.assertEqual(
+                sorted(manifest["clusterServices"].keys()),
+                ["kafka_broker", "kafka_broker_0", "kafka_broker_1"]
+            )
+            for identifier in manifest["clusterServices"]:
+                self.assertTrue(os.path.exists(os.path.join(
+                    folder, "clusterServices", identifier, "some.properties"
+                )))
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
     def test_extract_cloudera_cluster_representation_no_cluster(self):
         """
         Without a determinable cluster, None is returned.
