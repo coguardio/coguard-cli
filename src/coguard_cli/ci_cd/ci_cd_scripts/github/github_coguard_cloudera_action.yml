@@ -1,0 +1,143 @@
+# The CoGuard gate for a Cloudera cluster.
+#
+# Cloudera Manager has no hook which a third party could use to block a
+# configuration change before it takes effect; everything it offers is after the
+# fact. A gate therefore cannot sit inside Cloudera Manager, and sits here
+# instead, in the pipeline which produces the change: the cluster is scanned, and
+# a finding at or above `minimum-fail-level` fails this job.
+#
+# Two things need adjusting before this works:
+#
+#  - `cloudera-manager-url`, either the default below or the input of the call.
+#  - `runs-on`, if Cloudera Manager is not reachable from a GitHub hosted runner,
+#    which for an on-premise cluster it is usually not. A self-hosted runner on a
+#    host which can reach Cloudera Manager is what to name there instead.
+name: CoGuard gate for a Cloudera cluster
+run-name: Gating the configuration of a Cloudera cluster
+
+on:
+  # This is how the job which applies a change to the cluster gates itself:
+  #
+  #     jobs:
+  #       apply:
+  #         steps: [ ... whatever changes the cluster ... ]
+  #       gate:
+  #         needs: apply
+  #         uses: ./.github/workflows/coguard_cloudera_gate.yml
+  #         secrets: inherit
+  #
+  # Gating after the change rather than before it is deliberate: what a rule can
+  # be evaluated against is the generated configuration of a running role, which
+  # only exists once the change has been made.
+  workflow_call:
+    inputs:
+      cloudera-manager-url:
+        description: The URL of the Cloudera Manager instance to scan.
+        type: string
+        required: false
+        default: https://cloudera-manager.example.com
+      cloudera-cluster:
+        description: >-
+          The cluster to scan. Only needed if this Cloudera Manager manages more
+          than one.
+        type: string
+        required: false
+        default: ''
+      minimum-fail-level:
+        description: >-
+          The severity from which on a finding fails this job. 1 is any finding
+          at all, 5 is the most severe.
+        type: string
+        required: false
+        default: '4'
+    secrets:
+      COGUARD_USER_NAME:
+        required: true
+      COGUARD_PASSWORD:
+        required: true
+      CLOUDERA_MANAGER_USER:
+        required: true
+      CLOUDERA_MANAGER_PASSWORD:
+        required: true
+  # The manual run, for the check before a promotion.
+  workflow_dispatch:
+    inputs:
+      cloudera-manager-url:
+        description: The URL of the Cloudera Manager instance to scan.
+        type: string
+        required: false
+        default: https://cloudera-manager.example.com
+      cloudera-cluster:
+        description: The cluster to scan, if this Cloudera Manager manages more than one.
+        type: string
+        required: false
+        default: ''
+      minimum-fail-level:
+        description: The severity from which on a finding fails this job.
+        type: string
+        required: false
+        default: '4'
+
+permissions:
+  contents: read
+  # The findings are published as code scanning alerts as well, which is what
+  # makes the ones below the fail level visible without failing the job. A
+  # cluster which has been running for a while has findings, and a gate which is
+  # red from the first day on is a gate which gets switched off. Raise
+  # `minimum-fail-level` to what the cluster passes today, watch the alerts, and
+  # lower it as they get addressed.
+  security-events: write
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      # Not needed for the scan, which reads the cluster rather than this
+      # repository, but it is what lets the published findings be attached to the
+      # commit which is being gated.
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install the CoGuard CLI
+        run: pip install --upgrade coguard-cli
+
+      - name: Scan the cluster
+        shell: bash
+        env:
+          COGUARD_USER_NAME: ${{ secrets.COGUARD_USER_NAME }}
+          COGUARD_PASSWORD: ${{ secrets.COGUARD_PASSWORD }}
+          CLOUDERA_MANAGER_URL: ${{ inputs.cloudera-manager-url }}
+          # Scanning only ever reads Cloudera Manager, so a read-only user is
+          # enough, and a read-only user is what belongs in these secrets.
+          CLOUDERA_MANAGER_USER: ${{ secrets.CLOUDERA_MANAGER_USER }}
+          CLOUDERA_MANAGER_PASSWORD: ${{ secrets.CLOUDERA_MANAGER_PASSWORD }}
+          # A cluster with AutoTLS presents a certificate of its own certificate
+          # authority. Point this at that authority's certificate, or add
+          # `--cloudera-manager-no-verify-tls` below.
+          # CLOUDERA_MANAGER_CA_CERT: /path/to/cm-auto-global-cacerts.pem
+          CLOUDERA_CLUSTER: ${{ inputs.cloudera-cluster }}
+          MINIMUM_FAIL_LEVEL: ${{ inputs.minimum-fail-level }}
+        # The inputs are handed over through the environment rather than written
+        # into the command line, so that a value cannot end up being read as a
+        # part of the command.
+        run: |
+          cluster_option=()
+          if [ -n "${CLOUDERA_CLUSTER}" ]; then
+            cluster_option=(--cloudera-cluster "${CLOUDERA_CLUSTER}")
+          fi
+          coguard \
+            --output-format formatted,sarif \
+            --minimum-fail-level "${MINIMUM_FAIL_LEVEL}" \
+            cloud cloudera "${cluster_option[@]}"
+
+      - name: Publish the findings
+        # `always()`, because the findings of the run which failed the job are
+        # precisely the ones worth looking at.
+        if: always() && hashFiles('result.sarif.json') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: result.sarif.json
+          category: coguard-cloudera

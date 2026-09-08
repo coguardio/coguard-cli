@@ -2,11 +2,63 @@
 This module provides functionality to translate a CoGuard result into SARIF format.
 """
 
-from typing import Dict
+from typing import Dict, Tuple
 import pathlib
 import json
 import logging
 from importlib.metadata import version, PackageNotFoundError
+
+# The three bands CoGuard reports findings in, as the level SARIF calls them and
+# the number GitHub code scanning ranks them by. The bands are the same ones the
+# formatted output uses, so that a finding does not change its severity by being
+# looked at in a different place.
+SARIF_LEVELS = {
+    "high": ("error", "8.0"),
+    "medium": ("warning", "5.0"),
+    "low": ("note", "2.0")
+}
+
+def severity_band(severity) -> Tuple[str, str]:
+    """
+    The SARIF level and the code scanning severity of a CoGuard severity.
+    """
+    try:
+        numeric = int(severity)
+    except (TypeError, ValueError):
+        numeric = 3
+    if numeric > 3:
+        return SARIF_LEVELS["high"]
+    if numeric == 3:
+        return SARIF_LEVELS["medium"]
+    return SARIF_LEVELS["low"]
+
+def describe_rule(failed_rule: Dict, description: str) -> Dict:
+    """
+    The description of a violated rule for the driver of the report, so that
+    whoever reads it sees the name and the severity of a finding and not only its
+    location.
+    """
+    rule = failed_rule.get("rule", {})
+    rule_id = rule.get("name")
+    severity = rule.get("severity")
+    level, security_severity = severity_band(severity)
+    return {
+        "id": rule_id,
+        "name": rule_id,
+        "shortDescription": {
+            "text": rule.get("humanReadableName") or rule_id
+        },
+        "fullDescription": {
+            "text": description or ""
+        },
+        "defaultConfiguration": {
+            "level": level
+        },
+        "properties": {
+            "severity": severity,
+            "security-severity": security_severity
+        }
+    }
 
 def translate_result_to_sarif(
         coguard_result: Dict[str, str],
@@ -41,6 +93,7 @@ def translate_result_to_sarif(
             }
         ]
     }
+    rules = result_blueprint.get("runs")[0].get("tool").get("driver").get("rules")
     for failed_rule in coguard_result.get("failed", []):
         rule_id = failed_rule.get("rule", {}).get("name")
         description = failed_rule.get("rule", {}).get("documentation").get("documentation")
@@ -69,11 +122,16 @@ def translate_result_to_sarif(
                 }
             }
         }
+        level, _ = severity_band(failed_rule.get("rule", {}).get("severity"))
+        # A rule commonly fails for more than one file, and is described once.
+        if not any(rule.get("id") == rule_id for rule in rules):
+            rules.append(describe_rule(failed_rule, description))
         result_blueprint.get(
             "runs"
         )[0].get("results").append(
             {
                 "ruleId": rule_id,
+                "level": level,
                 "message": {
                     "text": message
                 },

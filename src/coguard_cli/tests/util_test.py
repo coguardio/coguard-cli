@@ -348,6 +348,84 @@ class TestUtilRoot(unittest.TestCase):
             )
             self.assertIn("SCANNING OF", new_stdout.getvalue())
 
+    def upload_and_evaluate_with_findings(self, severity, fail_level):
+        """
+        Uploads a result with one finding of the given severity, and returns
+        whether the CLI exited with a non-zero code because of it. This is the
+        mechanism a pipeline gates on.
+        """
+        result = {
+            "failed": [
+                {
+                    "rule": {
+                        "name": "some_rule",
+                        "severity": severity,
+                        "documentation": {
+                            "documentation": "doc",
+                            "remediation": "fix",
+                            "sources": []
+                        }
+                    },
+                    "fromLine": 0,
+                    "toLine": 1,
+                    "service": "some_service",
+                    "config_file": {
+                        "fileName": "some.conf",
+                        "subPath": ".",
+                        "configFileType": "properties"
+                    }
+                }
+            ]
+        }
+        with unittest.mock.patch(
+                'coguard_cli.api_connection.send_zip_file_for_scanning',
+                new_callable=lambda: lambda a, b, c, d, e, f, g: result), \
+                unittest.mock.patch(
+                    'sys.stdout',
+                    new_callable=StringIO), \
+                unittest.mock.patch(
+                'os.remove',
+                new_callable=lambda: lambda a: None), \
+                unittest.mock.patch(
+                'coguard_cli.api_connection.get_fixable_rule_list',
+                 new_callable=lambda: lambda token, coguard_api_url, user_name, organization: []), \
+                unittest.mock.patch(
+                'logging.debug',
+                new_callable=unittest.mock.MagicMock()):
+            auth_config = unittest.mock.MagicMock()
+            auth_config.get_username = unittest.mock.Mock(return_value = "foo")
+            try:
+                util.upload_and_evaluate_zip_candidate(
+                    ("foo.zip", {}),
+                    auth_config,
+                    auth.enums.DealEnum.ENTERPRISE,
+                    "token",
+                    "https://portal.coguard.io/server",
+                    "foo",
+                    "formatted",
+                    fail_level,
+                    "foo",
+                    "iso"
+                )
+            except SystemExit as exception:
+                return exception.code
+        return 0
+
+    def test_upload_and_evaluate_zip_candidate_fail_level_reached(self):
+        """
+        A finding at or above the fail level results in a non-zero exit code,
+        which is what fails the job of a pipeline it runs in.
+        """
+        self.assertEqual(self.upload_and_evaluate_with_findings(4, 4), 1)
+        self.assertEqual(self.upload_and_evaluate_with_findings(5, 4), 1)
+
+    def test_upload_and_evaluate_zip_candidate_below_fail_level(self):
+        """
+        A finding below the fail level is reported without failing the run, which
+        is what makes a gate on an existing cluster adoptable.
+        """
+        self.assertEqual(self.upload_and_evaluate_with_findings(3, 4), 0)
+
     def upload_and_evaluate_zip_candidate_json_formatted_test(self):
         """
         Testing zip candidate None

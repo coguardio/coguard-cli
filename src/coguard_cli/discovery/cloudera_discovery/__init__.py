@@ -13,8 +13,11 @@ import json
 import logging
 import os
 import pathlib
+import re
 import tempfile
 from typing import Dict, List, Optional, Tuple
+
+import yaml
 
 from coguard_cli.check_common_util import replace_special_chars_with_underscore
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
@@ -28,6 +31,34 @@ from coguard_cli.util import convert_string_to_posix_path
 # The state a role is in when it is running, and hence the state in which its
 # generated configuration is the one currently in effect.
 RUNNING_ROLE_STATE = "STARTED"
+
+# The two forms of placeholder Cloudera leaves in the files it hands out.
+#
+#     scrape_interval: {{SCRAPE_INTERVAL}}
+#     PROXYUSER_BLOCK,
+#     "PROXYUSER_BLOCK",
+#
+# The second form is a token standing in for a whole block, on a line of its own,
+# quoted or not — Knox writes it both ways in the same folder. It has to contain
+# an underscore, or be followed by a comma, so that a lone word in a file of a
+# free-form type is not mistaken for one. A loose match is affordable here because
+# a placeholder only ever matters for a file which does not parse anyway; see
+# `unreadable_template`.
+MUSTACHE_PLACEHOLDER = re.compile(r"\{\{[A-Z][A-Z0-9_]*\}\}")
+BARE_PLACEHOLDER = re.compile(
+    r'^[ \t]*"?([A-Z][A-Z0-9_]{2,})"?[ \t]*(,?)[ \t]*$',
+    re.MULTILINE
+)
+
+# The configuration file types for which a placeholder can destroy the syntax of
+# the file, together with what it takes to read one. Everything else — a
+# properties file, an XML value, a free-form `.conf` — takes a placeholder in its
+# stride, which is exactly why the presence of a placeholder is not by itself a
+# reason to skip anything.
+PLACEHOLDER_BREAKABLE_TYPES = {
+    "json": json.loads,
+    "yaml": yaml.safe_load,
+}
 
 
 def determine_cluster_name(api: ClouderaManagerApi,
@@ -113,6 +144,57 @@ def resolve_inside_destination(destination: str,
     return candidate
 
 
+def unresolved_placeholder(content: str) -> Optional[str]:
+    """
+    Returns the first unresolved placeholder found in the content of a file, and
+    `None` if there is none.
+    """
+    mustache = MUSTACHE_PLACEHOLDER.search(content)
+    if mustache:
+        return mustache.group(0)
+    for token, comma in BARE_PLACEHOLDER.findall(content):
+        if "_" in token or comma:
+            return token
+    return None
+
+
+def unreadable_template(content: str, file_type: str) -> Optional[str]:
+    """
+    Returns the placeholder which makes a file unreadable, and `None` if the file
+    is readable or has no placeholder in it.
+
+    A placeholder alone means nothing. Cloudera leaves `{{CMF_CONF_DIR}}` inside
+    the *values* of files which are as deployed as it gets — `hdfs-site.xml`,
+    `ozone-site.xml`, `kafka.properties`, 148 of the 532 files of one live
+    cluster — and the agent expands it when it starts the process. Those files are
+    the point of this integration and all of their other parameters are real.
+
+    What is worth skipping is the handful of files where the placeholder sits in a
+    structural position and takes the syntax of the file with it: the Prometheus
+    files of the Ozone roles, whose `{{SCRAPE_INTERVAL}}` in value position is not
+    YAML, and the shared providers and descriptors of Knox, whose bare
+    `PROXYUSER_BLOCK,` is not JSON. Those are the input of a templating step
+    rather than a configuration any process reads, and no rule can evaluate them
+    anyway — all they produce is a parse error against a service whose real
+    configuration was fine.
+
+    Both conditions are required, so that a deployed file which is malformed for
+    some *other* reason is still uploaded and still reported. A parse error about
+    a file which was really deployed is a finding; one about a template is noise.
+    """
+    placeholder = unresolved_placeholder(content)
+    if placeholder is None:
+        return None
+    parse = PLACEHOLDER_BREAKABLE_TYPES.get(file_type)
+    if parse is None:
+        return None
+    try:
+        parse(content)
+    except (ValueError, yaml.YAMLError):
+        return placeholder
+    return None
+
+
 def collect_config_files_for_role(
         api: ClouderaManagerApi,
         cluster_name: str,
@@ -161,6 +243,18 @@ def collect_config_files_for_role(
             logging.warning("Could not retrieve %s of role %s.",
                             config_file_name,
                             role_name)
+            continue
+        placeholder = unreadable_template(content, file_type)
+        if placeholder is not None:
+            logging.info(
+                "Skipping %s of role %s: the unresolved placeholder `%s` leaves "
+                "it unreadable as %s, which makes it a template a configuration "
+                "is generated from rather than a generated configuration.",
+                config_file_name,
+                role_name,
+                placeholder,
+                file_type
+            )
             continue
         relative_path = pathlib.PurePosixPath(config_file_name)
         sub_path = str(relative_path.parent)

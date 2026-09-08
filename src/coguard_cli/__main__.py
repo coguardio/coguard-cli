@@ -337,6 +337,17 @@ def main():
         nargs='?',
         help=("The action you would like to take.")
     )
+    ci_cd_parser.add_argument(
+        '--cloud',
+        type=str,
+        dest='ci_cd_cloud_provider',
+        choices=["cloudera"],
+        required=False,
+        help=("Generate a pipeline which scans a deployment of this provider, "
+              "instead of one which scans the repository itself. A pipeline of "
+              "this kind is what gates a change to a Cloudera cluster, since "
+              "Cloudera Manager itself offers no hook to block one.")
+    )
     account_parser = subparsers.add_parser(
         SubParserNames.ACCOUNT.value,
         help="The sub-command to obtain account information."

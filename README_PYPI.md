@@ -255,8 +255,20 @@ coguard cloud [scan] cloudera --cloudera-manager-url https://cm.example.com --cl
 ```
 
 The password is read from the `CLOUDERA_MANAGER_PASSWORD` environment
-variable, and prompted for interactively if it is not set. Details and
-all available options can be found in the
+variable, and prompted for interactively if it is not set.
+
+For scheduled use, the command `coguard-cloudera-check` is installed
+alongside the CLI. It reads the event feed of Cloudera Manager to find out
+whether the configuration of the cluster has changed, and runs the scan
+when it has, which makes it suitable for a systemd timer or a cron job.
+
+A second command, `coguard-cloudera-banner`, takes the result of a scan and
+shows a summary of it in the header of Cloudera Manager, so that the state of
+the configuration is visible where the cluster is administered. It writes only
+the region of the banner between its own delimiters, so a banner which is
+already in use is kept.
+
+Details and all available options can be found in the
 [Cloudera integration documentation](./doc/integrations/cloudera.md).
 
 ### <a id="general-scan"></a>General scan
@@ -281,6 +293,13 @@ pull request/push, simply type
 ```shell
 coguard pipeline github add <PATH_TO_YOUR_REPOSITORY>
 ```
+
+A pipeline can also gate a deployment instead of a repository. Adding `--cloud
+cloudera` generates a workflow which scans a running Cloudera cluster and fails
+the job on findings, which is how a change to such a cluster is gated —
+Cloudera Manager itself offers no hook to block one. See
+[doc/integrations/cloudera.md](./doc/integrations/cloudera.md).
+
 [Future support is planned](#support-roadmap) for GitLab CI/CD, Jenkins, Bamboo, CircleCI, etc.
 
 ## Screenshot and further information
