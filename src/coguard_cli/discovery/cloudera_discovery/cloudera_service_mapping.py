@@ -24,6 +24,11 @@ from typing import Iterable, List, Optional
 # why `LIVY_FOR_SPARK3` is listed even though `HIVE_ON_TEZ` alone would already
 # demonstrate the pattern: it is what establishes `livy` as a piece of software.
 CLOUDERA_SERVICE_TYPE_TO_SOFTWARE = {
+    # The Hadoop Distributed File System. Cloudera names the service after the
+    # file system, but the configuration files it writes -- `core-site.xml` and
+    # `hdfs-site.xml` -- are the Hadoop ones, and CoGuard knows that software
+    # under the name `hadoop`.
+    "HDFS": "hadoop",
     # HiveServer2 with a Tez execution engine. Writes the Hive configuration.
     "HIVE_ON_TEZ": "hive",
     # Hive with the LLAP execution mode.
@@ -73,7 +78,7 @@ CLOUDERA_SERVICE_TYPE_TO_SOFTWARE_WITHOUT_VERSION = {
 REVIEWED_CLOUDERA_SERVICE_TYPES = frozenset([
     "ADLS_CONNECTOR", "ATLAS", "AWS_IDBROKER_EXTERNAL_ACCOUNTS", "AWS_S3",
     "CORE_SETTINGS", "CRUISE_CONTROL", "DATA_CONTEXT_CONNECTOR", "GCS", "HBASE",
-    "HDFS", "HIVE", "HUE", "ICEBERG_REPLICATION", "IMPALA", "KAFKA", "KMS",
+    "HIVE", "HUE", "ICEBERG_REPLICATION", "IMPALA", "KAFKA", "KMS",
     "KNOX", "KS_INDEXER", "KUDU", "LAKEHOUSE_OPTIMIZER", "LAKEHOUSE_UI",
     "METERINGV2", "NAVENCRYPT", "OMID", "OOZIE", "OZONE", "PHOENIX",
     "PROFILER_MANAGER", "PROFILER_SCHEDULER", "QUERY_PROCESSOR", "QUEUEMANAGER",

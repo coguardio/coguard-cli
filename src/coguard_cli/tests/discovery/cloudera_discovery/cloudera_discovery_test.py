@@ -11,7 +11,8 @@ import unittest.mock
 from coguard_cli.discovery.cloudera_discovery import \
     collect_config_files_for_role, determine_cluster_name, \
     extract_cloudera_cluster_representation, group_roles_by_type, \
-    report_unreviewed_service_types
+    report_unreviewed_service_types, unreadable_template, \
+    unresolved_placeholder
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApiError
 
@@ -212,6 +213,95 @@ class TestClouderaDiscovery(unittest.TestCase):
             ),
             []
         )
+
+    def test_collect_config_files_for_role_unreadable_template(self):
+        """
+        A file whose placeholder leaves it unreadable is a template rather than a
+        generated configuration, and is not collected.
+        """
+        api = unittest.mock.MagicMock()
+        api.get_role_process.return_value = {
+            "configFiles": ["aux/ozone-prometheus.yml",
+                            "ozone-conf/log4j.properties"]
+        }
+        api.get_config_file.side_effect = lambda *args: (
+            "scrape_interval: {{SCRAPE_INTERVAL}}"
+            if args[-1].endswith(".yml")
+            else "log4j.appender.file={{CMF_CONF_DIR}}/out.log"
+        )
+        temp_dir = tempfile.mkdtemp(prefix="coguard-cloudera-template-test")
+        try:
+            result = collect_config_files_for_role(
+                api, "cluster", "ozone", {"name": "role"}, temp_dir
+            )
+            self.assertEqual(
+                [entry["fileName"] for entry in result],
+                ["log4j.properties"]
+            )
+            self.assertFalse(
+                os.path.exists(os.path.join(temp_dir, "aux",
+                                            "ozone-prometheus.yml"))
+            )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_unresolved_placeholder_forms(self):
+        """
+        Both the mustache form and the bare token form are recognized, quoted or
+        not, and an ordinary word is not.
+        """
+        self.assertEqual(
+            unresolved_placeholder("scrape_interval: {{SCRAPE_INTERVAL}}"),
+            "{{SCRAPE_INTERVAL}}"
+        )
+        self.assertEqual(
+            unresolved_placeholder('  "a": "b",\n  PROXYUSER_BLOCK,\n'),
+            "PROXYUSER_BLOCK"
+        )
+        self.assertEqual(
+            unresolved_placeholder('  "PROXYUSER_BLOCK",\n'),
+            "PROXYUSER_BLOCK"
+        )
+        self.assertEqual(
+            unresolved_placeholder("  CUSTOMIZABLE_AZURE_CAB_CONTENT\n"),
+            "CUSTOMIZABLE_AZURE_CAB_CONTENT"
+        )
+        self.assertIsNone(unresolved_placeholder("broker.id=1"))
+        self.assertIsNone(unresolved_placeholder("  EOF\n"))
+        self.assertIsNone(unresolved_placeholder("{{lowercase}}"))
+
+    def test_unreadable_template_needs_both_conditions(self):
+        """
+        A placeholder inside the value of a file which still parses is what
+        Cloudera leaves in the configuration it really deployed, and is kept. Only
+        a placeholder which destroys the syntax marks a template.
+        """
+        self.assertIsNone(unreadable_template(
+            '<property><value>{{CMF_CONF_DIR}}/x.jks</value></property>', "xml"
+        ))
+        self.assertIsNone(unreadable_template(
+            'log4j.appender.file={{CMF_CONF_DIR}}/out.log', "properties"
+        ))
+        self.assertIsNone(unreadable_template(
+            '{"path": "{{CMF_CONF_DIR}}/x"}', "json"
+        ))
+        self.assertEqual(
+            unreadable_template("scrape_interval: {{SCRAPE_INTERVAL}}", "yaml"),
+            "{{SCRAPE_INTERVAL}}"
+        )
+        self.assertEqual(
+            unreadable_template('{"a": "b",\n PROXYUSER_BLOCK,\n "c": "d"}',
+                                "json"),
+            "PROXYUSER_BLOCK"
+        )
+
+    def test_unreadable_template_keeps_a_broken_deployed_file(self):
+        """
+        A file which is malformed for a reason other than a placeholder is still
+        collected, so that the parse error is reported rather than hidden.
+        """
+        self.assertIsNone(unreadable_template('{"a": ', "json"))
+        self.assertIsNone(unreadable_template("a:\n- b\n  c: d\n", "yaml"))
 
     def test_report_unreviewed_service_types(self):
         """

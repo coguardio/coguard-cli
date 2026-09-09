@@ -90,7 +90,8 @@ def validate_output_format(inp_string: str) -> bool:
 def perform_ci_cd_action(
         ci_cd_provider,
         ci_cd_command,
-        repository_folder):
+        repository_folder,
+        cloud_provider=None):
     """
     The function to perform a ci_cd_action.
     """
@@ -107,13 +108,13 @@ def perform_ci_cd_action(
         print(f"{COLOR_RED}Invalid Ci/CD provider given.{COLOR_TERMINATION}")
         sys.exit(1)
     if ci_cd_command == 'add':
-        ret_val = ci_cd_provider_instance.add(repository_folder)
+        ret_val = ci_cd_provider_instance.add(repository_folder, cloud_provider)
         if ret_val is None:
             sys.exit(1)
     else:
         print(f"Invalid command: {ci_cd_command}.")
         sys.exit(1)
-    print(ci_cd_provider_instance.post_string())
+    print(ci_cd_provider_instance.post_string(cloud_provider))
 
 def docker_image_scan_handler(
         args,
@@ -426,7 +427,8 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
         perform_ci_cd_action(
             ci_cd_provider,
             ci_cd_command,
-            repository_folder
+            repository_folder,
+            args.ci_cd_cloud_provider
         )
     elif args.subparsers_location == SubParserNames.ACCOUNT.value:
         handle_account_action(

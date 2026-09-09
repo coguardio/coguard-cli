@@ -6,8 +6,9 @@ import unittest
 import unittest.mock
 import requests
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
-    ClouderaManagerApi, ClouderaManagerApiError, FALLBACK_API_VERSION, \
-    build_url, validate_path_segment
+    ClouderaManagerApi, ClouderaManagerApiError, DEFAULT_EVENT_PAGE_SIZE, \
+    FALLBACK_API_VERSION, build_url, event_attribute, validate_path_segment, \
+    validate_query_parameter_name
 
 def _create_api(**kwargs) -> ClouderaManagerApi:
     """
@@ -180,6 +181,120 @@ class TestClouderaManagerApi(unittest.TestCase):
             build_url("https://cm.example.com/somewhere?a=b#c", "tools", "echo"),
             "https://cm.example.com/tools/echo"
         )
+
+    def test_build_url_with_query_parameters(self):
+        """
+        Query parameters are percent-encoded, so that a value can neither
+        introduce a further parameter nor a fragment. The comparison operator of
+        the event query language survives this, since the server decodes it
+        again.
+        """
+        self.assertEqual(
+            build_url(
+                "https://cm.example.com",
+                "api", "v58", "events",
+                query_parameters={
+                    "query": "attributes.EVENTCODE==EV_REVISION_CREATED",
+                    "maxResults": 50
+                }
+            ),
+            "https://cm.example.com/api/v58/events"
+            "?query=attributes.EVENTCODE%3D%3DEV_REVISION_CREATED&maxResults=50"
+        )
+        self.assertEqual(
+            build_url(
+                "https://cm.example.com",
+                "api", "v58", "events",
+                query_parameters={"query": "a=1&admin=true#f"}
+            ),
+            "https://cm.example.com/api/v58/events"
+            "?query=a%3D1%26admin%3Dtrue%23f"
+        )
+
+    def test_build_url_leaves_out_query_parameters_without_a_value(self):
+        """
+        A parameter which was not provided is not sent as an empty one.
+        """
+        self.assertEqual(
+            build_url(
+                "https://cm.example.com",
+                "api", "v58", "events",
+                query_parameters={"query": "category==AUDIT_EVENT",
+                                  "maxResults": None}
+            ),
+            "https://cm.example.com/api/v58/events?query=category%3D%3DAUDIT_EVENT"
+        )
+
+    def test_validate_query_parameter_name(self):
+        """
+        Only plain identifiers are accepted as query parameter names.
+        """
+        self.assertEqual(validate_query_parameter_name("maxResults"),
+                         "maxResults")
+        for name in ["", None, "max results", "max=results", "a&b", "1st",
+                     "query#fragment"]:
+            with self.assertRaises(ClouderaManagerApiError):
+                validate_query_parameter_name(name)
+
+    def test_list_events(self):
+        """
+        The events of an event query are returned, and the query reaches
+        Cloudera Manager as a query parameter of the events resource.
+        """
+        api = _create_api()
+        api._session.get.return_value = _create_response(
+            json_value={"items": [{"id": "1"}], "totalResults": 1}
+        )
+        self.assertEqual(
+            api.list_events("attributes.EVENTCODE==EV_REVISION_CREATED"),
+            [{"id": "1"}]
+        )
+        requested = api._session.get.call_args.args[0]
+        self.assertIn("/api/v58/events?", requested)
+        self.assertIn("EV_REVISION_CREATED", requested)
+        self.assertIn(f"maxResults={DEFAULT_EVENT_PAGE_SIZE}", requested)
+
+    def test_list_events_without_events(self):
+        """
+        A query which matches nothing is an empty list, not a failure.
+        """
+        api = _create_api()
+        api._session.get.return_value = _create_response(
+            json_value={"items": None, "totalResults": 0}
+        )
+        self.assertEqual(api.list_events("attributes.EVENTCODE==EV_NONE"), [])
+
+    def test_list_events_which_cannot_be_retrieved(self):
+        """
+        An events resource which does not answer, or does not answer with json,
+        results in `None`, which is not the same as a cluster without events.
+        """
+        api = _create_api()
+        api._session.get.side_effect = requests.exceptions.ConnectTimeout()
+        self.assertIsNone(api.list_events("attributes.EVENTCODE==EV_X"))
+        api = _create_api()
+        api._session.get.side_effect = None
+        api._session.get.return_value = _create_response()
+        self.assertIsNone(api.list_events("attributes.EVENTCODE==EV_X"))
+
+    def test_event_attribute(self):
+        """
+        The single value of a named event attribute is read, and an attribute
+        which is not there results in `None`.
+        """
+        event = {
+            "attributes": [
+                {"name": "EVENTCODE", "values": ["EV_REVISION_CREATED"]},
+                {"name": "REVISION", "values": ["1546338003"]},
+                {"name": "MESSAGE_CODES", "values": []}
+            ]
+        }
+        self.assertEqual(event_attribute(event, "EVENTCODE"),
+                         "EV_REVISION_CREATED")
+        self.assertEqual(event_attribute(event, "REVISION"), "1546338003")
+        self.assertIsNone(event_attribute(event, "MESSAGE_CODES"))
+        self.assertIsNone(event_attribute(event, "SERVICE"))
+        self.assertIsNone(event_attribute({}, "SERVICE"))
 
     def test_check_connection_success(self):
         """
