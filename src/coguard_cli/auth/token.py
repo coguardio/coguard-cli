@@ -4,13 +4,71 @@ if it expired.
 """
 
 import logging
-from typing import Optional
+import os
+import sys
+from typing import List, Optional
 import requests
 import jwt
 from coguard_cli.auth.auth_config import CoGuardCliConfig
 from coguard_cli.auth.enums import DealEnum
 
 COGUARD_REALM_TOKEN_URL = "/realms/coguard/protocol/openid-connect/token"
+
+# The organization to use when the account has more than one, for the runs where
+# there is nobody to ask: a systemd timer, a CI job, a Cloudera role. It is the
+# counterpart of COGUARD_USER_NAME and COGUARD_PASSWORD, which the credential
+# retrieval already reads from the environment for the same reason.
+ORGANIZATION_ENVIRONMENT_VARIABLE = "COGUARD_ORGANIZATION"
+
+def choose_organization(organizations: List[str]) -> Optional[str]:
+    """
+    Determines which of several organizations of an account a scan belongs to.
+
+    The environment variable is consulted first, so that an unattended run can
+    say what it means; if it names an organization the account does not have,
+    that is an error rather than a reason to fall back to asking or guessing.
+    Without it, the choice is asked for, and asked for only if there is a
+    terminal to answer: `input()` on a closed standard input raises `EOFError`,
+    which is a traceback where a scheduled scan wanted a scan.
+
+    Returns None if no organization could be determined, which uploads the
+    result to the personal space of the account rather than to an organization.
+    """
+    from_environment = (os.environ.get(ORGANIZATION_ENVIRONMENT_VARIABLE) or "").strip()
+    if from_environment:
+        if from_environment in organizations:
+            logging.debug("Using the organization named by %s: %s",
+                          ORGANIZATION_ENVIRONMENT_VARIABLE,
+                          from_environment)
+            return from_environment
+        logging.error(
+            "%s is set to `%s`, which is not an organization of this account. "
+            "The organizations of this account are: %s",
+            ORGANIZATION_ENVIRONMENT_VARIABLE,
+            from_environment,
+            ", ".join(organizations)
+        )
+        return None
+    if not (sys.stdin is not None and sys.stdin.isatty()):
+        logging.error(
+            "This account has multiple organizations (%s), and there is no terminal "
+            "to ask which one to use. Set %s to one of them.",
+            ", ".join(organizations),
+            ORGANIZATION_ENVIRONMENT_VARIABLE
+        )
+        return None
+    input_val = None
+    print("Multiple organizations detected:")
+    print("\n".join(org for org in organizations))
+    while input_val not in organizations:
+        input_val = input(
+            f"Please type the organization you wish to use (default: {organizations[0]})"
+        )
+        if not input_val.strip():
+            input_val = organizations[0]
+        if input_val not in organizations:
+            print("You typed in an invalid organization. Please repeat.")
+    return input_val
 
 class Token():
     """
@@ -141,20 +199,7 @@ class Token():
         if isinstance(org_result, list) and len(org_result) > 0:
             if len(org_result) == 1:
                 return org_result[0]
-            input_val = None
-            print("Multiple organizations detected:")
-            print("\n".join(org for org in org_result))
-            while input_val not in org_result:
-                input_val = input(
-                    f"Please type the organization you wish to use (default: {org_result[0]})"
-                )
-                if not input_val.strip():
-                    input_val = org_result[0]
-                if input_val not in org_result:
-                    print("You typed in an invalid organization. Please repeat.")
-            if input_val not in org_result:
-                return None
-            return input_val
+            return choose_organization(org_result)
         return None
 
     def extract_deal_type_from_token(

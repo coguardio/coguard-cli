@@ -202,6 +202,55 @@ class TestClouderaCheck(unittest.TestCase):
         )
         self.assertIsNone(check.event_cluster(event(cluster=None)))
 
+    def test_is_about_cluster(self):
+        """
+        An event which names a cluster is about that one; one which names none is
+        about the deployment, except for a revision, where the absence means that
+        what changed is the configuration of Cloudera Manager itself.
+        """
+        self.assertTrue(check.is_about_cluster(event(), "ozone-base-cluster"))
+        self.assertFalse(
+            check.is_about_cluster(event(cluster="another-cluster"),
+                                   "ozone-base-cluster")
+        )
+        self.assertTrue(
+            check.is_about_cluster(event(code="EV_PARCEL_ACTIVATE",
+                                         cluster=None),
+                                   "ozone-base-cluster")
+        )
+        self.assertFalse(
+            check.is_about_cluster(event(cluster=None), "ozone-base-cluster")
+        )
+
+    def test_a_change_to_cloudera_manager_itself_is_not_a_reason_to_scan(self):
+        """
+        The banner this integration writes is a revision of the configuration of
+        Cloudera Manager, which is reported with the same event code as a change
+        to a service of the cluster and told apart from it only by naming no
+        cluster. Without this, writing the banner would be a change at the next
+        check, which would scan, which would write the banner again.
+
+        The watermark still moves past such an event, so that it is not looked at
+        again either.
+        """
+        api = api_with({
+            "EV_REVISION_CREATED": [
+                event(timestamp="2026-09-09T02:23:57.455Z",
+                      content=("User admin created a new revision. Message was: "
+                               "null."),
+                      cluster=None,
+                      service_name=None)
+            ]
+        })
+        result = check.poll_events(
+            api,
+            "ozone-base-cluster",
+            list(check.WATCHED_EVENT_CODES),
+            "2026-09-04T16:20:37.000Z"
+        )
+        self.assertEqual(result["events"], [])
+        self.assertEqual(result["newest"], "2026-09-09T02:23:57.455Z")
+
     def test_describe_event(self):
         """
         An event is stated with the service it belongs to, and an event without a

@@ -126,6 +126,30 @@ CONFIG_FILE_TYPE_BY_NAME = {
     "nginx.conf": "nginx",
 }
 
+# The software a configuration file belongs to, keyed by the exact base name, for
+# the files which are the defining configuration of one piece of software. Roles
+# are handed the configuration of the services they talk to -- an HBase master
+# receives `ozone-site.xml` and `hdfs-site.xml`, a Kafka broker receives
+# `atlas-application.properties` -- and those files have to be scanned with the
+# rules of the software they configure, not with the rules of the role they were
+# found in. The values are CoGuard service names as `coguard_service_name`
+# produces them. Files which are not listed, such as `ssl-client.xml`,
+# `jaas.conf` or the log4j files, stay with the role which ships them.
+CONFIG_FILE_OWNER_BY_NAME = {
+    "core-site.xml": "hadoop",
+    "hdfs-site.xml": "hadoop",
+    "hdfs-site-refreshable.xml": "hadoop",
+    "hbase-site.xml": "hbase",
+    "hbase-site-refreshable.xml": "hbase",
+    "ozone-site.xml": "ozone",
+    "hive-site.xml": "hive",
+    "yarn-site.xml": "yarn",
+    "mapred-site.xml": "yarn",
+    "tez-site.xml": "tez",
+    "atlas-application.properties": "atlas",
+    "zoo.cfg": "zookeeper",
+}
+
 # Extensions which are never configuration files in the CoGuard sense. Cloudera
 # Manager returns control scripts, Jinja templates, key material and tabular
 # data from the same `configFiles` listing as the real configuration files.
@@ -342,6 +366,19 @@ def config_file_type(config_file_name: str) -> Optional[str]:
         logging.debug("Skipping %s: unrecognized configuration file extension.",
                       config_file_name)
     return result
+
+
+def owning_software(config_file_name: str) -> Optional[str]:
+    """
+    Returns the CoGuard service name of the software a configuration file
+    belongs to, as listed in :data:`CONFIG_FILE_OWNER_BY_NAME`, and `None` if
+    the file does not identify any software and hence belongs to whichever role
+    ships it.
+    """
+    if not config_file_name:
+        return None
+    base_name = posixpath.basename(config_file_name.replace("\\", "/"))
+    return CONFIG_FILE_OWNER_BY_NAME.get(base_name)
 
 
 def is_scannable_config_file(config_file_name: str) -> bool:

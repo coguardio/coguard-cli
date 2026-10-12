@@ -356,6 +356,53 @@ class TestClouderaManagerApi(unittest.TestCase):
         api._session.get.return_value = _create_response(json_value={"items": None})
         self.assertEqual(api.list_clusters(), [])
 
+    def test_get_config_keyed_by_name(self):
+        """
+        A configuration resource is requested in its full view and returned
+        keyed by parameter name, keeping whether a value is set at this level.
+        """
+        api = _create_api()
+        api._session.get.return_value = _create_response(json_value={"items": [
+            {"name": "ssl_enabled", "value": "true", "default": "false"},
+            {"name": "scrape_interval", "default": "15s"},
+            {"value": "nameless"},
+            "not a record"
+        ]})
+        self.assertEqual(
+            api.get_role_config_group_config("cluster", "ozone",
+                                             "ozone-OZONE_PROMETHEUS-BASE"),
+            {"ssl_enabled": {"name": "ssl_enabled", "value": "true",
+                             "default": "false"},
+             "scrape_interval": {"name": "scrape_interval", "default": "15s"}}
+        )
+        self.assertEqual(
+            api._session.get.call_args.args[0],
+            "https://cm.example.com/api/v58/clusters/cluster/services/ozone/"
+            "roleConfigGroups/ozone-OZONE_PROMETHEUS-BASE/config?view=full"
+        )
+
+    def test_config_resource_urls(self):
+        """
+        The service, role and Cloudera Manager configurations, and the role
+        config groups, are requested from their respective resources.
+        """
+        api = _create_api()
+        api._session.get.return_value = _create_response(json_value={"items": []})
+        api.get_service_config("cluster", "knox")
+        api.get_role_config("cluster", "knox", "knox-KNOX_GATEWAY-1")
+        api.get_cloudera_manager_config()
+        api.list_role_config_groups("cluster", "knox")
+        self.assertEqual(
+            [call.args[0] for call in api._session.get.call_args_list],
+            ["https://cm.example.com/api/v58/clusters/cluster/services/knox/"
+             "config?view=full",
+             "https://cm.example.com/api/v58/clusters/cluster/services/knox/"
+             "roles/knox-KNOX_GATEWAY-1/config?view=full",
+             "https://cm.example.com/api/v58/cm/config?view=full",
+             "https://cm.example.com/api/v58/clusters/cluster/services/knox/"
+             "roleConfigGroups"]
+        )
+
     def test_list_services_and_roles_url(self):
         """
         Cluster and service names are quoted inside the request url.

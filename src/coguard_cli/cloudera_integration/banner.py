@@ -8,22 +8,39 @@ only in a portal they have to remember to open.
 
 The parameter written is `CUSTOM_BANNER_HTML` of the Cloudera Manager service
 configuration, which Cloudera provides for exactly this purpose ("The custom
-banner is used to display customer specific text in the header area.") and which
-is rendered as raw HTML on every page. Three consequences follow from that, and
-they are what most of this module is about:
+banner is used to display customer specific text in the header area."). Three
+consequences follow from what that parameter actually is, and they are what most
+of this module is about:
 
-* **Everything taken from the result is escaped.** A rule name, a service name
-  and a file name all end up inside the markup, and all three come from data. An
-  unescaped `<` in any of them would be markup in the header of every page of
-  Cloudera Manager for every user.
+* **What goes in is plain text, in spite of the name of the parameter.**
+  Cloudera Manager 7.13 escapes the value and shows it verbatim, so a `<span>`
+  put around the text appears in the header as a `<span>`. Cloudera's own
+  validation calls it "the Custom Banner Text parameter", and plain text is in
+  any case the only form which survives both behaviours: a version which escapes
+  the value shows it as written, and a version which renders it shows it as well.
+  What is given up is the colour, so the wording has to carry the severity on its
+  own. Values taken from the result still have `<` and `>` removed, so that they
+  cannot turn into markup on a version which does render the value.
 * **The banner is shared.** A customer may already display something in it, a
   maintenance notice or the name of the environment, and that text is not ours to
-  remove. The part written here is therefore delimited by
-  `<!--coguard:start-->` and `<!--coguard:end-->`, the current value is read
-  before it is written, and only the region between the delimiters is replaced.
+  remove. The current value is therefore read before it is written, and only the
+  region from `CoGuard:` to the end of the value is replaced, which keeps
+  whatever is in front of it. The delimiter is the visible text rather than an
+  HTML comment for the reason above: a comment is not invisible in a value which
+  is escaped. A block left behind by the earlier, HTML version is recognised by
+  its delimiters and removed.
 * **It has to stay short.** It is a header, not a report. Only the counts and
   the worst affected services are shown, capped by `--max-services`, and the
-  detail stays in the report the banner links to.
+  detail stays in the report the banner points to.
+
+The colour the banner text cannot have is available one level up, in the header
+bar the banner sits in: `CUSTOM_HEADER_COLOR` is what Cloudera Manager tints it
+with. With `--header-color`, the bar is red while there are findings and back to
+its ordinary colour once there are none, which is the difference between a line
+of text somebody may read and a page nobody can open without noticing. It is off
+by default, because that parameter exists to tell instances of Cloudera Manager
+apart and a customer may be using it for that -- which is also why the colour is
+put back only when it is still the one this command set.
 
 This is the one part of the Cloudera integration which changes the cluster. The
 client used for scanning issues `GET` requests only, on purpose, so the single
@@ -35,7 +52,6 @@ be given a credential of its own rather than the one the scan uses.
 
 import argparse
 import datetime
-import html
 import json
 import logging
 import pathlib
@@ -54,10 +70,42 @@ from coguard_cli.print_colors import COLOR_CYAN, COLOR_RED, \
 # The Cloudera Manager configuration parameter holding the text of the header
 # banner.
 BANNER_PARAMETER = "CUSTOM_BANNER_HTML"
-# The delimiters of the region of the banner this command owns. Everything
-# outside of them belongs to whoever put it there and is preserved verbatim.
-BLOCK_START = "<!--coguard:start-->"
-BLOCK_END = "<!--coguard:end-->"
+# The parameter holding the colour of the header bar itself, which is the one
+# thing in the header that *can* carry a severity, since the banner text cannot.
+# Cloudera provides it to "distinguish different instances of Cloudera Manager",
+# so it is written only when asked for with `--header-color`.
+HEADER_COLOR_PARAMETER = "CUSTOM_HEADER_COLOR"
+# The values that parameter accepts. The API does not publish them -- not one of
+# the 282 parameters of the resource comes with `validValues` -- and they are not
+# in the documentation either, so they were read off the assets the header is
+# built from: Cloudera Manager ships one `favicon-<COLOUR>.png` per value, and
+# these ten exist.
+HEADER_COLORS = (
+    "BLACK",
+    "GRAY",
+    "RED",
+    "YELLOW",
+    "GREEN",
+    "TEAL",
+    "BLUE",
+    "PURPLE",
+    "PINK",
+    "BROWN",
+)
+# What the header is set back to once the findings are gone. `BLACK` is Cloudera
+# Manager's own default for the parameter.
+DEFAULT_HEADER_COLOR_CLEAN = "BLACK"
+# Where the region of the banner this command owns begins. It runs from here to
+# the end of the value; everything in front of it belongs to whoever put it there
+# and is preserved verbatim.
+BLOCK_MARKER = "CoGuard:"
+# What separates an existing banner from the region written here.
+SEPARATOR = " | "
+# The delimiters an earlier version of this command wrote around its region, when
+# the banner was built as HTML. They are still recognised so that a cluster which
+# has such a banner gets it replaced rather than kept as visible markup.
+LEGACY_BLOCK_START = "<!--coguard:start-->"
+LEGACY_BLOCK_END = "<!--coguard:end-->"
 # How many services are named in the banner before the rest is summarized as a
 # count. The banner is a header, so this is deliberately small.
 DEFAULT_MAX_SERVICES = 5
@@ -117,26 +165,32 @@ class ClouderaManagerBannerApi(ClouderaManagerApi):
             if isinstance(item, dict) and item.get("name")
         }
 
-    def put_cm_config(self, name: str, value: str) -> bool:
+    def put_cm_config(self, values: Dict[str, str]) -> bool:
         """
-        Sets a single parameter of the Cloudera Manager service configuration.
+        Sets parameters of the Cloudera Manager service configuration.
 
         This is the only request in the whole integration which is not a `GET`.
-        A partial update is sent, i.e. the request names the one parameter to
+        A partial update is sent, i.e. the request names only the parameters to
         change, which is how Cloudera Manager expects it and what keeps the other
-        281 parameters of the resource out of the picture entirely.
+        280 parameters of the resource out of the picture entirely.
+
+        All of them go into one request, because one request is one configuration
+        revision: writing the banner and the header colour separately would
+        appear in the event feed, and in the audit trail of the cluster, as two
+        changes where an operator made none.
         """
         url = self._api_url("cm", "config")
-        logging.debug("Writing %s through %s", name, url)
+        logging.debug("Writing %s through %s", ", ".join(values), url)
         try:
             response = self._session.put(
                 url,
-                json={"items": [{"name": name, "value": value}]},
+                json={"items": [{"name": name, "value": value}
+                                for name, value in values.items()]},
                 timeout=self._timeout
             )
             response.raise_for_status()
         except requests.RequestException as err:
-            logging.error("Could not write %s: %s", name, err)
+            logging.error("Could not write %s: %s", ", ".join(values), err)
             return False
         return True
 
@@ -216,85 +270,103 @@ def summarize(findings: List[Dict]) -> Tuple[List[Tuple[str, int]],
     return buckets, services
 
 
+def plain(value: str) -> str:
+    """
+    A value from the scan result in the form it can go into the banner: on one
+    line, and without the two characters which would make it markup on a version
+    of Cloudera Manager which renders the banner rather than escaping it.
+
+    Removing those characters rather than escaping them is what keeps the text
+    readable in both cases. `&lt;` in an escaped banner is what a service name
+    escaped for HTML looks like when it is not rendered, and no name of a real
+    service, cluster or file contains `<` to begin with.
+    """
+    return " ".join(str(value).split()).replace("<", "").replace(">", "")
+
+
 def render_block(findings: List[Dict],
                  cluster_name: Optional[str],
                  report_url: Optional[str],
                  max_services: int) -> str:
     """
-    Renders the region of the banner this command owns.
+    Renders the region of the banner this command owns, as one line of plain
+    text beginning with the marker.
 
-    Every value which comes from the scan result is escaped, since the banner is
-    rendered as raw HTML. The markup is inline styled, because the banner is
-    injected into a page whose stylesheet belongs to Cloudera Manager and which
-    has no class of ours to hook into.
+    There is no colour to signal with, so the first thing the line says is
+    whether there are findings or not.
     """
     scanned_at = datetime.datetime.now(datetime.timezone.utc).strftime(
         "%Y-%m-%d %H:%M UTC"
     )
-    where = f" of {html.escape(cluster_name)}" if cluster_name else ""
+    where = f" of {plain(cluster_name)}" if cluster_name else ""
     if not findings:
         headline = (
-            f"CoGuard: the configuration{where} has no findings "
+            f"{BLOCK_MARKER} the configuration{where} has no findings "
             f"(scanned {scanned_at})."
         )
-        color = "#1a7f37"
     else:
         buckets, services = summarize(findings)
         counts = ", ".join(f"{count} {name}" for name, count in buckets)
         shown = services[:max_services]
         named = ", ".join(
-            f"{html.escape(service)} ({count})" for service, count in shown
+            f"{plain(service)} ({count})" for service, count in shown
         )
         remaining = len(services) - len(shown)
         if remaining > 0:
             named += f" and {remaining} further service" \
                      f"{'s' if remaining > 1 else ''}"
         headline = (
-            f"CoGuard: {len(findings)} configuration finding"
+            f"{BLOCK_MARKER} {len(findings)} configuration finding"
             f"{'s' if len(findings) > 1 else ''}{where} ({counts}), affecting "
             f"{named}. Scanned {scanned_at}."
         )
-        color = "#b42318"
-    link = ""
     if report_url:
-        # The url is a command line argument rather than result data, but it is
-        # escaped all the same, since it ends up in an attribute.
-        link = (f' <a href="{html.escape(report_url, quote=True)}" '
-                f'style="color:inherit;text-decoration:underline;">'
-                f'Full report</a>.')
-    return (
-        f'{BLOCK_START}'
-        f'<span style="color:{color};font-weight:bold;">{headline}</span>'
-        f'{link}'
-        f'{BLOCK_END}'
-    )
+        # Not clickable, since the banner is text. It is still worth showing:
+        # an address can be copied, and where the detail is kept is part of what
+        # the header has to say.
+        headline += f" Full report: {plain(report_url)}"
+    return headline
+
+
+def without_legacy_block(current: str) -> str:
+    """
+    Removes the region an earlier, HTML version of this command wrote, so that a
+    banner which still holds one is not left with visible markup in front of the
+    new text.
+
+    A banner whose start delimiter has no end delimiter after it was written by
+    an interrupted run of that version. Everything from the delimiter onwards is
+    then ours and is dropped, since what came before it is the part that belongs
+    to somebody else.
+    """
+    start = current.find(LEGACY_BLOCK_START)
+    if start < 0:
+        return current
+    end = current.find(LEGACY_BLOCK_END, start + len(LEGACY_BLOCK_START))
+    after = current[end + len(LEGACY_BLOCK_END):] if end > start else ""
+    return f"{current[:start].rstrip()} {after.strip()}".strip()
 
 
 def replace_block(current_value: Optional[str], block: str) -> str:
     """
     Puts a block into the current banner, replacing an earlier one of ours and
-    leaving everything else untouched. An empty block removes the region
-    entirely.
+    keeping the text in front of it. An empty block removes the region entirely.
 
-    A banner whose start delimiter has no end delimiter after it was written by
-    an interrupted run of this command. Everything from that delimiter onwards is
-    then ours and is dropped, since what came before it is the part that belongs
-    to somebody else.
+    The region owned here runs from the marker to the end of the value, i.e. this
+    command writes last. Text a customer put in the banner therefore survives, and
+    what is given up in exchange for a delimiter that is not visible in an escaped
+    banner is the ability to keep text placed *after* ours.
     """
-    current = current_value or ""
-    start = current.find(BLOCK_START)
-    end = current.find(BLOCK_END, start + len(BLOCK_START)) if start >= 0 else -1
-    if start >= 0:
-        before = current[:start]
-        after = current[end + len(BLOCK_END):] if end > start else ""
-    else:
-        before = current
-        after = ""
-    before = before.rstrip()
+    current = without_legacy_block(current_value or "")
+    start = current.find(BLOCK_MARKER)
+    before = (current[:start] if start >= 0 else current).rstrip()
+    # A banner this command wrote before is removed together with the separator
+    # it was joined on, so that repeated runs do not leave a dangling one.
+    before = before.rstrip(SEPARATOR.strip()).rstrip()
     if not block:
-        return f"{before} {after.strip()}".strip()
-    separator = " " if before else ""
-    return f"{before}{separator}{block}{after}".rstrip()
+        return before
+    separator = SEPARATOR if before else ""
+    return f"{before}{separator}{block}"
 
 
 def argument_parser() -> argparse.ArgumentParser:
@@ -305,8 +377,8 @@ def argument_parser() -> argparse.ArgumentParser:
         prog="coguard-cloudera-banner",
         description=(
             "Show the result of a CoGuard scan in the header of Cloudera "
-            "Manager. Only the region between the CoGuard delimiters of the "
-            "banner is written, so an existing banner is kept."
+            "Manager. Only the part of the banner from `CoGuard:` onwards is "
+            "written, so an existing banner is kept."
         )
     )
     add_cloudera_manager_arguments(parser)
@@ -347,13 +419,37 @@ def argument_parser() -> argparse.ArgumentParser:
               "cluster in the CoGuard portal.")
     )
     parser.add_argument(
+        '--header-color',
+        type=str.upper,
+        dest='header_color',
+        choices=HEADER_COLORS,
+        required=False,
+        help=("Also colour the header bar of Cloudera Manager in this colour "
+              "while there are findings, and set it back to the colour of "
+              "`--header-color-clean` once there are none. The header is not "
+              "touched at all unless this is given.")
+    )
+    parser.add_argument(
+        '--header-color-clean',
+        type=str.upper,
+        dest='header_color_clean',
+        choices=HEADER_COLORS,
+        default=DEFAULT_HEADER_COLOR_CLEAN,
+        required=False,
+        help=(f"The colour to put the header bar back to once there are no "
+              f"findings. Defaults to {DEFAULT_HEADER_COLOR_CLEAN}, which is "
+              f"Cloudera Manager's own default; set it to the colour this "
+              f"instance is normally recognised by, if it has one.")
+    )
+    parser.add_argument(
         '--clear',
         action='store_true',
         dest='clear',
         default=False,
         required=False,
-        help=("Remove the CoGuard region from the banner and write nothing "
-              "else. No scan result is read.")
+        help=("Remove the CoGuard region from the banner, and put the header "
+              "colour back if `--header-color` says which one this command "
+              "sets. No scan result is read.")
     )
     parser.add_argument(
         '--dry-run',
@@ -392,14 +488,15 @@ def connect_for_writing(credentials: Dict) -> Optional[ClouderaManagerBannerApi]
 
 
 def determine_block(args: argparse.Namespace,
-                    cluster_name: Optional[str]) -> Optional[str]:
+                    cluster_name: Optional[str]
+                    ) -> Optional[Tuple[str, bool]]:
     """
     Produces the block to put into the banner, which is empty when the region is
-    to be removed. `None` means the result could not be read, and nothing should
-    be written.
+    to be removed, together with whether there are findings. `None` means the
+    result could not be read, and nothing should be written.
     """
     if args.clear:
-        return ""
+        return "", False
     result = read_result(args.result_file)
     if result is None:
         return None
@@ -409,15 +506,38 @@ def determine_block(args: argparse.Namespace,
         cluster_name,
         args.report_url,
         max(1, args.max_services)
-    )
+    ), bool(findings)
+
+
+def desired_header_color(args: argparse.Namespace,
+                         has_findings: bool,
+                         current: Optional[str]) -> Optional[str]:
+    """
+    The colour the header bar is to have, or `None` for leaving it as it is.
+
+    While there are findings, it is the colour that was asked for. Once there are
+    none, it is put back -- but only if it currently is the colour this command
+    sets, so that a header which somebody else coloured, to tell this instance of
+    Cloudera Manager apart from another one, is not quietly taken over by a
+    scan which found nothing.
+    """
+    if not args.header_color:
+        return None
+    if has_findings:
+        return args.header_color
+    if (current or "").strip().upper() == args.header_color:
+        return args.header_color_clean
+    return None
 
 
 def write_banner(api: ClouderaManagerBannerApi,
                  block: str,
-                 dry_run: bool) -> int:
+                 has_findings: bool,
+                 args: argparse.Namespace) -> int:
     """
-    Puts a block into the banner of Cloudera Manager, leaving whatever else is in
-    the banner alone, and returns the exit code of doing so.
+    Puts a block into the banner of Cloudera Manager, and the matching colour
+    into its header if one was asked for, leaving whatever else is in the banner
+    alone. Returns the exit code of doing so.
     """
     configuration = api.get_cm_config()
     if configuration is None:
@@ -429,21 +549,39 @@ def write_banner(api: ClouderaManagerBannerApi,
         return EXIT_ERROR
     current_value = configuration[BANNER_PARAMETER]
     new_value = replace_block(current_value, block)
-    if new_value == (current_value or ""):
-        print(f"{COLOR_CYAN}The banner of Cloudera Manager already says this."
+    changes: Dict[str, str] = {}
+    if new_value != (current_value or ""):
+        changes[BANNER_PARAMETER] = new_value
+        print(f"{COLOR_CYAN}Banner:{COLOR_TERMINATION} {new_value or '(empty)'}")
+    if args.header_color and HEADER_COLOR_PARAMETER not in configuration:
+        # Not an error: the banner is what this command is for, and a release
+        # without the parameter still gets it.
+        print(f"{COLOR_YELLOW}This Cloudera Manager does not have a "
+              f"{HEADER_COLOR_PARAMETER} parameter, so the header keeps its "
+              f"colour.{COLOR_TERMINATION}")
+    elif args.header_color:
+        # An unset parameter is Cloudera Manager's default rather than no colour.
+        current_color = configuration[HEADER_COLOR_PARAMETER] \
+            or DEFAULT_HEADER_COLOR_CLEAN
+        new_color = desired_header_color(args, has_findings, current_color)
+        if new_color is not None and new_color != current_color:
+            changes[HEADER_COLOR_PARAMETER] = new_color
+            print(f"{COLOR_CYAN}Header colour:{COLOR_TERMINATION} "
+                  f"{current_color} -> {new_color}")
+    if not changes:
+        print(f"{COLOR_CYAN}The header of Cloudera Manager already says this."
               f"{COLOR_TERMINATION}")
         return EXIT_CLEAN
-    print(f"{COLOR_CYAN}Banner:{COLOR_TERMINATION} {new_value or '(empty)'}")
-    if dry_run:
+    if args.dry_run:
         print(f"{COLOR_YELLOW}Not written, as this was a dry run."
               f"{COLOR_TERMINATION}")
         return EXIT_CLEAN
-    if not api.put_cm_config(BANNER_PARAMETER, new_value):
-        print(f"{COLOR_RED}Could not write the banner. Writing the Cloudera "
+    if not api.put_cm_config(changes):
+        print(f"{COLOR_RED}Could not write the header. Writing the Cloudera "
               f"Manager configuration requires the Full Administrator role."
               f"{COLOR_TERMINATION}")
         return EXIT_ERROR
-    print(f"{COLOR_CYAN}The banner of Cloudera Manager was updated."
+    print(f"{COLOR_CYAN}The header of Cloudera Manager was updated."
           f"{COLOR_TERMINATION}")
     return EXIT_CLEAN
 
@@ -463,10 +601,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     # Which cluster the findings are about is worth naming in a header that is
     # shown for the whole Cloudera Manager instance, so it is asked for rather
     # than only taken from the option.
-    block = determine_block(
+    determined = determine_block(
         args,
         determine_cluster_name(api, credentials.get("cluster"))
     )
-    if block is None:
+    if determined is None:
         return EXIT_ERROR
-    return write_banner(api, block, args.dry_run)
+    block, has_findings = determined
+    return write_banner(api, block, has_findings, args)

@@ -139,6 +139,16 @@ change through a code not named here can be followed without a new release.
 A code Cloudera Manager does not know is not an error — the query simply
 matches nothing.
 
+A revision which names no cluster at all is a change to the configuration of
+Cloudera Manager *itself*, and is ignored: its banner, its header colour or the
+address it sends alerts from cannot change the generated configuration files of
+any role. Such an event carries no `CLUSTER` and no `SERVICE` attribute, and its
+content is `User admin created a new revision. Message was: null.` — the
+parameter is not named, so the absence of the cluster is the only thing there is
+to go by. Ignoring it is also what keeps the integration from chasing its own
+tail, since writing the banner is such a change, and reacting to it would scan,
+which would write the banner again.
+
 The audit feed, `GET /audits`, is deliberately *not* what is asked. It
 records **operations** — logins, commands, the creation of services, roles
 and host templates — and not the values of configuration parameters. Across
@@ -242,7 +252,7 @@ WantedBy=timers.target
 systemctl enable --now coguard-cloudera-check.timer
 ```
 
-Two notes on the unit:
+Three notes on the unit:
 
 - The CoGuard account is taken from `COGUARD_USER_NAME` and
   `COGUARD_PASSWORD` when both are set, which is why `ProtectHome=true`
@@ -250,6 +260,12 @@ Two notes on the unit:
   `~/.config/coguard-cli/coguard_conf`, which it writes on the first
   login — in that case drop `ProtectHome`, and keep the state file in the
   home directory as well.
+- **If the account belongs to more than one CoGuard organization, set
+  `COGUARD_ORGANIZATION`.** Interactively the CLI asks which organization a
+  scan belongs to; a unit has nobody to ask, and without the variable the
+  scan stops and logs which organizations the account has. An organization
+  name is not a secret, so `Environment=COGUARD_ORGANIZATION=...` in the
+  unit does as well as a line in the environment file.
 - `--state-file` is pointed at `StateDirectory=`, i.e. `/var/lib/coguard`,
   so that the state survives and is not looked for in a home directory the
   unit cannot see.
@@ -280,19 +296,36 @@ coguard-cloudera-banner \
     --report-url https://portal.coguard.io/dashboard
 ```
 
-> **CoGuard: 89 configuration findings of ozone-base-cluster (44 High, 35
-> Medium, 10 Low), affecting ozone_datanode (11), ozone_manager (11),
-> ozone_recon (11), ozone_s3_gateway (11),
-> ozone_storage_container_manager (11) and 12 further services. Scanned
-> 2026-09-08 18:57 UTC.** [Full report](https://portal.coguard.io/dashboard).
+```
+CoGuard: 89 configuration findings of ozone-base-cluster (44 High, 35 Medium,
+10 Low), affecting ozone_datanode (11), ozone_manager (11), ozone_recon (11),
+ozone_s3_gateway (11), ozone_storage_container_manager (11) and 12 further
+services. Scanned 2026-09-08 18:57 UTC. Full report:
+https://portal.coguard.io/dashboard
+```
 
 The parameter written is `CUSTOM_BANNER_HTML` of the Cloudera Manager service
-configuration, which Cloudera provides for exactly this purpose. Only the
-region between `<!--coguard:start-->` and `<!--coguard:end-->` is written, so a
-banner which is already in use is preserved and running the command twice
-leaves one summary rather than two; `--clear` removes the region again.
-Everything taken from the scan result is HTML-escaped, since the banner is
-rendered as raw HTML on every page.
+configuration, which Cloudera provides for exactly this purpose.
+
+**What goes in is plain text, in spite of the name of the parameter.** Cloudera
+Manager 7.13 escapes the value and shows it verbatim, so a `<span>` put around
+the text appears in the header as a `<span>` — Cloudera's own validation calls
+it "the Custom Banner Text parameter". Plain text is in any case the only form
+which survives both behaviours, so the summary carries no markup, the address of
+the report is written out rather than linked, and the severity is carried by the
+wording instead of a colour. Values taken from the scan result have `<` and `>`
+removed, so that a service name cannot become markup on a version which does
+render the value.
+
+The region written runs from the text `CoGuard:` to the end of the value, i.e.
+this command writes last. A banner which is already in use is therefore
+preserved, and running the command twice leaves one summary rather than two;
+`--clear` removes the region and the separator in front of it again. The
+trade-off of a delimiter which is not visible in an escaped banner is that text
+placed *after* the summary is not preserved. A banner written by the earlier
+version of this command, which wrapped its text in markup between
+`<!--coguard:start-->` and `<!--coguard:end-->`, is recognised by those
+delimiters and replaced rather than mistaken for text of the customer.
 
 **This is the one command of the integration which changes the cluster.**
 Writing the Cloudera Manager service configuration requires the Full
@@ -300,6 +333,72 @@ Administrator role, unlike the read-only scan, so it is meant to be given a
 credential of its own rather than the one the scan uses. The full option list,
 and how to attach it to the timer above, are in
 [`src/coguard_cli/cloudera_integration/README.md`](../../src/coguard_cli/cloudera_integration/README.md).
+
+### Colouring the header
+
+The colour the banner text cannot have is available on the bar the banner sits in.
+`CUSTOM_HEADER_COLOR` is what Cloudera Manager tints that bar with — Cloudera
+provides it to "distinguish different instances of Cloudera Manager" — and
+`--header-color RED` makes it follow the scan instead: red while there are
+findings, back to the colour of `--header-color-clean` once there are none.
+
+```shell
+coguard-cloudera-banner \
+    --cloudera-manager-url https://cm.example.com \
+    --cloudera-manager-user coguard-admin \
+    --report-url https://portal.coguard.io/dashboard \
+    --header-color RED
+```
+
+It is off by default, and the colour is put back only while the header still has
+the one this command set, so an instance which is deliberately coloured to be told
+apart from another one is not taken over by a scan that found nothing. Such an
+instance should name its own colour as `--header-color-clean`.
+
+The values are `BLACK`, `GRAY`, `RED`, `YELLOW`, `GREEN`, `TEAL`, `BLUE`,
+`PURPLE`, `PINK` and `BROWN`. The API does not publish them — not one of the 282
+parameters of that resource comes with `validValues` — and neither does the
+documentation, so they were read off the assets the header is built from:
+Cloudera Manager ships one `favicon-<COLOUR>.png` per value, and those ten exist.
+
+The banner and the colour are written in one request, because one request is one
+configuration revision: two writes would appear in the event feed and in the audit
+trail as two changes where an operator made none.
+
+### As a service with a health test
+
+The banner is text, and even a red bar above it is a thing to look at rather than
+a thing that arrives. What Cloudera
+Manager colours red is the health of a *service*, so the way to get a red badge is
+to be a service: [`csd/configuration_assurance`](../../csd) is a custom service
+descriptor which adds a `Configuration Assurance` service to the cluster, whose
+health is the state of the configuration. When a scan finds something, that
+service goes to Bad Health, the health of the cluster follows it, and Cloudera
+Manager's own alerting fires.
+
+Two things about it are worth knowing before deciding to install it.
+
+**A CSD cannot declare a health test.** The schema has no field for one — the
+service and role descriptors have none, and Cloudera's own every-field fixtures
+contain neither a health nor a threshold key — so a CSD-based service gets the
+generic tests Cloudera Manager generates for every service and nothing more. The
+one signal it can move is whether its own role process is running, and that is
+what the descriptor uses: the role runs `coguard-cloudera-check` in a loop, stays
+up while the result is clean, and exits non-zero once a scan reports findings at
+or above the configured severity.
+
+**The red badge is on that service, not on the service which has the finding.**
+Cloudera Manager computes the health of `knox` from the health tests of `knox`, and
+nothing installed next to it can contribute to them. Which services are affected is
+in the log of the role and in the report it links to. Red also does not clear
+itself, because while the role is down nothing is scanning: restarting the role is
+the re-check.
+
+Installing it needs a jar in `/opt/cloudera/csd` and a restart of the Cloudera
+Manager *server* — the cluster keeps running, but the web interface and the API are
+away for about a minute. The steps, the parameters and how to validate the
+descriptor against Cloudera's schema validator are in
+[`csd/README.md`](../../csd/README.md).
 
 ## Gating a change in a pipeline
 
@@ -524,28 +623,62 @@ Scripts (`.sh`, `.py`), templates (`.j2`), key material (`.jks`, `.jceks`,
 `hadoop-conf/hdfs-site.xml` are preserved as a sub-path, so that the
 directory layout of the deployed configuration is retained.
 
-Roles which have never been started have no process, and are logged and
-skipped; the same holds for services without roles, such as
-`CORE_SETTINGS`.
+Roles which do not run a process by design — gateways, which only hold the
+client configuration of a host, and the HDFS balancer, which runs as a
+command — report the role state `NA` and have no generated configuration of
+their own; they are skipped silently. The same holds for services without
+roles, such as `CORE_SETTINGS`.
 
-One more class of file is skipped, and the criterion is worth spelling out
-because the obvious version of it is wrong. Cloudera leaves unresolved
-placeholders in files it has genuinely deployed: `{{CMF_CONF_DIR}}` appears
-inside the *values* of `hdfs-site.xml`, `ozone-site.xml`, `kafka.properties`
-and 145 other files of one live cluster, and the agent expands it when it
-starts the process. Those files are exactly what this integration is for, so
-a placeholder is not by itself a reason to skip anything.
+A role which does run as a daemon, but is `STOPPED` or in an `UNKNOWN` state,
+is a finding of its own: the configuration of a role which never ran could not
+be scanned, the one of a stopped role is the configuration it last ran with,
+and the cluster is below the redundancy it was planned with. Every instance
+counts, not only the one whose configuration is collected. The CLI lists those
+roles in its output and reports the cluster rule
+`cluster_cloudera_roles_not_running` through the `failed_rules.json` of the
+upload, the same channel through which `cluster_no_ci_cd_tool_used` is
+reported. Roles in a transitional state (`STARTING`, `STOPPING`, `BUSY`) are
+not counted.
 
-What is skipped is a file whose placeholder sits in a structural position and
-takes the syntax of the file with it — the Prometheus files of the Ozone
-roles, whose `scrape_interval: {{SCRAPE_INTERVAL}}` is not YAML, and the
-shared providers and descriptors of Knox, whose bare `PROXYUSER_BLOCK,` is not
-JSON. Those are the input of a templating step rather than a configuration any
-process reads, and no rule can evaluate them; all they would produce is a
-parse error against a service whose real configuration was fine. Both
-conditions have to hold, so a deployed file which is malformed for some other
-reason is still uploaded and its parse error still reported. On the live
-cluster this skips 14 of 532 files.
+### Templates
+
+Cloudera leaves unresolved placeholders in files it has genuinely deployed:
+`{{CMF_CONF_DIR}}` appears inside the *values* of `hdfs-site.xml`,
+`ozone-site.xml`, `kafka.properties` and 145 other files of one live cluster,
+and the agent expands it when it starts the process. Such a placeholder does
+not affect the syntax of the file, and the file is collected as it is.
+
+Some files, however, are templates which a control script of the role renders
+on the host before anything reads them: the shared providers and descriptors
+of Knox, rendered by `deployTopologies.sh`, `setupKerberos.sh` and friends,
+and the Prometheus configuration of the Ozone roles, rendered by
+`prometheus_config_utils.sh`. Their placeholders often stand in for a whole
+block — Knox's bare `PROXYUSER_BLOCK,` is not JSON, and Ozone's
+`scrape_interval: {{SCRAPE_INTERVAL}}` is not YAML — and their values come from
+the environment of the control script.
+
+Cloudera Manager does not expose the rendered files nor that environment, but
+it does expose what the environment is made of: the service descriptor defines
+every environment variable of a role as a configuration parameter, e.g.
+`HADOOP_PROXYUSER_BLOCK` as `${hadoop_proxyuser_block}`. The CLI hence renders
+these templates the way the control scripts do, with the values taken from the
+role, its role config group, the service and Cloudera Manager, in that order of
+precedence (see `cloudera_templates.py`). The configuration of a role type
+without a role, such as the Ozone Prometheus, is read from the base role config
+group of that type, which exists regardless. On a Cloudera Runtime 7.3.2
+cluster, the Knox files rendered this way are identical to the ones Knox
+deploys, except for the location of the keytab, which depends on the process
+directory and is given as `{{CMF_CONF_DIR}}/knox.keytab`.
+
+A placeholder whose value is computed by a script from something Cloudera
+Manager does not expose, such as `CUSTOMIZABLE_AZURE_CAB_CONTENT` of the
+IDBroker, is replaced by a neutral value if, and only if, the file does not
+parse otherwise: a placeholder on a line of its own is removed, together with
+the comma it leaves dangling in JSON, and an inline one is quoted. A file
+which does not parse even then is skipped, since a parse error about a
+template is noise rather than a finding. A deployed file which is malformed for
+a reason other than a placeholder is still uploaded, and its parse error still
+reported.
 
 Cluster, service and role names as well as configuration file names end up
 both in the path of the requests and in the paths written below the temporary
@@ -630,9 +763,10 @@ in the cluster.
 Not while scanning. The scan and `coguard-cloudera-check` issue `GET` requests
 only. The one thing which writes is `coguard-cloudera-banner`, and all it
 writes is the `CUSTOM_BANNER_HTML` parameter of the Cloudera Manager service
-configuration, i.e. the text in the header — no service configuration, and
-nothing which requires a restart. It is a separate command, so a deployment
-which does not run it changes nothing at all.
+configuration — the text in the header — plus `CUSTOM_HEADER_COLOR` if
+`--header-color` asks for it. No service configuration, and nothing which
+requires a restart. It is a separate command, so a deployment which does not run
+it changes nothing at all.
 
 ### The connection fails with a certificate error. What do I do?
 

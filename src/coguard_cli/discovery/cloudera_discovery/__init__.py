@@ -6,7 +6,10 @@ Cloudera's model of a cluster containing services which in turn contain roles
 maps almost directly onto CoGuard's model of a cluster containing services. Each
 (Cloudera service, Cloudera role type) pair becomes one CoGuard cluster service,
 and the *generated* configuration files of a representative role instance of
-that type become its configuration file list.
+that type become its configuration file list. The files in there which configure
+a different piece of software -- the `ozone-site.xml` an HBase master is handed,
+for instance -- are split off into a cluster service of that software of their
+own, so that they are scanned with the rules which apply to them.
 """
 
 import json
@@ -22,15 +25,32 @@ import yaml
 from coguard_cli.check_common_util import replace_special_chars_with_underscore
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApi, ClouderaManagerApiError
+from coguard_cli.discovery.cloudera_discovery.cloudera_templates import \
+    TemplateContext, neutralize_placeholders, render_template
 from coguard_cli.discovery.cloudera_discovery.cloudera_service_mapping import \
     config_file_type, coguard_service_name, create_cluster_service_identifier, \
-    unreviewed_service_types
+    owning_software, unreviewed_service_types
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_YELLOW, COLOR_TERMINATION
 from coguard_cli.util import convert_string_to_posix_path
 
 # The state a role is in when it is running, and hence the state in which its
 # generated configuration is the one currently in effect.
 RUNNING_ROLE_STATE = "STARTED"
+
+# The state of a role which does not run a process by design: a gateway, which
+# only holds the client configuration of a host, or the HDFS balancer, which
+# runs as a command when it is asked to.
+NO_PROCESS_ROLE_STATE = "NA"
+
+# The states of a role which runs as a daemon, but is not running. A role in a
+# transitional state (`STARTING`, `STOPPING`, `BUSY`) is not counted, and
+# neither is one whose state Cloudera Manager does not know the history of.
+NOT_RUNNING_ROLE_STATES = ("STOPPED", "UNKNOWN")
+
+# The cluster rule of the CoGuard back-end which reports those roles, and the
+# file in the root of the upload through which the CLI reports cluster rules.
+ROLES_NOT_RUNNING_RULE = "cluster_cloudera_roles_not_running"
+FAILED_RULES_FILE_NAME = "failed_rules.json"
 
 # The two forms of placeholder Cloudera leaves in the files it hands out.
 #
@@ -195,31 +215,87 @@ def unreadable_template(content: str, file_type: str) -> Optional[str]:
     return None
 
 
+def readable_content(content: str,
+                     file_type: str,
+                     config_file_name: str,
+                     role_name: str) -> Optional[str]:
+    """
+    Returns the content of a file in a form its syntax accepts, and `None` if
+    there is none.
+
+    A file whose placeholders break its syntax, which a renderer of
+    `cloudera_templates` did not take care of, has its placeholders neutralized:
+    a block placeholder is removed and an inline one is quoted. Only if the file
+    is still unreadable after that is it skipped, since a parse error about a
+    template is noise rather than a finding.
+    """
+    placeholder = unreadable_template(content, file_type)
+    if placeholder is None:
+        return content
+    neutralized = neutralize_placeholders(content, file_type)
+    remaining_placeholder = unreadable_template(neutralized, file_type)
+    if remaining_placeholder is None:
+        logging.info(
+            "The placeholder `%s` of %s of role %s has no value Cloudera Manager "
+            "exposes, and was replaced by a neutral one to keep the file "
+            "readable as %s.",
+            placeholder,
+            config_file_name,
+            role_name,
+            file_type
+        )
+        return neutralized
+    logging.info(
+        "Skipping %s of role %s: the unresolved placeholder `%s` leaves it "
+        "unreadable as %s, even with neutral values in place of the "
+        "placeholders.",
+        config_file_name,
+        role_name,
+        remaining_placeholder,
+        file_type
+    )
+    return None
+
+
+# pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
 def collect_config_files_for_role(
         api: ClouderaManagerApi,
         cluster_name: str,
         service_name: str,
         role: Dict,
-        destination: str) -> List[Dict]:
+        destination: str,
+        cloudera_service_type: str = "") -> List[Dict]:
     """
     Retrieves all generated configuration files of a role which CoGuard is able
     to consume, stores them inside `destination`, and returns the resulting
     `configFileList` entries for the manifest.
+
+    All files are retrieved before any is rendered, since a template may draw
+    on another file of the role -- the Ozone Prometheus configuration in `aux/`
+    on the peer files in `ozone-conf/`, which sort after it.
     """
     role_name = role.get("name")
     process = api.get_role_process(cluster_name, service_name, role_name)
     if not process:
-        logging.info(
-            "No process information available for role %s. It has most likely "
-            "never been started, and hence has no generated configuration.",
-            role_name
-        )
+        if role.get("roleState") == NO_PROCESS_ROLE_STATE:
+            logging.debug(
+                "Role %s does not run a process, and hence has no generated "
+                "configuration of its own.",
+                role_name
+            )
+        else:
+            logging.info(
+                "No process information available for role %s. It has most "
+                "likely never been started, and hence has no generated "
+                "configuration.",
+                role_name
+            )
         return []
     config_file_names = process.get("configFiles", []) or []
     logging.debug("Role %s reported %s configuration files.",
                   role_name,
                   len(config_file_names))
-    config_file_list = []
+    retrieved_files: Dict[str, Tuple[str, pathlib.Path, str]] = {}
     for config_file_name in sorted(config_file_names):
         file_type = config_file_type(config_file_name)
         if file_type is None:
@@ -244,17 +320,27 @@ def collect_config_files_for_role(
                             config_file_name,
                             role_name)
             continue
-        placeholder = unreadable_template(content, file_type)
-        if placeholder is not None:
-            logging.info(
-                "Skipping %s of role %s: the unresolved placeholder `%s` leaves "
-                "it unreadable as %s, which makes it a template a configuration "
-                "is generated from rather than a generated configuration.",
-                config_file_name,
-                role_name,
-                placeholder,
-                file_type
-            )
+        retrieved_files[config_file_name] = (file_type, target_file, content)
+    context = TemplateContext(
+        api,
+        cluster_name,
+        service_name,
+        role,
+        {name: content for name, (_, _, content) in retrieved_files.items()}
+    )
+    config_file_list = []
+    for config_file_name, (file_type, target_file, content) in \
+            retrieved_files.items():
+        content = readable_content(
+            render_template(cloudera_service_type,
+                            config_file_name,
+                            content,
+                            context),
+            file_type,
+            config_file_name,
+            role_name
+        )
+        if content is None:
             continue
         relative_path = pathlib.PurePosixPath(config_file_name)
         sub_path = str(relative_path.parent)
@@ -268,6 +354,92 @@ def collect_config_files_for_role(
             "configFileType": file_type
         })
     return config_file_list
+
+
+def unique_identifier(base_identifier: str,
+                      cluster_services: Dict[str, Dict]) -> str:
+    """
+    Returns `base_identifier`, or, if a cluster service of that name exists
+    already, the first of `base_identifier_0`, `base_identifier_1`, ... which
+    does not.
+    """
+    identifier = base_identifier
+    duplicate_index = 0
+    while identifier in cluster_services:
+        identifier = f"{base_identifier}_{duplicate_index}"
+        duplicate_index += 1
+    return identifier
+
+
+def split_by_owning_software(config_file_list: List[Dict],
+                             role_software: str) -> Dict[str, List[Dict]]:
+    """
+    Groups the `configFileList` entries of a role by the software they configure.
+    Files which do not identify any software belong to the role itself, and are
+    listed under `role_software`, which always comes first if present.
+
+    Cloudera hands a role the client configuration of every service it talks to,
+    so an HBase master carries an `ozone-site.xml`, and an Atlas server carries
+    the `hbase-site.xml` of the HBase it stores its data in. Left in the cluster
+    service of the role, those files would only ever be looked at with the rules
+    of the role's software.
+    """
+    result = {role_software: []}
+    for entry in config_file_list:
+        software = owning_software(entry["fileName"]) or role_software
+        result.setdefault(software, []).append(entry)
+    if not result[role_software]:
+        del result[role_software]
+    return result
+
+
+def relocate_config_files(config_file_list: List[Dict],
+                          source_folder: str,
+                          destination_folder: str) -> None:
+    """
+    Moves the files of the given `configFileList` entries from the folder of one
+    cluster service to the one of another, keeping their sub paths, and removes
+    the directories left empty behind.
+    """
+    for entry in config_file_list:
+        relative_path = os.path.normpath(
+            os.path.join(entry["subPath"], entry["fileName"])
+        )
+        os.renames(os.path.join(source_folder, relative_path),
+                   os.path.join(destination_folder, relative_path))
+
+
+def roles_not_running(roles: List[Dict]) -> List[str]:
+    """
+    Returns the names of the roles which run as a daemon, but are not running.
+
+    Every instance counts, not only the one chosen to represent its role type:
+    one stopped DataNode out of four still has its configuration out of sight,
+    and the cluster below the redundancy it was planned with.
+    """
+    return sorted(
+        role.get("name") for role in roles
+        if role.get("name") and role.get("roleState") in NOT_RUNNING_ROLE_STATES
+    )
+
+
+def report_roles_not_running(final_location: str,
+                             not_running: List[str]) -> None:
+    """
+    Points out the roles which are not running, and reports the cluster rule
+    for them through the `failed_rules.json` in the root of the extraction, which
+    becomes the root of the upload. The rule itself can only carry a fixed text,
+    which is why the roles are listed here.
+    """
+    if not not_running:
+        return
+    print(f"{COLOR_YELLOW}The following roles are not running, so their "
+          f"configuration as deployed could not be verified:{COLOR_TERMINATION}")
+    for role_name in not_running:
+        print(f"{COLOR_YELLOW} - {role_name}{COLOR_TERMINATION}")
+    with open(os.path.join(final_location, FAILED_RULES_FILE_NAME), "w",
+              encoding='utf-8') as failed_rules_file:
+        json.dump([ROLES_NOT_RUNNING_RULE], failed_rules_file)
 
 
 # pylint: disable=too-many-locals
@@ -337,6 +509,7 @@ def extract_cloudera_cluster_representation(
         "clusterServices": {}
     }
     cluster_services = manifest_blueprint["clusterServices"]
+    not_running = []
     for service in sorted(services, key=lambda entry: entry.get("name") or ""):
         service_name = service.get("name")
         service_type = service.get("type")
@@ -346,14 +519,12 @@ def extract_cloudera_cluster_representation(
         if not roles:
             logging.info("Service %s has no roles. Skipping.", service_name)
             continue
+        not_running.extend(roles_not_running(roles))
         for role_type, role in sorted(group_roles_by_type(roles).items()):
-            base_identifier = create_cluster_service_identifier(service_name,
-                                                               role_type)
-            identifier = base_identifier
-            duplicate_index = 0
-            while identifier in cluster_services:
-                identifier = f"{base_identifier}_{duplicate_index}"
-                duplicate_index += 1
+            identifier = unique_identifier(
+                create_cluster_service_identifier(service_name, role_type),
+                cluster_services
+            )
             service_folder = os.path.join(
                 final_location,
                 "clusterServices",
@@ -365,27 +536,50 @@ def extract_cloudera_cluster_representation(
                 cluster_name,
                 service_name,
                 role,
-                service_folder
+                service_folder,
+                service_type
             )
             if not config_file_list:
-                logging.info(
-                    "No consumable configuration files found for %s. Skipping.",
-                    identifier
-                )
+                # A role which does not run a process has nothing to report.
+                log = logging.debug \
+                    if role.get("roleState") == NO_PROCESS_ROLE_STATE \
+                    else logging.info
+                log("No consumable configuration files found for %s. Skipping.",
+                    identifier)
                 os.rmdir(service_folder)
                 continue
-            print(f"{COLOR_CYAN} Extracted {len(config_file_list)} "
-                  f"configuration files for{COLOR_TERMINATION} {identifier}")
-            cluster_services[identifier] = {
-                "version": "1.0",
-                "serviceName": coguard_service_name(service_type),
-                "configFileList": config_file_list,
-                "complimentaryFileList": []
-            }
+            role_software = coguard_service_name(service_type)
+            files_by_software = split_by_owning_software(config_file_list,
+                                                         role_software)
+            for software, software_file_list in files_by_software.items():
+                if software == role_software:
+                    software_identifier = identifier
+                else:
+                    software_identifier = unique_identifier(
+                        f"{identifier}_{software}",
+                        cluster_services
+                    )
+                    relocate_config_files(
+                        software_file_list,
+                        service_folder,
+                        os.path.join(final_location,
+                                     "clusterServices",
+                                     software_identifier)
+                    )
+                print(f"{COLOR_CYAN} Extracted {len(software_file_list)} "
+                      f"configuration files for{COLOR_TERMINATION} "
+                      f"{software_identifier}")
+                cluster_services[software_identifier] = {
+                    "version": "1.0",
+                    "serviceName": software,
+                    "configFileList": software_file_list,
+                    "complimentaryFileList": []
+                }
     if not cluster_services:
         print(f"{COLOR_YELLOW}No configuration files could be extracted from "
               f"the cluster {cluster_name}.{COLOR_TERMINATION}")
         return None
+    report_roles_not_running(final_location, not_running)
     with open(os.path.join(final_location, "manifest.json"), "w",
               encoding='utf-8') as manifest_file:
         json.dump(manifest_blueprint, manifest_file)

@@ -88,6 +88,21 @@ WATCHED_EVENT_CODES = (
     "EV_HOST_TEMPLATE_APPLIED",
     "EV_PARCEL_ACTIVATE"
 )
+# The codes whose events are only about a cluster when they say which one. A
+# revision of the configuration of Cloudera Manager *itself* -- its banner, its
+# header colour, the address it sends alerts from -- is reported with the same
+# code as a revision of a service of a cluster, and is told apart from it only by
+# having no `CLUSTER` attribute. Such a revision cannot change the generated
+# configuration files of any role, so it is not a reason to scan.
+#
+# This also keeps the integration from chasing its own tail:
+# `coguard-cloudera-banner` writes the result of a scan into the configuration of
+# Cloudera Manager, which produces exactly such a revision, which without this
+# would be read as a change at the next check, which would scan, which would
+# write the banner again. Filtering by the parameter which changed is not
+# possible, by the way: the `content` of these events is
+# "User admin created a new revision. Message was: null."
+CODES_REQUIRING_A_CLUSTER = ("EV_REVISION_CREATED",)
 DEFAULT_STATE_FILE = str(pathlib.Path.home().joinpath(
     '.config',
     'coguard-cli',
@@ -295,6 +310,23 @@ def event_cluster(event: Dict) -> Optional[str]:
         or event_attribute(event, "CLUSTER_DISPLAY_NAME")
 
 
+def is_about_cluster(event: Dict, cluster_name: str) -> bool:
+    """
+    Whether an event is a reason to scan this cluster.
+
+    An event which names a cluster is about that one. An event which names none
+    is about the deployment as a whole and is kept, since a parcel is activated
+    without one -- unless its code is one which always names the cluster when it
+    is about a cluster at all, in which case the absence means that the event is
+    about Cloudera Manager itself. See `CODES_REQUIRING_A_CLUSTER`.
+    """
+    cluster = event_cluster(event)
+    if cluster is not None:
+        return cluster == cluster_name
+    code = event_attribute(event, "EVENTCODE")
+    return code not in CODES_REQUIRING_A_CLUSTER
+
+
 def describe_event(event: Dict) -> str:
     """
     States an event in words, so that the log of the check says what it reacted
@@ -376,8 +408,7 @@ def poll_events(api: ClouderaManagerApi,
                 newest = timestamp
             if not is_newer(timestamp, watermark):
                 continue
-            cluster = event_cluster(item)
-            if cluster is not None and cluster != cluster_name:
+            if not is_about_cluster(item, cluster_name):
                 continue
             events.append(item)
     events.sort(key=event_time, reverse=True)

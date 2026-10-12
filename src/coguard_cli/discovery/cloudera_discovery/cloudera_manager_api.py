@@ -271,12 +271,15 @@ class ClouderaManagerApi:
             logging.debug("Request to %s failed: %s", url, err)
             return None
 
-    def _get_items(self, *path_segments: str) -> List[Dict]:
+    def _get_items(self,
+                   *path_segments: str,
+                   query_parameters: Optional[Dict[str, object]] = None
+                   ) -> List[Dict]:
         """
         Performs a GET request and returns the `items` list of the Cloudera
         Manager response envelope.
         """
-        response = self._get(*path_segments)
+        response = self._get(*path_segments, query_parameters=query_parameters)
         if response is None:
             return []
         try:
@@ -404,6 +407,84 @@ class ClouderaManagerApi:
         if response is None:
             return None
         return response.text
+
+    def _get_config(self, *path_segments: str) -> Dict[str, Dict]:
+        """
+        Retrieves a configuration resource in its `full` view, and returns its
+        parameters keyed by name. Each parameter is the record Cloudera Manager
+        returns, which carries a `value` only if the parameter is set at this
+        level, and a `default` if the descriptor defines one. The distinction is
+        what lets a value set on a role config group or on the service shine
+        through a role which merely reports the default.
+        """
+        return {
+            item["name"]: item
+            for item in self._get_items(*path_segments,
+                                        query_parameters={"view": "full"})
+            if isinstance(item, dict) and item.get("name")
+        }
+
+    def get_service_config(self,
+                           cluster_name: str,
+                           service_name: str) -> Dict[str, Dict]:
+        """
+        Returns the service-wide configuration parameters of a service.
+        """
+        return self._get_config(
+            "clusters", cluster_name,
+            "services", service_name,
+            "config"
+        )
+
+    def list_role_config_groups(self,
+                                cluster_name: str,
+                                service_name: str) -> List[Dict]:
+        """
+        Returns the role config groups of a service. A service has a base group
+        for every role type its descriptor defines, whether or not a role of that
+        type has been added to the cluster.
+        """
+        return self._get_items(
+            "clusters", cluster_name,
+            "services", service_name,
+            "roleConfigGroups"
+        )
+
+    def get_role_config_group_config(self,
+                                     cluster_name: str,
+                                     service_name: str,
+                                     role_config_group_name: str
+                                     ) -> Dict[str, Dict]:
+        """
+        Returns the configuration parameters of a role config group.
+        """
+        return self._get_config(
+            "clusters", cluster_name,
+            "services", service_name,
+            "roleConfigGroups", role_config_group_name,
+            "config"
+        )
+
+    def get_role_config(self,
+                        cluster_name: str,
+                        service_name: str,
+                        role_name: str) -> Dict[str, Dict]:
+        """
+        Returns the configuration parameters set on a role itself.
+        """
+        return self._get_config(
+            "clusters", cluster_name,
+            "services", service_name,
+            "roles", role_name,
+            "config"
+        )
+
+    def get_cloudera_manager_config(self) -> Dict[str, Dict]:
+        """
+        Returns the configuration of Cloudera Manager itself, which holds the
+        settings shared by all clusters, such as the Kerberos realm.
+        """
+        return self._get_config("cm", "config")
 
     def list_events(self,
                     query: str,

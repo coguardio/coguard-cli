@@ -60,6 +60,16 @@ attributes: REVISION, USER, CLUSTER, SERVICE, SERVICE_TYPE, ROLE,
             ROLE_CONFIG_GROUP, HOSTS, EVENTCODE, URL
 ```
 
+A revision which names **no** cluster is a change to the configuration of
+Cloudera Manager *itself* — its banner, its header colour, the address it sends
+alerts from — and is ignored, because it cannot change the generated
+configuration files of any role. That is also what keeps the integration from
+chasing its own tail: `coguard-cloudera-banner` writes into that configuration,
+which produces such a revision, which would otherwise be read as a change at the
+next check, which would scan, which would write the banner again. Filtering by
+the parameter which changed is not an option, by the way — the `content` of those
+events is `User admin created a new revision. Message was: null.`
+
 The codes in `WATCHED_EVENT_CODES` are that event plus the moments at which a
 change takes effect or the topology grows: the restart codes, the
 creation and deletion of services and roles, `EV_HOST_TEMPLATE_APPLIED`, and
@@ -166,33 +176,75 @@ coguard-cloudera-banner \
 This reads the `result.json` a scan wrote and puts a summary of it into the
 header of Cloudera Manager:
 
-> **CoGuard: 89 configuration findings of ozone-base-cluster (44 High, 35
-> Medium, 10 Low), affecting ozone_datanode (11), ozone_manager (11),
-> ozone_recon (11), ozone_s3_gateway (11),
-> ozone_storage_container_manager (11) and 12 further services. Scanned
-> 2026-09-08 18:57 UTC.** [Full report](https://portal.coguard.io/dashboard).
+```
+CoGuard: 89 configuration findings of ozone-base-cluster (44 High, 35 Medium,
+10 Low), affecting ozone_datanode (11), ozone_manager (11), ozone_recon (11),
+ozone_s3_gateway (11), ozone_storage_container_manager (11) and 12 further
+services. Scanned 2026-09-08 18:57 UTC. Full report:
+https://portal.coguard.io/dashboard
+```
 
 The point is that the people who administer the cluster see the state of its
 configuration in the place where they administer it, rather than only in a
-portal they have to remember to open. A clean result is shown too, in green,
-because "no findings" and "no scan ran" are worth telling apart.
+portal they have to remember to open. A clean result is shown too, because "no
+findings" and "no scan ran" are worth telling apart.
 
 The parameter written is `CUSTOM_BANNER_HTML` of the Cloudera Manager service
-configuration, which Cloudera provides for exactly this purpose and renders as
-raw HTML on every page. Three things follow from that:
+configuration, which Cloudera provides for exactly this purpose. Three things
+follow from what that parameter actually is:
 
-* **Everything taken from the result is HTML-escaped.** Service names, rule
-  names and file names all come from data and all end up inside markup which is
-  rendered on every page for every user.
+* **What goes in is plain text, in spite of the name.** Cloudera Manager 7.13
+  escapes the value and shows it verbatim, so markup put in it is shown as
+  markup; Cloudera's own validation calls it "the Custom Banner Text parameter".
+  Plain text is also the only form which survives both behaviours. There is
+  therefore no colour to signal with, so the line says whether there are
+  findings before it says anything else, and the address of the report is written
+  out rather than linked. Values taken from the result have `<` and `>` removed,
+  so that a service name cannot become markup on a version which renders the
+  value.
 * **The banner is shared.** A customer may already display something in it, and
-  that text is not ours to remove. The region written here is delimited by
-  `<!--coguard:start-->` and `<!--coguard:end-->`; the current value is read
-  first, and only the region between the delimiters is replaced. Running the
-  command twice leaves one block, not two, and `--clear` removes the region and
-  nothing else.
+  that text is not ours to remove. The region written here runs from `CoGuard:`
+  to the end of the value, i.e. this command writes last and keeps what is in
+  front of it. Running the command twice leaves one summary, not two, and
+  `--clear` removes the region and the separator in front of it and nothing else.
+  A banner left by the earlier version of this command, which used
+  `<!--coguard:start-->` and `<!--coguard:end-->`, is recognised and replaced.
 * **It stays short.** It is a header, not a report. Only the counts and the
   worst affected services are named, capped by `--max-services`, with the detail
-  left to the report the banner links to.
+  left to the report the banner points to.
+
+### The colour is one level up
+
+The colour the banner text cannot have is available on the header bar the banner
+sits in. `CUSTOM_HEADER_COLOR` is what Cloudera Manager tints that bar with, and
+`--header-color` makes it follow the scan:
+
+```shell
+coguard-cloudera-banner \
+    --cloudera-manager-url https://cm.example.com \
+    --cloudera-manager-user coguard-admin \
+    --header-color RED
+```
+
+Red while there are findings, back to `--header-color-clean` once there are none.
+That is the difference between a line of text somebody may read and a page nobody
+can open without noticing.
+
+It is off by default, and it puts the colour back only while the header still has
+the colour it set, because Cloudera provides that parameter to "distinguish
+different instances of Cloudera Manager" and a customer may be using it for
+exactly that. An instance which is normally recognised by its colour should name
+that colour as `--header-color-clean`.
+
+The accepted values are `BLACK`, `GRAY`, `RED`, `YELLOW`, `GREEN`, `TEAL`,
+`BLUE`, `PURPLE`, `PINK` and `BROWN`. The API does not publish them — not one of
+the 282 parameters of the resource comes with `validValues` — and neither does
+the documentation, so they were read off the assets the header is built from:
+Cloudera Manager ships one `favicon-<COLOUR>.png` per value.
+
+Both parameters go into a single request, because one request is one configuration
+revision, and writing them separately would appear in the event feed and in the
+audit trail as two changes where an operator made none.
 
 | Option                | Default        | Description                                                                        |
 |-----------------------|----------------|------------------------------------------------------------------------------------|
@@ -200,7 +252,9 @@ raw HTML on every page. Three things follow from that:
 | `--minimum-severity`  | `1`            | Only count findings at or above this severity, i.e. all of them by default.          |
 | `--max-services`      | `5`            | How many affected services to name before summarizing the rest as a count.           |
 | `--report-url`        | —              | What the "Full report" link points at, e.g. the cluster in the CoGuard portal.        |
-| `--clear`             | off            | Remove the CoGuard region from the banner. No scan result is read.                    |
+| `--header-color`      | off            | Colour the header bar in this colour while there are findings. The header is not touched at all without it. |
+| `--header-color-clean`| `BLACK`        | What the header goes back to once there are none. Cloudera Manager's own default.     |
+| `--clear`             | off            | Remove the CoGuard region from the banner, and put the header colour back. No scan result is read. |
 | `--dry-run`           | off            | Print the banner which would be written, and write nothing.                          |
 
 The connection options are the same ones as above. **This is the one command of
@@ -221,7 +275,9 @@ A oneshot service and a timer. The state file is pointed at
 `StateDirectory=`, so that it survives and is not looked for in a home
 directory the unit cannot see; `ProtectHome=true` works because the CoGuard
 account is taken from `COGUARD_USER_NAME` and `COGUARD_PASSWORD` when both
-are set.
+are set. An account with several CoGuard organizations needs
+`COGUARD_ORGANIZATION` as well: interactively the CLI asks which organization
+a scan belongs to, and a unit has nobody to ask.
 
 ```ini
 # /etc/systemd/system/coguard-cloudera-check.service
@@ -236,6 +292,8 @@ User=coguard
 # 0600, owned by root, holding CLOUDERA_MANAGER_PASSWORD and the CoGuard
 # account as COGUARD_USER_NAME and COGUARD_PASSWORD.
 EnvironmentFile=/etc/coguard/cloudera.env
+# Only needed if the CoGuard account has more than one organization.
+Environment=COGUARD_ORGANIZATION=example
 StateDirectory=coguard
 ExecStart=/usr/local/bin/coguard-cloudera-check \
     --cloudera-manager-url https://cm.example.com \
@@ -287,13 +345,27 @@ ExecStartPost=-/usr/local/bin/coguard-cloudera-banner \
     --cloudera-manager-url https://cm.example.com \
     --cloudera-manager-user coguard-admin \
     --result-file /var/lib/coguard/result.json \
-    --report-url https://portal.coguard.io/dashboard
+    --report-url https://portal.coguard.io/dashboard \
+    --header-color RED
 ```
 
 The banner needs its own, more privileged credential, which
 `CLOUDERA_MANAGER_PASSWORD` in a shared `EnvironmentFile=` cannot express. Give
 the banner a `--credentials-file` of its own, or run it from a second unit whose
 `EnvironmentFile=` holds the administrator password.
+
+### Or as a Cloudera service
+
+[`csd/configuration_assurance`](../../../csd) is a custom service descriptor which
+runs `coguard-cloudera-check` as a role of a Cloudera service instead, so that
+Cloudera Manager is both the scheduler and the place the result is shown: the role
+stays up while the checks come back clean and exits non-zero when a scan reports
+findings, which is what Cloudera Manager renders as a red badge on the service and
+as bad cluster health. It is a jar in `/opt/cloudera/csd` and a restart of the
+Cloudera Manager server, and the parameters of the service are the options above.
+[`csd/README.md`](../../../csd/README.md) has the installation and the limits of
+that mechanism — chiefly that a CSD cannot declare a health test of its own, so the
+badge lands on that service rather than on the service a finding belongs to.
 
 ## Working on this package
 
