@@ -67,10 +67,14 @@ from coguard_cli.print_colors import COLOR_CYAN, COLOR_RED, \
 
 # The events which mean that the configuration of the cluster is, or is about to
 # be, a different one than at the last check. `EV_REVISION_CREATED` is the change
-# to a configuration parameter, the restart codes are the point at which a change
-# reaches the running processes, the creation codes are a service or role which
-# was not there before, and `EV_PARCEL_ACTIVATE` is a new software version, whose
-# generated configuration files are new as well.
+# to a configuration parameter, the restart and start codes are the point at which
+# a change reaches the running processes, the stop codes take a role out of
+# reach of the scan, the creation codes are a service or role which was not there
+# before, and `EV_PARCEL_ACTIVATE` is a new software version, whose generated
+# configuration files are new as well. A role which stops or starts also changes
+# what the scan reports about the roles which are not running.
+#
+# Every code below was observed on Cloudera Manager 7.13 with Runtime 7.3.2.
 #
 # An event code Cloudera Manager does not know is not an error: the query simply
 # matches nothing. A code which is missing from this list, on the other hand, is
@@ -81,6 +85,10 @@ WATCHED_EVENT_CODES = (
     "EV_CLUSTER_RESTARTED",
     "EV_SERVICE_RESTARTED",
     "EV_ROLE_RESTARTED",
+    "EV_SERVICE_STARTED",
+    "EV_SERVICE_STOPPED",
+    "EV_ROLE_STARTED",
+    "EV_ROLE_STOPPED",
     "EV_SERVICE_CREATED",
     "EV_SERVICE_DELETED",
     "EV_ROLE_CREATED",
@@ -315,19 +323,28 @@ def event_cluster(event: Dict) -> Optional[str]:
         or event_attribute(event, "CLUSTER_DISPLAY_NAME")
 
 
-def is_about_cluster(event: Dict, cluster_name: str) -> bool:
+def is_about_cluster(event: Dict,
+                     cluster_name: str,
+                     management_service: Optional[str] = None) -> bool:
     """
     Whether an event is a reason to scan this cluster.
 
     An event which names a cluster is about that one. An event which names none
-    is about the deployment as a whole and is kept, since a parcel is activated
-    without one -- unless its code is one which always names the cluster when it
-    is about a cluster at all, in which case the absence means that the event is
-    about Cloudera Manager itself. See `CODES_REQUIRING_A_CLUSTER`.
+    is about the deployment as a whole and is kept -- the creation of a service
+    of the cluster names no cluster either -- unless
+
+    - its code is one which always names the cluster when it is about a cluster
+      at all, in which case the absence means that the event is about Cloudera
+      Manager itself (see `CODES_REQUIRING_A_CLUSTER`), or
+    - it is about the Cloudera Management Service, whose starts and restarts name
+      no cluster because the service belongs to none.
     """
     cluster = event_cluster(event)
     if cluster is not None:
         return cluster == cluster_name
+    if management_service and \
+       event_attribute(event, "SERVICE") == management_service:
+        return False
     code = event_attribute(event, "EVENTCODE")
     return code not in CODES_REQUIRING_A_CLUSTER
 
@@ -369,7 +386,8 @@ def describe_events(events: List[Dict]) -> str:
 def poll_events(api: ClouderaManagerApi,
                 cluster_name: str,
                 event_codes: List[str],
-                watermark: Optional[str]) -> Optional[Dict]:
+                watermark: Optional[str],
+                management_service: Optional[str] = None) -> Optional[Dict]:
     """
     Asks Cloudera Manager for the newest events of each watched code and returns
     the ones which are newer than the watermark and belong to this cluster,
@@ -413,7 +431,7 @@ def poll_events(api: ClouderaManagerApi,
                 newest = timestamp
             if not is_newer(timestamp, watermark):
                 continue
-            if not is_about_cluster(item, cluster_name):
+            if not is_about_cluster(item, cluster_name, management_service):
                 continue
             events.append(item)
     events.sort(key=event_time, reverse=True)
@@ -513,7 +531,8 @@ def perform_check(api: ClouderaManagerApi,
         api,
         cluster_name,
         args.event_codes or list(WATCHED_EVENT_CODES),
-        state.get("lastEventAt")
+        state.get("lastEventAt"),
+        api.get_management_service_name()
     )
     if poll_result is None:
         print(f"{COLOR_RED}Could not read the events of the cluster "

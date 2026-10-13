@@ -2,7 +2,9 @@
 Tests for the `coguard-cloudera-banner` entry point.
 """
 
+import datetime
 import json
+import os
 import pathlib
 import tempfile
 import unittest
@@ -871,6 +873,26 @@ class ArgumentParserTest(unittest.TestCase):
             )
         self.assertIn("ozone_manager (1)", block)
         self.assertTrue(has_findings)
+
+
+    def test_the_banner_carries_the_time_of_the_scan(self):
+        """
+        The time in the banner is the one at which the scan wrote its result,
+        not the one at which the banner is written.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            path = result_file(directory, [finding()])
+            scanned = datetime.datetime(2026, 10, 13, 19, 57, 52,
+                                        tzinfo=datetime.timezone.utc)
+            os.utime(path, (scanned.timestamp(), scanned.timestamp()))
+            self.assertEqual(banner.scan_time(path), scanned)
+            block, _ = banner.determine_block(
+                arguments(["--result-file", path]),
+                "ozone-base-cluster"
+            )
+        self.assertIn("Scanned 2026-10-13 19:57 UTC.", block)
+        clean = banner.render_block([], "ozone-base-cluster", None, 5, scanned)
+        self.assertIn("(scanned 2026-10-13 19:57 UTC)", clean)
 
 
 class DesiredHeaderColorTest(unittest.TestCase):

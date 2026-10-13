@@ -383,6 +383,27 @@ class TestClouderaManagerApi(unittest.TestCase):
             "roleConfigGroups/ozone-OZONE_PROMETHEUS-BASE/config?view=full"
         )
 
+    def test_get_management_service_name(self):
+        """
+        The name of the Cloudera Management Service is read from `/cm/service`,
+        and an answer without one, or none at all, is `None`.
+        """
+        api = _create_api()
+        api._session.get.return_value = _create_response(
+            json_value={"name": "mgmt", "type": "MGMT"}
+        )
+        self.assertEqual(api.get_management_service_name(), "mgmt")
+        self.assertEqual(api._session.get.call_args.args[0],
+                         "https://cm.example.com/api/v58/cm/service")
+        api._session.get.return_value = _create_response(json_value={})
+        self.assertIsNone(api.get_management_service_name())
+        api._session.get.return_value = _create_response(text="not json")
+        self.assertIsNone(api.get_management_service_name())
+        api._session.get.return_value = _create_response(status_code=404)
+        api._session.get.return_value.raise_for_status.side_effect = \
+            requests.HTTPError("404")
+        self.assertIsNone(api.get_management_service_name())
+
     def test_config_resource_urls(self):
         """
         The service, role and Cloudera Manager configurations, and the role

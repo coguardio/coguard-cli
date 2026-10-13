@@ -71,9 +71,12 @@ the parameter which changed is not an option, by the way — the `content` of th
 events is `User admin created a new revision. Message was: null.`
 
 The codes in `WATCHED_EVENT_CODES` are that event plus the moments at which a
-change takes effect or the topology grows: the restart codes, the
-creation and deletion of services and roles, `EV_HOST_TEMPLATE_APPLIED`, and
-`EV_PARCEL_ACTIVATE` for a new software version. `--event-code` replaces the
+change takes effect or the topology changes: the restart codes, the start and
+stop codes of services and roles, the creation and deletion of services and
+roles, `EV_HOST_TEMPLATE_APPLIED`, and `EV_PARCEL_ACTIVATE` for a new software
+version. All of them were observed on Cloudera Manager 7.13; the starts and
+restarts of the Cloudera Management Service, which
+belongs to no cluster, are ignored. `--event-code` replaces the
 list, so a cluster which reports a change through another code can be
 followed without a new release; a code Cloudera Manager does not know simply
 matches nothing.

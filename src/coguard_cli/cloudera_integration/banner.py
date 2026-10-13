@@ -221,6 +221,19 @@ def read_result(result_file: str) -> Optional[Dict]:
     return result
 
 
+def scan_time(result_file: str) -> datetime.datetime:
+    """
+    When the scan behind a result file ran. The result JSON carries no timestamp
+    of its own, but `coguard` writes it as soon as the scan is done, so the time
+    the file was last written is the time of the scan -- and not the time this
+    command happens to run, which may well be later.
+    """
+    return datetime.datetime.fromtimestamp(
+        pathlib.Path(result_file).stat().st_mtime,
+        datetime.timezone.utc
+    )
+
+
 def failed_findings(result: Dict, minimum_severity: int) -> List[Dict]:
     """
     Returns the failed checks of a result which are at or above a severity.
@@ -288,7 +301,8 @@ def plain(value: str) -> str:
 def render_block(findings: List[Dict],
                  cluster_name: Optional[str],
                  report_url: Optional[str],
-                 max_services: int) -> str:
+                 max_services: int,
+                 scanned: Optional[datetime.datetime] = None) -> str:
     """
     Renders the region of the banner this command owns, as one line of plain
     text beginning with the marker.
@@ -296,9 +310,8 @@ def render_block(findings: List[Dict],
     There is no colour to signal with, so the first thing the line says is
     whether there are findings or not.
     """
-    scanned_at = datetime.datetime.now(datetime.timezone.utc).strftime(
-        "%Y-%m-%d %H:%M UTC"
-    )
+    scanned_at = (scanned or datetime.datetime.now(datetime.timezone.utc)) \
+        .astimezone(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     where = f" of {plain(cluster_name)}" if cluster_name else ""
     if not findings:
         headline = (
@@ -505,7 +518,8 @@ def determine_block(args: argparse.Namespace,
         findings,
         cluster_name,
         args.report_url,
-        max(1, args.max_services)
+        max(1, args.max_services),
+        scan_time(args.result_file)
     ), bool(findings)
 
 

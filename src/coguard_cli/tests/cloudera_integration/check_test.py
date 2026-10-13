@@ -238,6 +238,47 @@ class TestClouderaCheck(unittest.TestCase):
             check.is_about_cluster(event(cluster=None), "ozone-base-cluster")
         )
 
+    def test_an_event_of_the_management_service_is_not_about_the_cluster(self):
+        """
+        The Cloudera Management Service belongs to no cluster, so its starts and
+        restarts name none, as observed on Cloudera Manager 7.13. They are not a
+        reason to scan, while the creation of a service of the cluster, which
+        names no cluster either, still is.
+        """
+        def lifecycle_event(code, service):
+            result = event(code=code, cluster=None, service_name=None)
+            result["attributes"].append({"name": "SERVICE", "values": [service]})
+            return result
+        for code in ("EV_SERVICE_STARTED", "EV_SERVICE_RESTARTED"):
+            self.assertFalse(check.is_about_cluster(
+                lifecycle_event(code, "mgmt"), "ozone-base-cluster", "mgmt"
+            ))
+        self.assertTrue(check.is_about_cluster(
+            lifecycle_event("EV_SERVICE_CREATED", "knox"),
+            "ozone-base-cluster", "mgmt"
+        ))
+        # Without knowing the name of the Management Service, nothing is dropped.
+        self.assertTrue(check.is_about_cluster(
+            lifecycle_event("EV_SERVICE_STARTED", "mgmt"), "ozone-base-cluster"
+        ))
+        # An event which names the cluster is about it, whatever its service.
+        self.assertTrue(check.is_about_cluster(
+            event(code="EV_ROLE_STOPPED"), "ozone-base-cluster", "ozone"
+        ))
+
+    def test_poll_events_ignores_the_management_service(self):
+        """
+        The name of the Management Service is handed to the cluster filter.
+        """
+        mgmt_start = event(code="EV_SERVICE_STARTED", cluster=None,
+                           service_name=None)
+        mgmt_start["attributes"].append({"name": "SERVICE", "values": ["mgmt"]})
+        api = api_with({"EV_SERVICE_STARTED": [mgmt_start]})
+        result = check.poll_events(api, "ozone-base-cluster",
+                                   ["EV_SERVICE_STARTED"], None, "mgmt")
+        self.assertEqual(result["events"], [])
+        self.assertEqual(result["newest"], mgmt_start["timeOccurred"])
+
     def test_a_change_to_cloudera_manager_itself_is_not_a_reason_to_scan(self):
         """
         The banner this integration writes is a revision of the configuration of
@@ -852,3 +893,8 @@ class TestClouderaCheck(unittest.TestCase):
         """
         self.assertIn("EV_REVISION_CREATED", check.WATCHED_EVENT_CODES)
         self.assertIn("EV_SERVICE_RESTARTED", check.WATCHED_EVENT_CODES)
+        # A role which stops or starts changes what the scan reports about the
+        # roles which are not running.
+        for code in ("EV_ROLE_STARTED", "EV_ROLE_STOPPED",
+                     "EV_SERVICE_STARTED", "EV_SERVICE_STOPPED"):
+            self.assertIn(code, check.WATCHED_EVENT_CODES)

@@ -130,6 +130,8 @@ One query is issued per watched event code:
 |----------------------------------------------------------------|------------------------------------------------------|
 | `EV_REVISION_CREATED`                                          | A configuration parameter was set to a new value.     |
 | `EV_CLUSTER_RESTARTED`, `EV_SERVICE_RESTARTED`, `EV_ROLE_RESTARTED` | A change reached the running processes, i.e. the generated configuration files are now the ones in force. |
+| `EV_SERVICE_STARTED`, `EV_ROLE_STARTED`                        | A process came up, with whatever configuration was changed while it was down. |
+| `EV_SERVICE_STOPPED`, `EV_ROLE_STOPPED`                        | A process went down, so its configuration is out of reach of the scan, and [`cluster_cloudera_roles_not_running`](#which-files-are-collected) changes. |
 | `EV_SERVICE_CREATED`, `EV_SERVICE_DELETED`, `EV_ROLE_CREATED`, `EV_ROLE_DELETED`, `EV_HOST_TEMPLATE_APPLIED` | The cluster has a service or role it did not have before, or lost one. |
 | `EV_PARCEL_ACTIVATE`                                           | A new software version, whose generated configuration files are new as well. |
 
@@ -137,6 +139,24 @@ One query is issued per watched event code:
 change through a code not named here can be followed without a new release.
 A code Cloudera Manager does not know is not an error — the query simply
 matches nothing.
+
+All of these codes were observed on Cloudera Manager 7.13 with Runtime 7.3.2:
+in the event history of a fresh deployment, and by changing a parameter,
+restarting, stopping and starting a role, stopping a service, and deleting a
+role and a service on it. Starting, stopping and restarting produce two events
+each, one when the command is issued and one when it succeeds; a deletion
+produces one, and deleting a service produces an `EV_ROLE_DELETED` for each of
+its roles as well. An event reaches the feed a few seconds after the change (3
+to 13 seconds were measured); a check which runs in between sees it at its next
+run.
+
+An event which names a cluster is only a reason to scan that cluster. Events of
+a service do not always name one, though: the creation of a service of the
+cluster carries a `SERVICE` but no `CLUSTER` attribute. Those are kept, with one
+exception: the starts and restarts of the Cloudera Management Service, which
+belongs to no cluster and would otherwise trigger a scan whenever the monitors of
+Cloudera Manager are restarted. The check asks Cloudera Manager for the name of
+that service (`GET /cm/service`, usually `mgmt`) and drops its events.
 
 A revision which names no cluster at all is a change to the configuration of
 Cloudera Manager *itself*, and is ignored: its banner, its header colour or the

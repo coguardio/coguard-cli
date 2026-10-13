@@ -472,6 +472,21 @@ class ClouderaManagerApi:
             "config"
         )
 
+    def get_management_service_name(self) -> Optional[str]:
+        """
+        Returns the name of the Cloudera Management Service, i.e. the service
+        which runs the monitors of Cloudera Manager itself and belongs to no
+        cluster. `None` is returned if there is none, or it cannot be read.
+        """
+        response = self._get("cm", "service")
+        if response is None:
+            return None
+        try:
+            name = response.json().get("name")
+        except (ValueError, AttributeError):
+            return None
+        return name if isinstance(name, str) and name else None
+
     def get_cloudera_manager_config(self) -> Dict[str, Dict]:
         """
         Returns the configuration of Cloudera Manager itself, which holds the
