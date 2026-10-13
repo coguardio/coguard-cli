@@ -1,0 +1,207 @@
+{
+  "name" : "CONFIGURATION_ASSURANCE",
+  "label" : "Configuration Assurance",
+  "description" : "Reports the state of the configuration of this cluster as CoGuard scans it. The service is healthy while the last scan found nothing at or above the severity it is configured to fail on, and unhealthy when it did, which is what makes a configuration finding visible in the cluster view of Cloudera Manager rather than only in a report.",
+  "version" : "1.0",
+  "runAs" : {
+    "user" : "cloudera-scm",
+    "group" : "cloudera-scm"
+  },
+  "maxInstances" : 1,
+  "compatibility" : {
+    "generation" : 1,
+    "cdhVersion" : {
+      "min" : "7"
+    }
+  },
+  "parameters" : [
+    {
+      "name" : "cloudera_manager_url",
+      "label" : "Cloudera Manager URL",
+      "description" : "The address the scan reads this cluster through, e.g. https://cm.example.com. This is the Cloudera Manager API, so the address has to be reachable from the host the Configuration Check role runs on.",
+      "configName" : "cloudera_manager_url",
+      "type" : "uri",
+      "required" : "true"
+    },
+    {
+      "name" : "cloudera_manager_user",
+      "label" : "Cloudera Manager User",
+      "description" : "The Cloudera Manager user the scan authenticates as. Read-Only is enough: the scan issues GET requests only. The password of this user is not a parameter here; it is read from the credentials file below.",
+      "configName" : "cloudera_manager_user",
+      "type" : "string",
+      "default" : "coguard",
+      "required" : "true"
+    },
+    {
+      "name" : "environment_file",
+      "label" : "Credentials File",
+      "description" : "A file on the host of the Configuration Check role holding CLOUDERA_MANAGER_PASSWORD, and COGUARD_USER_NAME and COGUARD_PASSWORD for the CoGuard account, in KEY=value form. If that account has more than one CoGuard organization, add COGUARD_ORGANIZATION to say which one the scans belong to, since there is nobody here to ask. It is read by the role process, so it has to be readable by the user this service runs as and by nobody else. A password given here rather than as a service parameter stays out of the Cloudera Manager database, out of its API and out of its audit log.",
+      "configName" : "environment_file",
+      "type" : "string",
+      "default" : "/etc/coguard/cloudera.env",
+      "required" : "true"
+    },
+    {
+      "name" : "cloudera_manager_ca_cert",
+      "label" : "CA Certificate Bundle",
+      "description" : "The path to a CA certificate bundle to trust when connecting to Cloudera Manager, such as the cm-auto-global_cacerts.pem of Auto-TLS. Leave empty to use the trust store of the host. The certificate of Cloudera Manager is always verified.",
+      "configName" : "cloudera_manager_ca_cert",
+      "type" : "string",
+      "default" : ""
+    },
+    {
+      "name" : "cloudera_cluster",
+      "label" : "Cluster",
+      "description" : "The name of the cluster to scan. Only needed if this Cloudera Manager manages more than one cluster.",
+      "configName" : "cloudera_cluster",
+      "type" : "string",
+      "default" : ""
+    },
+    {
+      "name" : "minimum_fail_level",
+      "label" : "Minimum Severity",
+      "description" : "The lowest severity of a finding which makes this service unhealthy. 1 is every finding, 4 and above are the ones the report calls High.",
+      "configName" : "minimum_fail_level",
+      "type" : "long",
+      "default" : 1,
+      "min" : 1,
+      "max" : 5
+    },
+    {
+      "name" : "ruleset",
+      "label" : "Compliance Rule Set",
+      "description" : "The compliance rule set to scan against, e.g. nist800-53. Requires an enterprise subscription. Leave empty to scan against the ordinary rules.",
+      "configName" : "ruleset",
+      "type" : "string",
+      "default" : ""
+    },
+    {
+      "name" : "report_url",
+      "label" : "Report Address",
+      "description" : "Where the findings are shown in full. It becomes the link of this service in Cloudera Manager, since the health test itself can only say that there are findings, not which.",
+      "configName" : "report_url",
+      "type" : "uri",
+      "default" : "https://portal.coguard.io"
+    },
+    {
+      "name" : "check_executable",
+      "label" : "Check Command",
+      "description" : "The command which decides whether the configuration has changed and scans it if it has, installed alongside the CoGuard CLI. Give an absolute path if it is not on the PATH of the user this service runs as.",
+      "configName" : "check_executable",
+      "type" : "string",
+      "default" : "coguard-cloudera-check",
+      "required" : "true"
+    },
+    {
+      "name" : "coguard_executable",
+      "label" : "CoGuard CLI",
+      "description" : "The CoGuard CLI which performs the scan itself.",
+      "configName" : "coguard_executable",
+      "type" : "string",
+      "default" : "coguard",
+      "required" : "true"
+    },
+    {
+      "name" : "python_executable",
+      "label" : "Python Interpreter",
+      "description" : "The interpreter used to read the outcome of the last scan. It only has to be able to import the CoGuard CLI if the summary in the role log is to name the affected services; without that it still reports the counts.",
+      "configName" : "python_executable",
+      "type" : "string",
+      "default" : "python3",
+      "required" : "true"
+    }
+  ],
+  "roles" : [
+    {
+      "name" : "CONFIGURATION_CHECK",
+      "label" : "Configuration Check",
+      "pluralLabel" : "Configuration Checks",
+      "startRunner" : {
+        "program" : "scripts/control.sh",
+        "args" : [ "start" ],
+        "environmentVariables" : {
+          "CLOUDERA_MANAGER_URL" : "${cloudera_manager_url}",
+          "CLOUDERA_MANAGER_USER" : "${cloudera_manager_user}",
+          "CLOUDERA_MANAGER_CA_CERT" : "${cloudera_manager_ca_cert}",
+          "CLOUDERA_CLUSTER" : "${cloudera_cluster}",
+          "ENVIRONMENT_FILE" : "${environment_file}",
+          "MINIMUM_FAIL_LEVEL" : "${minimum_fail_level}",
+          "RULESET" : "${ruleset}",
+          "CHECK_EXECUTABLE" : "${check_executable}",
+          "COGUARD_EXECUTABLE" : "${coguard_executable}",
+          "PYTHON_EXECUTABLE" : "${python_executable}",
+          "WORK_DIRECTORY" : "${work_directory}",
+          "CHECK_INTERVAL_SECONDS" : "${check_interval_seconds}",
+          "MINIMUM_SCAN_INTERVAL_SECONDS" : "${minimum_scan_interval_seconds}",
+          "MAXIMUM_SCAN_AGE_SECONDS" : "${maximum_scan_age_seconds}",
+          "ERROR_TOLERANCE" : "${error_tolerance}"
+        }
+      },
+      "topology" : {
+        "minInstances" : 1,
+        "maxInstances" : 1
+      },
+      "logging" : {
+        "dir" : "/var/log/configuration-assurance",
+        "filename" : "configuration-check.log",
+        "configName" : "log_dir",
+        "loggingType" : "other"
+      },
+      "externalLink" : {
+        "name" : "configuration_report",
+        "label" : "Configuration Report",
+        "url" : "${report_url}"
+      },
+      "parameters" : [
+        {
+          "name" : "work_directory",
+          "label" : "Working Directory",
+          "description" : "Where the scan result and the position in the event feed of Cloudera Manager are kept between checks. It has to survive a restart of the role, which is why it is not the process directory Cloudera Manager creates.",
+          "configName" : "work_directory",
+          "type" : "string",
+          "default" : "/var/lib/coguard",
+          "required" : "true"
+        },
+        {
+          "name" : "check_interval_seconds",
+          "label" : "Check Interval",
+          "description" : "How long the role waits between two checks of whether the configuration of the cluster has changed. A check without a change costs one API request per watched event code and does not scan.",
+          "configName" : "check_interval_seconds",
+          "type" : "long",
+          "default" : 900,
+          "min" : 60,
+          "unit" : "seconds"
+        },
+        {
+          "name" : "minimum_scan_interval_seconds",
+          "label" : "Minimum Scan Interval",
+          "description" : "The shortest distance between two scans, so that a rolling restart of the cluster does not result in a scan per service. It does not apply to the first check after this role is started: starting or restarting the role is a request for a fresh scan.",
+          "configName" : "minimum_scan_interval_seconds",
+          "type" : "long",
+          "default" : 900,
+          "min" : 0,
+          "unit" : "seconds"
+        },
+        {
+          "name" : "maximum_scan_age_seconds",
+          "label" : "Maximum Scan Age",
+          "description" : "A scan is run after this long even though no event reported a change, which bounds how out of date the health of this service can be. The event feed is a hint and not a guarantee: events are retained for a finite time, the Event Server can be down, and CoGuard adds rules over time.",
+          "configName" : "maximum_scan_age_seconds",
+          "type" : "long",
+          "default" : 86400,
+          "min" : 0,
+          "unit" : "seconds"
+        },
+        {
+          "name" : "error_tolerance",
+          "label" : "Tolerated Consecutive Failures",
+          "description" : "How many checks in a row may fail before this role reports itself unhealthy. A failure here means the check could not be performed at all -- Cloudera Manager could not be read, or the CoGuard CLI could not be run -- which is not the same thing as a cluster with findings, but is not something to stay silent about either.",
+          "configName" : "error_tolerance",
+          "type" : "long",
+          "default" : 3,
+          "min" : 1
+        }
+      ]
+    }
+  ]
+}
