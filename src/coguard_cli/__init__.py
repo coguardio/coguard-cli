@@ -253,8 +253,6 @@ def extract_cloudera_options(args) -> dict:
         value = getattr(args, argument_name, None)
         if value:
             result[option_name] = value
-    if getattr(args, "cloudera_manager_no_verify_tls", False):
-        result["verify_tls"] = False
     return result
 
 def download_single_config_file(url: str, filename: str) -> str:
@@ -311,7 +309,7 @@ OXXo  ;XXO     do     KXX.     cXXXX.   .XXXXXXXXo oXXXX        XXXXc  ;XXXX    
             arg_auth_url = args.coguard_auth_url
         )
         deal_type = token.extract_deal_type_from_token()
-        organization = token.extract_organization_from_token()
+        organization = token.extract_organization_from_token(args.organization)
     else:
         token=None
         auth_config = CoGuardCliConfig("dry-run-user", None, None, None)

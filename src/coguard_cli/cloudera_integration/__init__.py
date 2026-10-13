@@ -18,13 +18,13 @@ stays a reader. None of it takes a password on the command line.
 """
 
 import argparse
-import logging
 from typing import Dict, Optional
 
 from coguard_cli.discovery.cloud_discovery.cloud_providers.cloud_provider_cloudera \
     import CloudProviderCloudera
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApi, ClouderaManagerApiError
+from coguard_cli.logging_config import LOGGING_LEVELS
 from coguard_cli.print_colors import COLOR_RED, COLOR_TERMINATION
 
 # The exit codes this entry point produces itself. A check which ran a scan
@@ -72,16 +72,6 @@ def add_cloudera_manager_arguments(parser: argparse.ArgumentParser) -> None:
               "CLOUDERA_MANAGER_CA_CERT environment variable.")
     )
     parser.add_argument(
-        '--cloudera-manager-no-verify-tls',
-        action='store_true',
-        dest='cloudera_manager_no_verify_tls',
-        default=False,
-        required=False,
-        help=("Do not verify the TLS certificate of Cloudera Manager. Useful "
-              "for deployments behind a reverse proxy with a self-signed "
-              "certificate.")
-    )
-    parser.add_argument(
         '--cloudera-cluster',
         type=str,
         dest='cloudera_cluster',
@@ -95,7 +85,7 @@ def add_cloudera_manager_arguments(parser: argparse.ArgumentParser) -> None:
         dest='credentials_file',
         required=False,
         help=("A JSON or YAML file with the keys `url`, `username`, "
-              "`password`, `ca_cert`, `verify_tls` and `cluster`.")
+              "`password`, `ca_cert` and `cluster`.")
     )
     parser.add_argument(
         '--logging-level',
@@ -103,21 +93,9 @@ def add_cloudera_manager_arguments(parser: argparse.ArgumentParser) -> None:
         dest='logging_level',
         required=False,
         default="INFO",
+        choices=LOGGING_LEVELS,
         help=("The logging level of this call. Can be one of the following: "
               "DEBUG, INFO, WARNING, ERROR, CRITICAL.")
-    )
-
-
-def apply_logging_level(args: argparse.Namespace) -> None:
-    """
-    Applies the requested logging level, defaulting to INFO if it is not one
-    the logging module knows.
-    """
-    logging.basicConfig(
-        format='%(asctime)s %(levelname)s: %(message)s',
-        level=getattr(logging,
-                      str(getattr(args, "logging_level", "INFO")).upper(),
-                      logging.INFO)
     )
 
 
@@ -138,8 +116,6 @@ def cloudera_manager_options(args: argparse.Namespace) -> Dict:
         value = getattr(args, argument_name, None)
         if value:
             result[option_name] = value
-    if getattr(args, "cloudera_manager_no_verify_tls", False):
-        result["verify_tls"] = False
     return result
 
 
@@ -166,7 +142,6 @@ def connect(credentials: Dict) -> Optional[ClouderaManagerApi]:
             base_url=credentials["url"],
             username=credentials["username"],
             password=credentials["password"],
-            verify_tls=credentials.get("verify_tls", True),
             ca_cert=credentials.get("ca_cert")
         )
     except ClouderaManagerApiError as err:

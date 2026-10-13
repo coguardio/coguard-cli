@@ -32,11 +32,13 @@ ENVIRONMENT_VARIABLES = {
     "username": "CLOUDERA_MANAGER_USER",
     "password": "CLOUDERA_MANAGER_PASSWORD",
     "ca_cert": "CLOUDERA_MANAGER_CA_CERT",
-    "verify_tls": "CLOUDERA_MANAGER_VERIFY_TLS",
     "cluster": "CLOUDERA_CLUSTER",
 }
 
-FALSE_STRINGS = frozenset(["0", "false", "no", "off"])
+# The setting with which TLS verification could once be switched off. It is
+# looked for only to point out that it no longer has an effect.
+LEGACY_VERIFY_TLS_KEY = "verify_tls"
+LEGACY_VERIFY_TLS_ENVIRONMENT_VARIABLE = "CLOUDERA_MANAGER_VERIFY_TLS"
 
 
 class CloudProviderCloudera(CloudProvider):
@@ -105,6 +107,16 @@ class CloudProviderCloudera(CloudProvider):
         """
         from_file = self._load_credentials_file(credentials_file) \
             if credentials_file else {}
+        if LEGACY_VERIFY_TLS_KEY in from_file or \
+           LEGACY_VERIFY_TLS_ENVIRONMENT_VARIABLE in os.environ:
+            logging.warning(
+                "`%s` and %s are no longer supported, and are ignored: the "
+                "certificate of Cloudera Manager is always verified. A custom "
+                "certificate authority can be trusted via "
+                "`--cloudera-manager-ca-cert`.",
+                LEGACY_VERIFY_TLS_KEY,
+                LEGACY_VERIFY_TLS_ENVIRONMENT_VARIABLE
+            )
         result = {}
         for key, environment_variable in ENVIRONMENT_VARIABLES.items():
             value = self._options.get(key)
@@ -141,11 +153,6 @@ class CloudProviderCloudera(CloudProvider):
             )
             if not result["password"]:
                 return None
-        # TLS verification is on unless it was explicitly switched off.
-        verify_tls = result.get("verify_tls", True)
-        if isinstance(verify_tls, str):
-            verify_tls = verify_tls.strip().lower() not in FALSE_STRINGS
-        result["verify_tls"] = bool(verify_tls)
         return result
 
     def extract_iac_files_for_account(
@@ -183,7 +190,6 @@ class CloudProviderCloudera(CloudProvider):
                 base_url=credentials["url"],
                 username=credentials["username"],
                 password=credentials["password"],
-                verify_tls=credentials["verify_tls"],
                 ca_cert=credentials.get("ca_cert")
             )
         except ClouderaManagerApiError as err:
@@ -192,10 +198,9 @@ class CloudProviderCloudera(CloudProvider):
         if not api.check_connection():
             print(f"{COLOR_RED}Could not connect to Cloudera Manager at "
                   f"{credentials['url']}. Please verify the URL, the "
-                  f"credentials, and whether the certificate needs to be "
-                  f"trusted via `--cloudera-manager-ca-cert` or TLS "
-                  f"verification disabled via "
-                  f"`--cloudera-manager-no-verify-tls`.{COLOR_TERMINATION}")
+                  f"credentials, and whether the certificate authority of "
+                  f"Cloudera Manager needs to be trusted via "
+                  f"`--cloudera-manager-ca-cert`.{COLOR_TERMINATION}")
             return None
         return extract_cloudera_cluster_representation(
             api,

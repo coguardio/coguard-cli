@@ -18,7 +18,6 @@ def _create_api(**kwargs) -> ClouderaManagerApi:
         base_url=kwargs.get("base_url", "https://cm.example.com"),
         username="admin",
         password="admin",
-        verify_tls=kwargs.get("verify_tls", True),
         ca_cert=kwargs.get("ca_cert")
     )
     api._session = unittest.mock.MagicMock()
@@ -100,15 +99,18 @@ class TestClouderaManagerApi(unittest.TestCase):
         # pylint: disable=protected-access
         self.assertEqual(api._session.verify, "/tmp/ca.pem")
 
-    def test_constructor_without_tls_verification(self):
+    def test_constructor_always_verifies_tls(self):
         """
-        Disabling TLS verification is reflected on the session.
+        Without a CA certificate, the certificate is verified against the
+        system trust store, and there is no way to switch verification off.
         """
-        api = ClouderaManagerApi(
-            "https://cm.example.com", "admin", "admin", verify_tls=False
-        )
+        api = ClouderaManagerApi("https://cm.example.com", "admin", "admin")
         # pylint: disable=protected-access
-        self.assertFalse(api._session.verify)
+        self.assertIs(api._session.verify, True)
+        with self.assertRaises(TypeError):
+            # pylint: disable=unexpected-keyword-arg
+            ClouderaManagerApi("https://cm.example.com", "admin", "admin",
+                               verify_tls=False)
 
     def test_get_api_version(self):
         """

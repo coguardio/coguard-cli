@@ -1,10 +1,10 @@
 # `coguard_cli.cloudera_integration`
 
-This package is the scheduled half of the Cloudera integration. The scan
-itself lives in
-[`coguard_cli/discovery/cloudera_discovery`](../discovery/cloudera_discovery)
-and is reached with `coguard cloud cloudera`; what is here decides **when**
-that scan is worth running, and where its result is shown.
+This package contains the commands which run the Cloudera scan on a schedule
+and show its result in Cloudera Manager: they decide **when** a scan is worth
+running, and put its result where the people who administer the cluster see
+it. The scan itself is `coguard cloud cloudera`, implemented in
+[`coguard_cli/discovery/cloudera_discovery`](../discovery/cloudera_discovery).
 
 | File          | Contents                                                                    |
 |---------------|-----------------------------------------------------------------------------|
@@ -116,8 +116,7 @@ cluster leads to a scan and a new watermark, i.e. the failure direction is
 
 The connection options are the ones of `coguard cloud cloudera`
 (`--cloudera-manager-url`, `--cloudera-manager-user`,
-`--cloudera-manager-ca-cert`, `--cloudera-manager-no-verify-tls`,
-`--cloudera-cluster`, `--credentials-file`). As there, the password is **not**
+`--cloudera-manager-ca-cert`, `--cloudera-cluster`, `--credentials-file`). As there, the password is **not**
 a command line option, so that it stays out of the shell history and the
 process list: it comes from `CLOUDERA_MANAGER_PASSWORD`, from the
 credentials file, or from an interactive prompt. It is handed to the scan
@@ -174,15 +173,7 @@ coguard-cloudera-banner \
 ```
 
 This reads the `result.json` a scan wrote and puts a summary of it into the
-header of Cloudera Manager:
-
-```
-CoGuard: 89 configuration findings of ozone-base-cluster (44 High, 35 Medium,
-10 Low), affecting ozone_datanode (11), ozone_manager (11), ozone_recon (11),
-ozone_s3_gateway (11), ozone_storage_container_manager (11) and 12 further
-services. Scanned 2026-09-08 18:57 UTC. Full report:
-https://portal.coguard.io/dashboard
-```
+header of Cloudera Manager.
 
 The point is that the people who administer the cluster see the state of its
 configuration in the place where they administer it, rather than only in a
@@ -273,9 +264,14 @@ already empty banner; a new scan result always differs.
 
 A oneshot service and a timer. The state file is pointed at
 `StateDirectory=`, so that it survives and is not looked for in a home
-directory the unit cannot see; `ProtectHome=true` works because the CoGuard
-account is taken from `COGUARD_USER_NAME` and `COGUARD_PASSWORD` when both
-are set. An account with several CoGuard organizations needs
+directory the unit cannot see. `ProtectHome=true` works because the CoGuard
+account is taken from `COGUARD_USER_NAME` and `COGUARD_PASSWORD`. The
+environment and `~/.config/coguard-cli/coguard_conf` are an either-or: with
+both variables set the file is not read at all, including the CoGuard URLs a
+login stored in it, so pass `--coguard-api-url` and `--coguard-auth-url` for a
+CoGuard other than `portal.coguard.io`; with only one of them set, the
+variable is ignored and the file is used alone, in which case `ProtectHome`
+has to go. An account with several CoGuard organizations needs
 `COGUARD_ORGANIZATION` as well: interactively the CLI asks which organization
 a scan belongs to, and a unit has nobody to ask.
 

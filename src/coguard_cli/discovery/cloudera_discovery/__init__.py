@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import pathlib
+import posixpath
 import re
 import tempfile
 from typing import Dict, List, Optional, Tuple
@@ -395,18 +396,32 @@ def split_by_owning_software(config_file_list: List[Dict],
 
 def relocate_config_files(config_file_list: List[Dict],
                           source_folder: str,
-                          destination_folder: str) -> None:
+                          destination_folder: str) -> List[Dict]:
     """
     Moves the files of the given `configFileList` entries from the folder of one
-    cluster service to the one of another, keeping their sub paths, and removes
-    the directories left empty behind.
+    cluster service to the one of another, keeping their sub paths, removes the
+    directories left empty behind, and returns the entries which were moved.
+
+    The sub paths and file names are those Cloudera Manager reported, so both
+    ends are resolved inside their folder once more, rather than relying on the
+    check the files passed when they were written.
     """
+    relocated = []
     for entry in config_file_list:
-        relative_path = os.path.normpath(
-            os.path.join(entry["subPath"], entry["fileName"])
-        )
-        os.renames(os.path.join(source_folder, relative_path),
-                   os.path.join(destination_folder, relative_path))
+        relative_path = posixpath.join(entry["subPath"], entry["fileName"])
+        source = resolve_inside_destination(source_folder, relative_path)
+        destination = resolve_inside_destination(destination_folder,
+                                                 relative_path)
+        if source is None or destination is None:
+            logging.warning(
+                "Not moving `%s`: it does not describe a location inside the "
+                "extraction folder.",
+                relative_path
+            )
+            continue
+        os.renames(source, destination)
+        relocated.append(entry)
+    return relocated
 
 
 def roles_not_running(roles: List[Dict]) -> List[str]:
@@ -478,6 +493,7 @@ def report_unreviewed_service_types(api: ClouderaManagerApi,
     return unreviewed
 
 
+# pylint: disable=too-many-branches
 def extract_cloudera_cluster_representation(
         api: ClouderaManagerApi,
         customer_id: str,
@@ -525,11 +541,14 @@ def extract_cloudera_cluster_representation(
                 create_cluster_service_identifier(service_name, role_type),
                 cluster_services
             )
-            service_folder = os.path.join(
-                final_location,
-                "clusterServices",
+            service_folder = resolve_inside_destination(
+                os.path.join(final_location, "clusterServices"),
                 identifier
             )
+            if service_folder is None:
+                logging.warning("Skipping %s: not a valid folder name.",
+                                identifier)
+                continue
             os.makedirs(service_folder, exist_ok=True)
             config_file_list = collect_config_files_for_role(
                 api,
@@ -559,13 +578,15 @@ def extract_cloudera_cluster_representation(
                         f"{identifier}_{software}",
                         cluster_services
                     )
-                    relocate_config_files(
+                    software_file_list = relocate_config_files(
                         software_file_list,
                         service_folder,
                         os.path.join(final_location,
                                      "clusterServices",
                                      software_identifier)
                     )
+                    if not software_file_list:
+                        continue
                 print(f"{COLOR_CYAN} Extracted {len(software_file_list)} "
                       f"configuration files for{COLOR_TERMINATION} "
                       f"{software_identifier}")

@@ -813,8 +813,7 @@ class ConnectForWritingTest(unittest.TestCase):
                 new_callable=lambda: lambda _: True
         ):
             self.assertIsInstance(
-                banner.connect_for_writing(credentials(verify_tls=False,
-                                                       ca_cert=None)),
+                banner.connect_for_writing(credentials(ca_cert=None)),
                 banner.ClouderaManagerBannerApi
             )
 

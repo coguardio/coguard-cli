@@ -2,6 +2,7 @@
 Tests for the `coguard-cloudera-check` entry point.
 """
 
+import datetime
 import os
 import pathlib
 import tempfile
@@ -124,6 +125,21 @@ class TestClouderaCheck(unittest.TestCase):
         self.assertIsNone(check.seconds_since(None))
         self.assertIsNone(check.seconds_since("the day before yesterday"))
         self.assertLess(check.seconds_since(check.now()), 5)
+
+    def test_now_and_seconds_since_share_the_clock(self):
+        """
+        The timestamp recorded in the state file and the time measured against
+        it are read from the same clock.
+        """
+        fixed = datetime.datetime(2026, 9, 4, 16, 20, 37, 738000,
+                                  tzinfo=datetime.timezone.utc)
+        with unittest.mock.patch.object(check, "current_time",
+                                        return_value=fixed):
+            self.assertEqual(check.now(), "2026-09-04T16:20:37+00:00")
+            self.assertEqual(
+                check.seconds_since("2026-09-04T16:19:37.738Z"), 60.0
+            )
+            self.assertEqual(check.seconds_since(check.now()), 0.738)
 
     def test_read_and_write_state(self):
         """
@@ -484,7 +500,8 @@ class TestClouderaCheck(unittest.TestCase):
         for option in ("--cloudera-manager-url", "--cloudera-manager-user",
                        "--cloudera-manager-ca-cert", "--cloudera-cluster"):
             self.assertGreater(built.index(option), built.index("cloud"))
-        self.assertIn("--cloudera-manager-no-verify-tls", built)
+        # A stale `verify_tls` among the credentials is never handed on.
+        self.assertNotIn("--cloudera-manager-no-verify-tls", built)
         self.assertEqual(
             built[built.index("--cloudera-cluster") + 1],
             "ozone-base-cluster"

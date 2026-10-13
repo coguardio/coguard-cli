@@ -57,9 +57,9 @@ import subprocess
 from typing import Dict, List, Optional, Tuple
 
 from coguard_cli.cloudera_integration import EXIT_CLEAN, EXIT_ERROR, \
-    add_cloudera_manager_arguments, apply_logging_level, connect, \
-    resolve_credentials
+    add_cloudera_manager_arguments, connect, resolve_credentials
 from coguard_cli.discovery.cloudera_discovery import determine_cluster_name
+from coguard_cli.logging_config import set_logging_config
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApi, DEFAULT_EVENT_PAGE_SIZE, event_attribute
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_RED, \
@@ -210,13 +210,19 @@ def argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def current_time() -> datetime.datetime:
+    """
+    The current point in time, in UTC. Every reading of the clock goes through
+    here, so that what is recorded and what is measured against it agree.
+    """
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
 def now() -> str:
     """
     The current point in time, as it is recorded in the state file.
     """
-    return datetime.datetime.now(
-        datetime.timezone.utc
-    ).replace(microsecond=0).isoformat()
+    return current_time().replace(microsecond=0).isoformat()
 
 
 def parse_timestamp(timestamp: Optional[str]) -> Optional[datetime.datetime]:
@@ -248,8 +254,7 @@ def seconds_since(timestamp: Optional[str]) -> Optional[float]:
     parsed = parse_timestamp(timestamp)
     if parsed is None:
         return None
-    return (datetime.datetime.now(datetime.timezone.utc) - parsed) \
-        .total_seconds()
+    return (current_time() - parsed).total_seconds()
 
 
 def is_newer(candidate: Optional[str], reference: Optional[str]) -> bool:
@@ -469,8 +474,6 @@ def build_cli_arguments(args: argparse.Namespace,
             ("--cloudera-cluster", cluster_name)):
         if value:
             arguments.extend([option, str(value)])
-    if not credentials.get("verify_tls", True):
-        arguments.append("--cloudera-manager-no-verify-tls")
     return arguments
 
 
@@ -554,7 +557,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     The entry point of `coguard-cloudera-check`.
     """
     args = argument_parser().parse_args(argv)
-    apply_logging_level(args)
+    set_logging_config(args.logging_level)
     credentials = resolve_credentials(args)
     if not credentials:
         return EXIT_ERROR

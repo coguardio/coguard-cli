@@ -7,7 +7,7 @@ import unittest
 import unittest.mock
 
 from coguard_cli.cloudera_integration import add_cloudera_manager_arguments, \
-    apply_logging_level, cloudera_manager_options, connect, resolve_credentials
+    cloudera_manager_options, connect, resolve_credentials
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApiError
 
@@ -48,32 +48,42 @@ class TestClouderaIntegration(unittest.TestCase):
                 "--cloudera-manager-url", "https://cm.example.com",
                 "--cloudera-manager-user", "coguard",
                 "--cloudera-manager-ca-cert", "/etc/ssl/cm.pem",
-                "--cloudera-cluster", "ozone-base-cluster",
-                "--cloudera-manager-no-verify-tls"
+                "--cloudera-cluster", "ozone-base-cluster"
             ])),
             {
                 "url": "https://cm.example.com",
                 "username": "coguard",
                 "ca_cert": "/etc/ssl/cm.pem",
-                "cluster": "ozone-base-cluster",
-                "verify_tls": False
+                "cluster": "ozone-base-cluster"
             }
         )
 
-    def test_apply_logging_level(self):
+    def test_tls_verification_cannot_be_switched_off(self):
         """
-        The requested logging level is applied, and an unknown one falls back to
-        INFO.
+        There is no option to skip the verification of the certificate of
+        Cloudera Manager.
         """
-        with unittest.mock.patch(
-                'coguard_cli.cloudera_integration.logging.basicConfig'
-        ) as basic_config:
-            apply_logging_level(argparse.Namespace(logging_level="DEBUG"))
-            apply_logging_level(argparse.Namespace(logging_level="NONSENSE"))
-            levels = [
-                call.kwargs["level"] for call in basic_config.call_args_list
-            ]
-            self.assertEqual(levels, [10, 20])
+        with unittest.mock.patch('sys.stderr'), \
+             self.assertRaises(SystemExit):
+            parse(["--cloudera-manager-url", "https://cm.example.com",
+                   "--cloudera-manager-no-verify-tls"])
+
+    def test_logging_level_choices(self):
+        """
+        The logging level is one of those `coguard` accepts, so that a level
+        which `coguard-cloudera-check` hands on to the scan is never rejected
+        only once the scan runs.
+        """
+        parser = argparse.ArgumentParser()
+        add_cloudera_manager_arguments(parser)
+        self.assertEqual(parser.parse_args([]).logging_level, "INFO")
+        self.assertEqual(
+            parser.parse_args(["--logging-level", "DEBUG"]).logging_level,
+            "DEBUG"
+        )
+        with unittest.mock.patch('sys.stderr'), \
+             self.assertRaises(SystemExit):
+            parser.parse_args(["--logging-level", "NONSENSE"])
 
     def test_resolve_credentials(self):
         """

@@ -301,3 +301,30 @@ class TestClouderaServiceMapping(unittest.TestCase):
         """
         for software in CONFIG_FILE_OWNER_BY_NAME.values():
             self.assertIn(software, KNOWN_SOFTWARE_NAMES)
+
+    def test_create_cluster_service_identifier_is_a_safe_folder_name(self):
+        """
+        The service name is chosen freely in Cloudera Manager, and becomes the
+        name of a folder, so nothing in it can climb out of that folder.
+        """
+        self.assertEqual(
+            create_cluster_service_identifier("../../etc", "KAFKA_BROKER"),
+            "etc_kafka_broker"
+        )
+        self.assertEqual(
+            create_cluster_service_identifier("/tmp/x", "../MASTER"),
+            "tmp_x_master"
+        )
+        self.assertEqual(
+            create_cluster_service_identifier("Kafka Prod-1", "KAFKA_BROKER"),
+            "kafka_prod_1_kafka_broker"
+        )
+        # Digits, `0` included, are kept.
+        self.assertEqual(
+            create_cluster_service_identifier("kafka0", "KAFKA_BROKER"),
+            "kafka0_kafka_broker"
+        )
+        self.assertEqual(create_cluster_service_identifier("..", "/"),
+                         "cloudera_service")
+        self.assertEqual(create_cluster_service_identifier("..", "MASTER"),
+                         "master")

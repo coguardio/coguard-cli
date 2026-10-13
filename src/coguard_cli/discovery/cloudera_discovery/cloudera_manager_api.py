@@ -145,7 +145,6 @@ class ClouderaManagerApi:
                  base_url: str,
                  username: str,
                  password: str,
-                 verify_tls: bool = True,
                  ca_cert: Optional[str] = None,
                  timeout: int = DEFAULT_TIMEOUT,
                  retries: int = DEFAULT_RETRIES):
@@ -154,16 +153,10 @@ class ClouderaManagerApi:
         self._api_version = None
         self._session = requests.Session()
         self._session.auth = (username, password)
-        if ca_cert:
-            self._session.verify = ca_cert
-        else:
-            self._session.verify = verify_tls
-        if not self._session.verify:
-            # The reverse proxy in front of Cloudera Manager frequently uses a
-            # self-signed certificate. Suppress the per-request noise, since the
-            # user opted into this explicitly.
-            # pylint: disable=no-member
-            requests.packages.urllib3.disable_warnings()
+        # The certificate of Cloudera Manager is always verified. A certificate
+        # authority of the cluster's own, such as the one Auto-TLS creates, is
+        # trusted by naming it, never by switching verification off.
+        self._session.verify = ca_cert or True
         retry_strategy = Retry(
             total=retries,
             backoff_factor=2,

@@ -314,6 +314,19 @@ def unreviewed_service_types(
     )
 
 
+# Everything an identifier may consist of. An identifier is the name of a folder
+# of the extraction as well as a key of the manifest, and it is made of a service
+# name which whoever created the service chose freely, so anything else -- a
+# path separator, `..`, a space -- is replaced.
+IDENTIFIER_DISALLOWED_CHARACTERS = re.compile(r"[^a-z0-9_]+")
+
+
+def _identifier_part(value: Optional[str]) -> str:
+    return IDENTIFIER_DISALLOWED_CHARACTERS.sub(
+        "_", (value or "").lower()
+    ).strip("_")
+
+
 def create_cluster_service_identifier(cloudera_service_name_in_cluster: str,
                                       cloudera_role_type: str) -> str:
     """
@@ -324,11 +337,16 @@ def create_cluster_service_identifier(cloudera_service_name_in_cluster: str,
     A redundant service prefix inside the role type is stripped, since Cloudera
     role types frequently repeat the service name (`KAFKA_BROKER`), which would
     otherwise produce identifiers like `kafka_kafka_broker`.
+
+    Both parts come from Cloudera Manager, and the service name is whatever its
+    creator chose, so they are reduced to lower case letters, digits and
+    underscores: `../../etc` becomes `etc`. A pair of which nothing is left at
+    all becomes `cloudera_service`.
     """
-    service_part = (cloudera_service_name_in_cluster or "").lower()
-    role_part = (cloudera_role_type or "").lower()
+    service_part = _identifier_part(cloudera_service_name_in_cluster)
+    role_part = _identifier_part(cloudera_role_type)
     if not role_part:
-        return service_part
+        return service_part or "cloudera_service"
     if not service_part:
         return role_part
     if role_part.startswith(f"{service_part}_"):

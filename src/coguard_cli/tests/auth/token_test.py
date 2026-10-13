@@ -125,7 +125,8 @@ class TestTokenClass(unittest.TestCase):
         unittest.mock.patch(
                 'coguard_cli.auth.token.Token.get_decoded_jwt_token',
                 new_callable=lambda: lambda token, public_key: {"organization": "bar"}
-        ):
+        ), \
+        unittest.mock.patch.dict('os.environ', {}, clear=True):
             token = Token("foo", {})
             result = token.extract_organization_from_token()
             self.assertEqual(result, "bar")
@@ -142,10 +143,29 @@ class TestTokenClass(unittest.TestCase):
         unittest.mock.patch(
                 'coguard_cli.auth.token.Token.get_decoded_jwt_token',
                 new_callable=lambda: lambda token, public_key: {"organization": ["bar"]}
-        ):
+        ), \
+        unittest.mock.patch.dict('os.environ', {}, clear=True):
             token = Token("foo", {})
             result = token.extract_organization_from_token()
             self.assertEqual(result, "bar")
+
+    def test_extract_organization_from_token_single_entry_not_requested(self):
+        """
+        Tests that requesting an organization other than the only one in the
+        token yields no organization.
+        """
+        with unittest.mock.patch(
+                'coguard_cli.auth.token.Token.get_public_key',
+                new_callable=lambda: lambda c: "pk"
+        ), \
+        unittest.mock.patch(
+                'coguard_cli.auth.token.Token.get_decoded_jwt_token',
+                new_callable=lambda: lambda token, public_key: {"organization": "bar"}
+        ), \
+        unittest.mock.patch.dict('os.environ', {}, clear=True):
+            token = Token("foo", {})
+            self.assertIsNone(token.extract_organization_from_token("baz"))
+            self.assertEqual(token.extract_organization_from_token("bar"), "bar")
 
     def test_extract_organization_from_token_multiple_entries(self):
         """
@@ -167,9 +187,9 @@ class TestTokenClass(unittest.TestCase):
                 return_value="bar"
         ) as choose_mock:
             token = Token("foo", {})
-            result = token.extract_organization_from_token()
+            result = token.extract_organization_from_token("bar")
             self.assertEqual(result, "bar")
-            choose_mock.assert_called_once_with(["foo", "bar"])
+            choose_mock.assert_called_once_with(["foo", "bar"], "bar")
 
     def test_extract_deal_type_from_token_no_pk(self):
         """
@@ -283,6 +303,66 @@ class TestChooseOrganization(unittest.TestCase):
         unittest.mock.patch('builtins.input') as input_mock:
             self.assertEqual(choose_organization(["foo", "bar"]), "bar")
             input_mock.assert_not_called()
+
+    def test_the_command_line_is_asked_before_the_environment(self):
+        """
+        Tests that `--organization` decides over the environment variable, and
+        that nothing is read from the standard input when it does.
+        """
+        with unittest.mock.patch.dict(
+                'os.environ',
+                {"COGUARD_ORGANIZATION": "foo"}
+        ), \
+        unittest.mock.patch('builtins.input') as input_mock:
+            self.assertEqual(choose_organization(["foo", "bar"], " bar "), "bar")
+            input_mock.assert_not_called()
+
+    def test_an_empty_command_line_value_falls_back_to_the_environment(self):
+        """
+        Tests that an empty `--organization` is as good as none.
+        """
+        with unittest.mock.patch.dict(
+                'os.environ',
+                {"COGUARD_ORGANIZATION": "bar"}
+        ):
+            self.assertEqual(choose_organization(["foo", "bar"], " "), "bar")
+
+    def test_a_command_line_organization_the_account_does_not_have(self):
+        """
+        Tests that `--organization` naming an organization outside the token is
+        an error, even if the environment variable names a valid one.
+        """
+        with unittest.mock.patch.dict(
+                'os.environ',
+                {"COGUARD_ORGANIZATION": "bar"}
+        ), \
+        unittest.mock.patch('builtins.input') as input_mock:
+            self.assertIsNone(choose_organization(["foo", "bar"], "baz"))
+            input_mock.assert_not_called()
+
+    def test_the_only_organization_is_used_without_a_request(self):
+        """
+        Tests that an account with one organization needs no choice.
+        """
+        with unittest.mock.patch.dict('os.environ', {}, clear=True), \
+        unittest.mock.patch('builtins.input') as input_mock:
+            self.assertEqual(choose_organization(["foo"]), "foo")
+            input_mock.assert_not_called()
+
+    def test_a_request_must_match_the_only_organization(self):
+        """
+        Tests that requesting an organization the account does not have is an
+        error even if the account has only one, whether it is requested via
+        `--organization` or via the environment.
+        """
+        with unittest.mock.patch.dict('os.environ', {}, clear=True):
+            self.assertEqual(choose_organization(["foo"], "foo"), "foo")
+            self.assertIsNone(choose_organization(["foo"], "bar"))
+        with unittest.mock.patch.dict(
+                'os.environ',
+                {"COGUARD_ORGANIZATION": "bar"}
+        ):
+            self.assertIsNone(choose_organization(["foo"]))
 
     def test_surrounding_space_in_the_environment_is_ignored(self):
         """

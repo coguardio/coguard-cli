@@ -60,8 +60,9 @@ from typing import Dict, List, Optional, Tuple
 import requests
 
 from coguard_cli.cloudera_integration import EXIT_CLEAN, EXIT_ERROR, \
-    add_cloudera_manager_arguments, apply_logging_level, resolve_credentials
+    add_cloudera_manager_arguments, resolve_credentials
 from coguard_cli.discovery.cloudera_discovery import determine_cluster_name
+from coguard_cli.logging_config import set_logging_config
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApi, ClouderaManagerApiError
 from coguard_cli.print_colors import COLOR_CYAN, COLOR_RED, \
@@ -474,7 +475,6 @@ def connect_for_writing(credentials: Dict) -> Optional[ClouderaManagerBannerApi]
             base_url=credentials["url"],
             username=credentials["username"],
             password=credentials["password"],
-            verify_tls=credentials.get("verify_tls", True),
             ca_cert=credentials.get("ca_cert")
         )
     except ClouderaManagerApiError as err:
@@ -591,7 +591,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     The entry point of `coguard-cloudera-banner`.
     """
     args = argument_parser().parse_args(argv)
-    apply_logging_level(args)
+    set_logging_config(args.logging_level)
     credentials = resolve_credentials(args)
     if not credentials:
         return EXIT_ERROR

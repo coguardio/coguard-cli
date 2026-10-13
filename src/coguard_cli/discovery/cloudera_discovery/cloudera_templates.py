@@ -13,11 +13,20 @@ the scripts' environment is defined by. Where a script computes a value which no
 parameter carries, a neutral value is used instead, and whatever placeholder is
 left after that is handled by :func:`neutralize_placeholders`.
 
+Every template is rendered the same way: :data:`TEMPLATES` names the
+placeholders of the file, and where the value of each comes from, and
+:func:`apply_substitutions` replaces them the way the scripts do with `sed`.
+That is also why a template engine such as mustache is not used: the scripts do
+not render the files as templates, they replace a known set of tokens and leave
+everything else alone, including the `{{CMF_CONF_DIR}}` the agent expands later
+and the bare tokens Knox resolves itself.
+
 The tables are a transcription of the control scripts of the Knox and Ozone
 service descriptors as shipped with Cloudera Manager 7.13 (`KNOX_C730` and
 `OZONE_C730`, `scripts/deployTopologies.sh`, `scripts/setupKerberos.sh`,
-`scripts/setupAutoDiscovery.sh`, `scripts/setupRanger.sh`,
-`scripts/configureIDBroker.sh` and `scripts/prometheus_config_utils.sh`).
+`scripts/setupAutoDiscovery.sh`, `scripts/setupRanger.sh` and
+`scripts/prometheus_config_utils.sh`). The descriptors of the Knox IDBroker,
+which the gateway ships but never deploys, are left to the neutral values.
 """
 
 import json
@@ -30,11 +39,9 @@ from typing import Callable, Dict, List, Optional, Tuple
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApi
 
-# The role types whose configuration a template of another role type draws on.
-# The Knox gateway ships the descriptors of the IDBroker, and the Ozone roles
-# ship the Prometheus configuration, so these are looked up via the base role
-# config group of the type, which exists whether or not such a role was added.
-KNOX_IDBROKER_ROLE_TYPE = "IDBROKER"
+# The role type whose configuration the Prometheus templates the Ozone roles ship
+# draw on. It is looked up via the base role config group of the type, which
+# exists whether or not such a role was added.
 OZONE_PROMETHEUS_ROLE_TYPE = "OZONE_PROMETHEUS"
 
 # The value Cloudera Manager uses for "the CA bundle Auto-TLS distributes", and
@@ -69,7 +76,6 @@ UNQUOTED_MUSTACHE_PLACEHOLDER = re.compile(
 DANGLING_JSON_COMMA = re.compile(r",(\s*[}\]])")
 
 
-# pylint: disable=too-many-instance-attributes
 class TemplateContext:
     """
     What a renderer may consult about the role a template belongs to. Every
@@ -89,18 +95,12 @@ class TemplateContext:
         self._service_name = service_name
         self._role = role
         self._role_files = role_files
-        self._config_layers: Dict[Optional[str], List[Dict[str, Dict]]] = {}
-        self._fetched_files: Dict[str, Optional[str]] = {}
-        self._service_config: Optional[Dict[str, Dict]] = None
-        self._cloudera_manager_config: Optional[Dict[str, Dict]] = None
+        self._cache: Dict = {}
 
-    def _get_service_config(self) -> Dict[str, Dict]:
-        if self._service_config is None:
-            self._service_config = self._api.get_service_config(
-                self._cluster_name,
-                self._service_name
-            )
-        return self._service_config
+    def _cached(self, key, compute: Callable):
+        if key not in self._cache:
+            self._cache[key] = compute()
+        return self._cache[key]
 
     def _layers(self, role_type: Optional[str]) -> List[Dict[str, Dict]]:
         """
@@ -108,35 +108,31 @@ class TemplateContext:
         first: the role, its role config group and the service, or, for another
         role type, the base role config group of that type and the service.
         """
-        if role_type in self._config_layers:
-            return self._config_layers[role_type]
-        layers = []
-        if role_type is None:
-            layers.append(self._api.get_role_config(
-                self._cluster_name,
-                self._service_name,
-                self._role.get("name")
+        def compute():
+            api, cluster, service = \
+                self._api, self._cluster_name, self._service_name
+            layers = []
+            if role_type is None:
+                layers.append(api.get_role_config(cluster, service,
+                                                  self._role.get("name")))
+                group_name = (self._role.get("roleConfigGroupRef") or {}).get(
+                    "roleConfigGroupName"
+                )
+            else:
+                group_name = next(
+                    (group.get("name")
+                     for group in api.list_role_config_groups(cluster, service)
+                     if group.get("roleType") == role_type and group.get("base")),
+                    None
+                )
+            if group_name:
+                layers.append(api.get_role_config_group_config(cluster, service,
+                                                               group_name))
+            layers.append(self._cached(
+                "service", lambda: api.get_service_config(cluster, service)
             ))
-            group_name = (self._role.get("roleConfigGroupRef") or {}).get(
-                "roleConfigGroupName"
-            )
-        else:
-            group_name = next(
-                (group.get("name") for group in
-                 self._api.list_role_config_groups(self._cluster_name,
-                                                   self._service_name)
-                 if group.get("roleType") == role_type and group.get("base")),
-                None
-            )
-        if group_name:
-            layers.append(self._api.get_role_config_group_config(
-                self._cluster_name,
-                self._service_name,
-                group_name
-            ))
-        layers.append(self._get_service_config())
-        self._config_layers[role_type] = layers
-        return layers
+            return layers
+        return self._cached(("layers", role_type), compute)
 
     def parameter(self,
                   name: str,
@@ -146,12 +142,10 @@ class TemplateContext:
         most specific level, or, if it is set nowhere, its default.
         """
         layers = self._layers(role_type)
-        for layer in layers:
-            if "value" in layer.get(name, {}):
-                return layer[name]["value"]
-        for layer in layers:
-            if "default" in layer.get(name, {}):
-                return layer[name]["default"]
+        for key in ("value", "default"):
+            for layer in layers:
+                if key in layer.get(name, {}):
+                    return layer[name][key]
         return None
 
     def host_name(self) -> Optional[str]:
@@ -164,10 +158,9 @@ class TemplateContext:
         """
         The Kerberos realm Cloudera Manager creates principals in.
         """
-        if self._cloudera_manager_config is None:
-            self._cloudera_manager_config = \
-                self._api.get_cloudera_manager_config()
-        realm = self._cloudera_manager_config.get("SECURITY_REALM", {})
+        realm = self._cached(
+            "cloudera manager", self._api.get_cloudera_manager_config
+        ).get("SECURITY_REALM", {})
         return realm.get("value", realm.get("default"))
 
     def file(self, config_file_name: str) -> Optional[str]:
@@ -177,14 +170,9 @@ class TemplateContext:
         """
         if config_file_name in self._role_files:
             return self._role_files[config_file_name]
-        if config_file_name not in self._fetched_files:
-            self._fetched_files[config_file_name] = self._api.get_config_file(
-                self._cluster_name,
-                self._service_name,
-                self._role.get("name"),
-                config_file_name
-            )
-        return self._fetched_files[config_file_name]
+        return self._cached(("file", config_file_name), lambda: \
+            self._api.get_config_file(self._cluster_name, self._service_name,
+                                      self._role.get("name"), config_file_name))
 
     def file_names(self) -> List[str]:
         """
@@ -196,7 +184,8 @@ class TemplateContext:
 @dataclass(frozen=True)
 class Substitution:
     """
-    One placeholder a control script replaces. `remove_line_if_empty` mirrors
+    One placeholder a control script replaces, and how its value is determined.
+    `remove_line_if_empty` mirrors
     the `replaceOrRemovePattern` helper of the Knox scripts, which deletes the
     line of a placeholder whose value is empty rather than leaving an empty
     value behind; a plain `sed` substitution leaves the empty value.
@@ -282,15 +271,6 @@ def _knox_ranger_authorization_enabled(context: TemplateContext) -> str:
     return "true" if context.parameter("ranger_service") else "false"
 
 
-def _idbroker_proxyuser_block(context: TemplateContext) -> str:
-    # `configureIDBroker.sh` quotes the block, unlike every other script.
-    block = environment_value(context.parameter(
-        "idbroker_kerberos_dt_proxyuser_block",
-        KNOX_IDBROKER_ROLE_TYPE
-    ))
-    return f'"{block or ""}"'
-
-
 _KNOX_PAM_SERVICE_NAME = Substitution(
     "KNOX_PAM_SERVICE_NAME", _parameter("knox_pam_realm_service"), False
 )
@@ -307,16 +287,6 @@ _KNOX_KERBEROS = (
                  _constant("{{CMF_CONF_DIR}}/knox.keytab")),
     Substitution("AUTH_TO_LOCAL_RULES", _knox_auth_to_local_rules),
 )
-_IDBROKER_KNOX_TOKEN_TTL = Substitution(
-    "KNOX_TOKEN_TTL",
-    _parameter("idbroker_knox_token_ttl_ms", KNOX_IDBROKER_ROLE_TYPE),
-    False
-)
-_IDBROKER_TOKEN_STATE_ENABLED = Substitution(
-    "TOKEN_STATE_ENABLED",
-    _parameter("idbroker_knox_token_state_enabled", KNOX_IDBROKER_ROLE_TYPE),
-    False
-)
 # `KNOX_TOKEN_SIGNATURE_ALG` is not part of the environment the descriptor
 # defines, so the scripts substitute it with an empty value.
 _KNOX_TOKEN_SIGNATURE_ALGORITHM = Substitution(
@@ -325,7 +295,7 @@ _KNOX_TOKEN_SIGNATURE_ALGORITHM = Substitution(
 
 # The substitutions of the Knox control scripts, keyed by the name of the file
 # in the `configFiles` listing of a Knox role.
-KNOX_SUBSTITUTIONS: Dict[str, Tuple[Substitution, ...]] = {
+KNOX_TEMPLATES: Dict[str, Tuple[Substitution, ...]] = {
     "aux/shared-providers/admin.json": (_KNOX_PAM_SERVICE_NAME,),
     "aux/shared-providers/knoxsso.json": (_KNOX_PAM_SERVICE_NAME,),
     "aux/shared-providers/metadata.json": (_KNOX_PAM_SERVICE_NAME,),
@@ -363,11 +333,6 @@ KNOX_SUBSTITUTIONS: Dict[str, Tuple[Substitution, ...]] = {
                      _parameter("gateway_knox_token_expected_jwt_issuer")),
         _KNOX_RANGER_AUTH_ENABLED,
     ),
-    "aux/shared-providers/cab-providers.json": _KNOX_KERBEROS + (
-        # `configureIDBroker.sh` quotes the block here, unlike everywhere else.
-        Substitution("PROXYUSER_BLOCK", _idbroker_proxyuser_block, False),
-        _IDBROKER_TOKEN_STATE_ENABLED,
-    ),
     "aux/descriptors/knoxsso.json": (
         Substitution("SSO_TOKEN_TTL", _parameter("knoxsso_token_ttl"), False),
         _KNOX_TOKEN_SIGNATURE_ALGORITHM,
@@ -401,22 +366,6 @@ KNOX_SUBSTITUTIONS: Dict[str, Tuple[Substitution, ...]] = {
         Substitution("KNOX_TOKEN_KERBEROS_INCLUDE_GROUPS_ALLOWED",
                      _parameter("knox_token_kerberos_include_groups_allowed"),
                      False),
-    ),
-    "aux/descriptors/aws-cab.json": (_IDBROKER_KNOX_TOKEN_TTL,),
-    "aux/descriptors/gcp-cab.json": (_IDBROKER_KNOX_TOKEN_TTL,),
-    "aux/descriptors/azure-cab.json": (_IDBROKER_KNOX_TOKEN_TTL,),
-    "aux/descriptors/dt.json": (
-        _IDBROKER_KNOX_TOKEN_TTL,
-        Substitution("TOKEN_RENEW_INTERVAL",
-                     _parameter("idbroker_knox_token_renew_interval",
-                                KNOX_IDBROKER_ROLE_TYPE),
-                     False),
-        _IDBROKER_TOKEN_STATE_ENABLED,
-        Substitution("TOKEN_RENEWER_WHITELIST",
-                     _parameter("idbroker_knox_token_renewer_whitelist",
-                                KNOX_IDBROKER_ROLE_TYPE),
-                     False),
-        _KNOX_TOKEN_SIGNATURE_ALGORITHM,
     ),
 }
 
@@ -505,69 +454,91 @@ def _yaml_scalar(value: str) -> str:
     return json.dumps(value) if value.startswith("{") else value
 
 
-def _render_ozone_prometheus_config(content: str,
-                                    context: TemplateContext) -> str:
-    ssl_enabled = _ozone_ssl_enabled(context)
-    scheme = "https" if ssl_enabled else "http"
-    ca_file = ""
-    if ssl_enabled:
-        ca_file = context.parameter("ozone.prometheus.ca.file",
-                                    OZONE_PROMETHEUS_ROLE_TYPE) or ""
-        if ca_file == AUTO_TLS_CA_FILE:
-            ca_file = AUTO_TLS_CA_FILE_LOCATION
-    values = {
-        "SCHEME": scheme,
-        "CA_FILE": _yaml_scalar(ca_file),
-        "TARGETS": _ozone_prometheus_targets(context, scheme),
-        "TOKEN_FILE": _yaml_scalar(
-            "{{CMF_CONF_DIR}}/ozone-conf/prometheus-token"
-        ),
-        "SCRAPE_INTERVAL": context.parameter(
-            "ozone.prometheus.scrape.interval",
-            OZONE_PROMETHEUS_ROLE_TYPE
-        ) or PROMETHEUS_DEFAULT_SCRAPE_INTERVAL,
-    }
-    for token, value in values.items():
-        content = content.replace("{{" + token + "}}", value)
-    return content
+def _ozone_scheme(context: TemplateContext) -> str:
+    return "https" if _ozone_ssl_enabled(context) else "http"
 
 
-def _render_ozone_prometheus_web_config(content: str,
-                                        context: TemplateContext) -> str:
+def _ozone_ca_file(context: TemplateContext) -> str:
     if not _ozone_ssl_enabled(context):
-        # TLS is off by default, so omitting the section disables it.
-        return content.replace("{{TLS_SERVER_CONFIG}}", "")
-    tls_config = context.file("aux/templates/prometheus-tls-config.yml") or \
-        PROMETHEUS_TLS_CONFIG_TEMPLATE
-    server_key = context.parameter("ssl_server_privatekey_location",
-                                   OZONE_PROMETHEUS_ROLE_TYPE) or ""
+        return ""
+    ca_file = context.parameter("ozone.prometheus.ca.file",
+                                OZONE_PROMETHEUS_ROLE_TYPE) or ""
+    if ca_file == AUTO_TLS_CA_FILE:
+        ca_file = AUTO_TLS_CA_FILE_LOCATION
+    return _yaml_scalar(ca_file)
+
+
+def _ozone_decrypted_key(context: TemplateContext) -> str:
     # The control script decrypts the key next to the original. A location
     # Cloudera Manager has not resolved yet, such as `{{CM_AUTO_TLS}}`, stays
     # what it is.
-    decrypted_key = posixpath.join(posixpath.dirname(server_key),
-                                   "decrypted-server-private-key.pem") \
-        if "/" in server_key else server_key
-    values = {
-        "SERVER_CERT": context.parameter("ssl_server_certificate_location",
-                                         OZONE_PROMETHEUS_ROLE_TYPE) or "",
-        "DECRYPTED_KEY": decrypted_key,
-        # Without advanced TLS controls, the script requests the defaults of
-        # Prometheus: TLS 1.2 to 1.3 and the default cipher suites.
-        "SERVER_MIN_TLS_VERSION": "TLS12",
-        "SERVER_MAX_TLS_VERSION": "TLS13",
-        "SERVER_CIPHER_SUITES": "[]",
-    }
-    for token, value in values.items():
-        tls_config = tls_config.replace("{{" + token + "}}", value)
-    return content.replace("{{TLS_SERVER_CONFIG}}", tls_config.rstrip("\n"))
+    server_key = context.parameter("ssl_server_privatekey_location",
+                                   OZONE_PROMETHEUS_ROLE_TYPE) or ""
+    if "/" not in server_key:
+        return server_key
+    return posixpath.join(posixpath.dirname(server_key),
+                          "decrypted-server-private-key.pem")
 
 
-# The renderers for templates which take more than a substitution table, keyed
-# by Cloudera service type and the base name of the file.
-TEMPLATE_RENDERERS: Dict[Tuple[str, str],
-                         Callable[[str, TemplateContext], str]] = {
-    ("OZONE", "ozone-prometheus.yml"): _render_ozone_prometheus_config,
-    ("OZONE", "prometheus-web.yml"): _render_ozone_prometheus_web_config,
+# The `tls_server_config` section of the Prometheus web configuration. Without
+# advanced TLS controls, the script requests the defaults of Prometheus: TLS 1.2
+# to 1.3 and the default cipher suites.
+PROMETHEUS_TLS_CONFIG: Tuple[Substitution, ...] = (
+    Substitution("{{SERVER_CERT}}",
+                 _parameter("ssl_server_certificate_location",
+                            OZONE_PROMETHEUS_ROLE_TYPE),
+                 False),
+    Substitution("{{DECRYPTED_KEY}}", _ozone_decrypted_key, False),
+    Substitution("{{SERVER_MIN_TLS_VERSION}}", _constant("TLS12"), False),
+    Substitution("{{SERVER_MAX_TLS_VERSION}}", _constant("TLS13"), False),
+    Substitution("{{SERVER_CIPHER_SUITES}}", _constant("[]"), False),
+)
+
+
+def _ozone_tls_server_config(context: TemplateContext) -> str:
+    # TLS is off by default, so omitting the section disables it.
+    if not _ozone_ssl_enabled(context):
+        return ""
+    template = context.file("aux/templates/prometheus-tls-config.yml") or \
+        PROMETHEUS_TLS_CONFIG_TEMPLATE
+    return apply_substitutions(template, PROMETHEUS_TLS_CONFIG,
+                               context).rstrip("\n")
+
+
+OZONE_PROMETHEUS_CONFIG: Tuple[Substitution, ...] = (
+    Substitution("{{SCHEME}}", _ozone_scheme, False),
+    Substitution("{{CA_FILE}}", _ozone_ca_file, False),
+    Substitution(
+        "{{TARGETS}}",
+        lambda context: _ozone_prometheus_targets(context,
+                                                  _ozone_scheme(context)),
+        False
+    ),
+    Substitution("{{TOKEN_FILE}}",
+                 _constant('"{{CMF_CONF_DIR}}/ozone-conf/prometheus-token"'),
+                 False),
+    Substitution(
+        "{{SCRAPE_INTERVAL}}",
+        lambda context: context.parameter("ozone.prometheus.scrape.interval",
+                                          OZONE_PROMETHEUS_ROLE_TYPE)
+        or PROMETHEUS_DEFAULT_SCRAPE_INTERVAL,
+        False
+    ),
+)
+OZONE_PROMETHEUS_WEB_CONFIG: Tuple[Substitution, ...] = (
+    Substitution("{{TLS_SERVER_CONFIG}}", _ozone_tls_server_config, False),
+)
+
+# Every template this module renders, keyed by the Cloudera service type and the
+# name of the file in the `configFiles` listing of a role. The Ozone roles ship
+# the Prometheus files in `aux/`; a Prometheus role reads them from `ozone-conf/`.
+TEMPLATES: Dict[Tuple[str, str], Tuple[Substitution, ...]] = {
+    **{("KNOX", name): substitutions
+       for name, substitutions in KNOX_TEMPLATES.items()},
+    **{("OZONE", f"{folder}/ozone-prometheus.yml"): OZONE_PROMETHEUS_CONFIG
+       for folder in ("aux", "ozone-conf")},
+    **{("OZONE", f"{folder}/prometheus-web.yml"): OZONE_PROMETHEUS_WEB_CONFIG
+       for folder in ("aux", "ozone-conf")},
 }
 
 
@@ -577,20 +548,15 @@ def render_template(cloudera_service_type: str,
                     context: TemplateContext) -> str:
     """
     Renders a configuration file the way the control script of its role would
-    on the host, if it is one of the templates this module knows. Any other file
-    is returned unchanged.
+    on the host, if it is one of the :data:`TEMPLATES`. Any other file is
+    returned unchanged.
     """
-    service_type = (cloudera_service_type or "").upper()
-    if service_type == "KNOX" and config_file_name in KNOX_SUBSTITUTIONS:
-        return apply_substitutions(content,
-                                   KNOX_SUBSTITUTIONS[config_file_name],
-                                   context)
-    renderer = TEMPLATE_RENDERERS.get(
-        (service_type, posixpath.basename(config_file_name))
+    substitutions = TEMPLATES.get(
+        ((cloudera_service_type or "").upper(), config_file_name)
     )
-    if renderer is None:
+    if substitutions is None:
         return content
-    return renderer(content, context)
+    return apply_substitutions(content, substitutions, context)
 
 
 def neutralize_placeholders(content: str, file_type: str) -> str:

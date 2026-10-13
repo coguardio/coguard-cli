@@ -49,12 +49,11 @@ coguard cloud cloudera \
 | --cloudera-manager-user          | CLOUDERA_MANAGER_USER       | The Cloudera Manager user to authenticate as.                                           |
 | N/A                              | CLOUDERA_MANAGER_PASSWORD   | The password. Prompted for interactively if the variable is unset and a terminal exists. |
 | --cloudera-manager-ca-cert       | CLOUDERA_MANAGER_CA_CERT    | A CA certificate bundle to trust for the TLS connection.                                 |
-| --cloudera-manager-no-verify-tls | CLOUDERA_MANAGER_VERIFY_TLS | Skip TLS verification, e.g. for a self-signed certificate behind a reverse proxy.        |
 | --cloudera-cluster               | CLOUDERA_CLUSTER            | The cluster to scan. Only needed if Cloudera Manager manages more than one cluster.     |
 
 The values can also be placed into a JSON or YAML file, passed via
 `--credentials-file`, using the keys `url`, `username`, `password`,
-`ca_cert`, `verify_tls` and `cluster`:
+`ca_cert` and `cluster`:
 
 ```yaml
 url: https://cm.example.com
@@ -254,15 +253,22 @@ systemctl enable --now coguard-cloudera-check.timer
 
 Three notes on the unit:
 
-- The CoGuard account is taken from `COGUARD_USER_NAME` and
-  `COGUARD_PASSWORD` when both are set, which is why `ProtectHome=true`
-  works here. Without them the CLI reads
-  `~/.config/coguard-cli/coguard_conf`, which it writes on the first
-  login — in that case drop `ProtectHome`, and keep the state file in the
-  home directory as well.
+- The CoGuard account comes from exactly one of two places, never a mix of
+  both:
+  - **The environment**, if both `COGUARD_USER_NAME` and `COGUARD_PASSWORD`
+    are set. `~/.config/coguard-cli/coguard_conf` is then not read at all,
+    which is why `ProtectHome=true` works here. That includes the CoGuard
+    URLs a login may have stored in the file, so a unit scanning against
+    anything other than `portal.coguard.io` passes `--coguard-api-url` and
+    `--coguard-auth-url` instead.
+  - **The file** `~/.config/coguard-cli/coguard_conf`, which the CLI writes
+    on the first login, otherwise. A single one of the two variables is
+    ignored rather than combined with the file. In this case drop
+    `ProtectHome`, and keep the state file in the home directory as well.
 - **If the account belongs to more than one CoGuard organization, set
-  `COGUARD_ORGANIZATION`.** Interactively the CLI asks which organization a
-  scan belongs to; a unit has nobody to ask, and without the variable the
+  `COGUARD_ORGANIZATION`**, the environment counterpart of `coguard
+  --organization`. Interactively the CLI asks which organization a scan
+  belongs to; a unit has nobody to ask, and without the variable the
   scan stops and logs which organizations the account has. An organization
   name is not a secret, so `Environment=COGUARD_ORGANIZATION=...` in the
   unit does as well as a line in the environment file.
@@ -294,14 +300,6 @@ coguard-cloudera-banner \
     --cloudera-manager-url https://cm.example.com \
     --cloudera-manager-user coguard-admin \
     --report-url https://portal.coguard.io/dashboard
-```
-
-```
-CoGuard: 89 configuration findings of ozone-base-cluster (44 High, 35 Medium,
-10 Low), affecting ozone_datanode (11), ozone_manager (11), ozone_recon (11),
-ozone_s3_gateway (11), ozone_storage_container_manager (11) and 12 further
-services. Scanned 2026-09-08 18:57 UTC. Full report:
-https://portal.coguard.io/dashboard
 ```
 
 The parameter written is `CUSTOM_BANNER_HTML` of the Cloudera Manager service
@@ -456,17 +454,16 @@ workflow.
 **The fail level is what makes it adoptable.** A cluster which has been
 running for a while has findings, so a gate at `--minimum-fail-level 1` is
 red on the first day, and a gate which is red on the first day gets switched
-off. The generated workflow therefore fails on severity 4 and above and
-publishes the whole result as GitHub code scanning alerts, where the findings
-below that level are visible, tracked and dismissible without failing
-anything. Lower the level as they get addressed.
+off. The generated workflow therefore fails on severity 4 and above. The
+log of the job lists every finding regardless, the ones below the fail level
+included, so they are visible without failing anything; lower the level as
+they get addressed. The `result.json` of every run is kept as an artifact of
+the run, which is also what `coguard-cloudera-banner` takes.
 
-The alerts are the `--output-format sarif` result of the scan. Their file
-paths are the paths inside the cluster, e.g.
-`ozone-conf/ozone-site.xml`, and do not correspond to files in the
-repository, so they show up without a source snippet. Two services which
-were both scanned and both have a finding in a file of the same name share
-one alert.
+The findings are deliberately not published as GitHub code scanning alerts.
+The workflow does not run on pull requests, and the findings are about files
+inside the cluster, e.g. `ozone-conf/ozone-site.xml`, rather than files of the
+repository, so there is no diff and no source an alert could be attached to.
 
 ## How it works
 
@@ -671,9 +668,10 @@ deploys, except for the location of the keytab, which depends on the process
 directory and is given as `{{CMF_CONF_DIR}}/knox.keytab`.
 
 A placeholder whose value is computed by a script from something Cloudera
-Manager does not expose, such as `CUSTOMIZABLE_AZURE_CAB_CONTENT` of the
-IDBroker, is replaced by a neutral value if, and only if, the file does not
-parse otherwise: a placeholder on a line of its own is removed, together with
+Manager does not expose, and the placeholders of the IDBroker descriptors
+(`cab-providers.json`, `dt.json`, the `*-cab.json` files), which the Knox gateway
+ships but never deploys, are replaced by a neutral value if, and only if, the
+file does not parse otherwise: a placeholder on a line of its own is removed, together with
 the comma it leaves dangling in JSON, and an inline one is quoted. A file
 which does not parse even then is skipped, since a parse error about a
 template is noise rather than a finding. A deployed file which is malformed for
@@ -770,7 +768,10 @@ it changes nothing at all.
 
 ### The connection fails with a certificate error. What do I do?
 
-Cloudera Manager deployments frequently sit behind a reverse proxy with a
-self-signed or internal certificate. Either pass the CA bundle via
-`--cloudera-manager-ca-cert`, or, for a test deployment, skip
-verification with `--cloudera-manager-no-verify-tls`.
+Cloudera Manager deployments frequently present a certificate of an internal
+certificate authority: the one Auto-TLS creates, whose bundle the agents carry
+as `cm-auto-global_cacerts.pem`, or the one of a reverse proxy in front of
+Cloudera Manager. Pass that authority's certificate via
+`--cloudera-manager-ca-cert`, or `CLOUDERA_MANAGER_CA_CERT`. The certificate is
+always verified; there is deliberately no option to skip the verification,
+since the connection carries the password of a Cloudera Manager user.

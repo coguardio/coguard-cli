@@ -56,6 +56,11 @@ following environment variables:
 - `COGUARD_USER_NAME`
 - `COGUARD_PASSWORD`
 
+These and the configuration file written on the first sign-in
+(`~/.config/coguard-cli/coguard_conf`) are an either-or: if both variables
+are set, the file is not read at all, and if only one of them is set, it is
+ignored and the file is used.
+
 Every scan produces an output, unless the dry-run option is selected, containing the following information:
 
 - A short description of the failed policy.
@@ -235,7 +240,6 @@ The following options are specific to this provider.
 | --cloudera-manager-url             | URL       | CLOUDERA_MANAGER_URL            | The URL of the Cloudera Manager instance, e.g. `https://cm.example.com`.              |
 | --cloudera-manager-user            | USER      | CLOUDERA_MANAGER_USER           | The Cloudera Manager user to authenticate as.                                         |
 | --cloudera-manager-ca-cert         | PATH      | CLOUDERA_MANAGER_CA_CERT        | A CA certificate bundle to trust when connecting to Cloudera Manager.                 |
-| --cloudera-manager-no-verify-tls   | N/A       | CLOUDERA_MANAGER_VERIFY_TLS     | Do not verify the TLS certificate of Cloudera Manager.                                |
 | --cloudera-cluster                 | NAME      | CLOUDERA_CLUSTER                | The cluster to scan. Only required if Cloudera Manager manages more than one cluster. |
 
 ###### Cloudera Credentials

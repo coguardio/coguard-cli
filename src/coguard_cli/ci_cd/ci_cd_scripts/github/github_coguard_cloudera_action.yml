@@ -43,6 +43,10 @@ on:
         type: string
         required: false
         default: ''
+      # A cluster which has been running for a while has findings, and a gate
+      # which is red from the first day on is a gate which gets switched off.
+      # Start at what the cluster passes today, and lower it as the findings in
+      # the log of the job get addressed.
       minimum-fail-level:
         description: >-
           The severity from which on a finding fails this job. 1 is any finding
@@ -78,25 +82,14 @@ on:
         required: false
         default: '4'
 
-permissions:
-  contents: read
-  # The findings are published as code scanning alerts as well, which is what
-  # makes the ones below the fail level visible without failing the job. A
-  # cluster which has been running for a while has findings, and a gate which is
-  # red from the first day on is a gate which gets switched off. Raise
-  # `minimum-fail-level` to what the cluster passes today, watch the alerts, and
-  # lower it as they get addressed.
-  security-events: write
+# The scan reads the cluster, not this repository, so the job needs no access
+# to it.
+permissions: {}
 
 jobs:
   gate:
     runs-on: ubuntu-latest
     steps:
-      # Not needed for the scan, which reads the cluster rather than this
-      # repository, but it is what lets the published findings be attached to the
-      # commit which is being gated.
-      - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -115,9 +108,9 @@ jobs:
           CLOUDERA_MANAGER_USER: ${{ secrets.CLOUDERA_MANAGER_USER }}
           CLOUDERA_MANAGER_PASSWORD: ${{ secrets.CLOUDERA_MANAGER_PASSWORD }}
           # A cluster with AutoTLS presents a certificate of its own certificate
-          # authority. Point this at that authority's certificate, or add
-          # `--cloudera-manager-no-verify-tls` below.
-          # CLOUDERA_MANAGER_CA_CERT: /path/to/cm-auto-global-cacerts.pem
+          # authority. Point this at that authority's certificate; the
+          # certificate of Cloudera Manager is always verified.
+          # CLOUDERA_MANAGER_CA_CERT: /path/to/cm-auto-global_cacerts.pem
           CLOUDERA_CLUSTER: ${{ inputs.cloudera-cluster }}
           MINIMUM_FAIL_LEVEL: ${{ inputs.minimum-fail-level }}
         # The inputs are handed over through the environment rather than written
@@ -128,16 +121,19 @@ jobs:
           if [ -n "${CLOUDERA_CLUSTER}" ]; then
             cluster_option=(--cloudera-cluster "${CLOUDERA_CLUSTER}")
           fi
+          # Every finding is printed, the ones below the fail level included;
+          # the fail level only decides whether the job fails.
           coguard \
-            --output-format formatted,sarif \
+            --output-format formatted,json \
             --minimum-fail-level "${MINIMUM_FAIL_LEVEL}" \
             cloud cloudera "${cluster_option[@]}"
 
-      - name: Publish the findings
+      - name: Keep the result
         # `always()`, because the findings of the run which failed the job are
-        # precisely the ones worth looking at.
-        if: always() && hashFiles('result.sarif.json') != ''
-        uses: github/codeql-action/upload-sarif@v3
+        # precisely the ones worth looking at. The result is also what
+        # `coguard-cloudera-banner` takes.
+        if: always() && hashFiles('result.json') != ''
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: result.sarif.json
-          category: coguard-cloudera
+          name: coguard-cloudera-result
+          path: result.json

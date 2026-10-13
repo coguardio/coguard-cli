@@ -356,6 +356,28 @@ class TestClouderaTemplates(unittest.TestCase):
         ))
         self.assertEqual(parsed, {"http_server_config": {"http2": False}})
 
+    def test_idbroker_descriptors_are_left_to_the_neutral_values(self):
+        """
+        The descriptors of the IDBroker, which the Knox gateway ships but never
+        deploys, are not rendered, and become readable through the neutral
+        values instead.
+        """
+        template = (
+            '{\n  "params": {\n    "a": "b",\n    "PROXYUSER_BLOCK",\n'
+            '    "c": "TOKEN_STATE_ENABLED"\n  }\n}'
+        )
+        api = _mock_api()
+        result = render_template("KNOX",
+                                 "aux/shared-providers/cab-providers.json",
+                                 template,
+                                 _context(api))
+        self.assertEqual(result, template)
+        api.get_role_config.assert_not_called()
+        self.assertEqual(
+            json.loads(neutralize_placeholders(result, "json")),
+            {"params": {"a": "b", "c": "TOKEN_STATE_ENABLED"}}
+        )
+
     def test_render_unknown_file_unchanged(self):
         """
         A file no renderer knows is returned as it is.

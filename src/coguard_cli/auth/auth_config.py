@@ -8,6 +8,12 @@ import json
 DEFAULT_COGUARD_URL = "https://portal.coguard.io/server"
 DEFAULT_AUTH_URL = "https://portal.coguard.io/auth"
 
+# The organization to use when the account has more than one, for the runs where
+# there is nobody to ask: a systemd timer, a CI job, a Cloudera role. It is the
+# environment counterpart of `--organization`, as COGUARD_USER_NAME and
+# COGUARD_PASSWORD are for the credentials.
+ORGANIZATION_ENVIRONMENT_VARIABLE = "COGUARD_ORGANIZATION"
+
 class CoGuardCliConfig():
     """
     The class representing the configuration of the CoGuard CLI

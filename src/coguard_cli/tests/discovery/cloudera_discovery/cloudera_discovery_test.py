@@ -11,8 +11,8 @@ import unittest.mock
 from coguard_cli.discovery.cloudera_discovery import \
     collect_config_files_for_role, determine_cluster_name, \
     extract_cloudera_cluster_representation, group_roles_by_type, \
-    report_unreviewed_service_types, roles_not_running, unreadable_template, \
-    unresolved_placeholder
+    relocate_config_files, report_unreviewed_service_types, roles_not_running, \
+    unreadable_template, unresolved_placeholder
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApiError
 
@@ -604,6 +604,68 @@ class TestClouderaDiscovery(unittest.TestCase):
             self.assertFalse(
                 os.path.exists(os.path.join(folder, "failed_rules.json"))
             )
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def test_relocate_config_files_stays_inside(self):
+        """
+        An entry whose sub path leaves the folder it is moved from, or the one
+        it is moved to, is not moved.
+        """
+        temp_dir = tempfile.mkdtemp(prefix="coguard-cloudera-relocate-test")
+        try:
+            source = os.path.join(temp_dir, "source")
+            destination = os.path.join(temp_dir, "destination")
+            os.makedirs(os.path.join(source, "conf"))
+            with open(os.path.join(source, "conf", "ozone-site.xml"), "w",
+                      encoding='utf-8') as config_file:
+                config_file.write("<configuration/>")
+            with open(os.path.join(temp_dir, "outside.xml"), "w",
+                      encoding='utf-8') as outside_file:
+                outside_file.write("<configuration/>")
+            moved = relocate_config_files(
+                [{"fileName": "ozone-site.xml", "subPath": "./conf"},
+                 {"fileName": "outside.xml", "subPath": "./.."},
+                 {"fileName": "passwd", "subPath": "/etc"}],
+                source,
+                destination
+            )
+            self.assertEqual([entry["fileName"] for entry in moved],
+                             ["ozone-site.xml"])
+            self.assertTrue(os.path.exists(
+                os.path.join(destination, "conf", "ozone-site.xml")
+            ))
+            self.assertTrue(os.path.exists(os.path.join(temp_dir, "outside.xml")))
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_extract_cloudera_cluster_representation_hostile_service_name(self):
+        """
+        A service name which describes a path does not lead the extraction out
+        of its folder.
+        """
+        api = unittest.mock.MagicMock()
+        api.list_clusters.return_value = [{"name": "cluster"}]
+        api.list_services.return_value = [
+            {"name": "../../coguard-cloudera-escape-test", "type": "KAFKA"}
+        ]
+        api.list_roles.return_value = [
+            {"name": "role", "type": "KAFKA_BROKER", "roleState": "STARTED"}
+        ]
+        api.get_role_process.return_value = {"configFiles": ["kafka.properties"]}
+        api.get_config_file.return_value = "a=b"
+        folder, manifest = extract_cloudera_cluster_representation(api, "c")
+        try:
+            self.assertEqual(list(manifest["clusterServices"]),
+                             ["coguard_cloudera_escape_test_kafka_broker"])
+            self.assertTrue(os.path.exists(os.path.join(
+                folder, "clusterServices",
+                "coguard_cloudera_escape_test_kafka_broker", "kafka.properties"
+            )))
+            self.assertFalse(os.path.exists(os.path.join(
+                os.path.dirname(folder),
+                "coguard-cloudera-escape-test_kafka_broker"
+            )))
         finally:
             shutil.rmtree(folder, ignore_errors=True)
 
