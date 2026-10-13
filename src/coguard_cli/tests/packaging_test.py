@@ -6,6 +6,7 @@ is missing there works from a checkout, and fails once installed from PyPI.
 """
 
 import configparser
+import glob
 import unittest
 from pathlib import Path
 from coguard_cli.ci_cd.ci_cd_providers.ci_cd_provider_github import WORKFLOWS
@@ -30,11 +31,14 @@ def _package_data_patterns():
 
 
 def _shipped_files():
+    # The patterns are expanded the way setuptools expands them, with
+    # `glob.glob(..., recursive=True)`. `Path.glob` would not do: before Python
+    # 3.13, a pattern ending in `**` matches directories only.
     return {
-        path.relative_to(PACKAGE_ROOT).as_posix()
+        Path(path).relative_to(PACKAGE_ROOT).as_posix()
         for pattern in _package_data_patterns()
-        for path in PACKAGE_ROOT.glob(pattern)
-        if path.is_file()
+        for path in glob.glob(str(PACKAGE_ROOT / pattern), recursive=True)
+        if Path(path).is_file()
     }
 
 
