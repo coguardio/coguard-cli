@@ -30,8 +30,16 @@ jobs:
           submodules: true
           fetch-depth: 0
       - run: git fetch origin master:master
+      # The version of setup.cfg itself is compared, rather than looking for
+      # "version = " anywhere in the diff, which any unrelated line such as
+      # `self._api_version = None` satisfies.
       - run: |
-          if [ -n "$(git --no-pager diff master src)" ]
+          if [ -n "$(git --no-pager diff master -- src)" ]
           then
-            git diff master | grep "version = ";
+            master_version=$(git show master:setup.cfg | sed -n 's/^version *= *//p')
+            branch_version=$(sed -n 's/^version *= *//p' setup.cfg)
+            echo "setup.cfg version on master: ${master_version}, on this branch: ${branch_version}"
+            test -n "${branch_version}"
+            test "${branch_version}" != "${master_version}"
+            test "$(printf '%s\n' "${master_version}" "${branch_version}" | sort -V | tail -n 1)" = "${branch_version}"
           fi;

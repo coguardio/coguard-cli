@@ -4,13 +4,78 @@ if it expired.
 """
 
 import logging
-from typing import Optional
+import os
+import sys
+from typing import List, Optional
 import requests
 import jwt
-from coguard_cli.auth.auth_config import CoGuardCliConfig
+from coguard_cli.auth.auth_config import CoGuardCliConfig, \
+    ORGANIZATION_ENVIRONMENT_VARIABLE
 from coguard_cli.auth.enums import DealEnum
 
 COGUARD_REALM_TOKEN_URL = "/realms/coguard/protocol/openid-connect/token"
+
+def choose_organization(organizations: List[str],
+                        requested_organization: Optional[str] = None
+                        ) -> Optional[str]:
+    """
+    Determines which of the organizations of an account a scan belongs to.
+
+    The organization requested via `--organization` is used first, and the one
+    named by the environment variable second, so that an unattended run can say
+    what it means; if the one requested is not an organization of the account,
+    that is an error rather than a reason to fall back to asking or guessing,
+    even if the account has only one. Without either, the only organization of
+    the account is used, and the choice between several is asked for, and asked
+    for only if there is a terminal to answer: `input()` on a closed standard
+    input raises `EOFError`, which is a traceback where a scheduled scan wanted
+    a scan.
+
+    Returns None if no organization could be determined, which uploads the
+    result to the personal space of the account rather than to an organization.
+    """
+    if (requested_organization or "").strip():
+        requested, source = requested_organization.strip(), "--organization"
+    else:
+        requested = (os.environ.get(ORGANIZATION_ENVIRONMENT_VARIABLE) or "").strip()
+        source = ORGANIZATION_ENVIRONMENT_VARIABLE
+    if requested:
+        if requested in organizations:
+            logging.debug("Using the organization requested by %s: %s",
+                          source,
+                          requested)
+            return requested
+        logging.error(
+            "%s names `%s`, which is not an organization of this account. "
+            "The organizations of this account are: %s",
+            source,
+            requested,
+            ", ".join(organizations)
+        )
+        return None
+    if len(organizations) == 1:
+        return organizations[0]
+    if not (sys.stdin is not None and sys.stdin.isatty()):
+        logging.error(
+            "This account has multiple organizations (%s), and there is no terminal "
+            "to ask which one to use. Pass `--organization`, or set %s, to one of "
+            "them.",
+            ", ".join(organizations),
+            ORGANIZATION_ENVIRONMENT_VARIABLE
+        )
+        return None
+    input_val = None
+    print("Multiple organizations detected:")
+    print("\n".join(org for org in organizations))
+    while input_val not in organizations:
+        input_val = input(
+            f"Please type the organization you wish to use (default: {organizations[0]})"
+        )
+        if not input_val.strip():
+            input_val = organizations[0]
+        if input_val not in organizations:
+            print("You typed in an invalid organization. Please repeat.")
+    return input_val
 
 class Token():
     """
@@ -126,10 +191,13 @@ class Token():
                       expanded_pkey)
         return jwt_obj.decode(self._token, jwt.jwk_from_pem(expanded_pkey.encode()))
 
-    def extract_organization_from_token(self) -> Optional[str]:
+    def extract_organization_from_token(
+            self,
+            requested_organization: Optional[str] = None) -> Optional[str]:
         """
         This is the helper function to extract the organization from the token.
-        Returning None if there is no organization.
+        Returning None if there is no organization. `requested_organization` is
+        the one asked for on the command line; see :func:`choose_organization`.
         """
         public_key = self.get_public_key()
         if not public_key:
@@ -137,24 +205,9 @@ class Token():
         jwt_decoded = self.get_decoded_jwt_token(public_key)
         org_result = jwt_decoded.get("organization", None)
         if isinstance(org_result, str):
-            return org_result
+            org_result = [org_result]
         if isinstance(org_result, list) and len(org_result) > 0:
-            if len(org_result) == 1:
-                return org_result[0]
-            input_val = None
-            print("Multiple organizations detected:")
-            print("\n".join(org for org in org_result))
-            while input_val not in org_result:
-                input_val = input(
-                    f"Please type the organization you wish to use (default: {org_result[0]})"
-                )
-                if not input_val.strip():
-                    input_val = org_result[0]
-                if input_val not in org_result:
-                    print("You typed in an invalid organization. Please repeat.")
-            if input_val not in org_result:
-                return None
-            return input_val
+            return choose_organization(org_result, requested_organization)
         return None
 
     def extract_deal_type_from_token(

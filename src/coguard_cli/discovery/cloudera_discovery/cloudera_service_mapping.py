@@ -24,6 +24,11 @@ from typing import Iterable, List, Optional
 # why `LIVY_FOR_SPARK3` is listed even though `HIVE_ON_TEZ` alone would already
 # demonstrate the pattern: it is what establishes `livy` as a piece of software.
 CLOUDERA_SERVICE_TYPE_TO_SOFTWARE = {
+    # The Hadoop Distributed File System. Cloudera names the service after the
+    # file system, but the configuration files it writes -- `core-site.xml` and
+    # `hdfs-site.xml` -- are the Hadoop ones, and CoGuard knows that software
+    # under the name `hadoop`.
+    "HDFS": "hadoop",
     # HiveServer2 with a Tez execution engine. Writes the Hive configuration.
     "HIVE_ON_TEZ": "hive",
     # Hive with the LLAP execution mode.
@@ -73,7 +78,7 @@ CLOUDERA_SERVICE_TYPE_TO_SOFTWARE_WITHOUT_VERSION = {
 REVIEWED_CLOUDERA_SERVICE_TYPES = frozenset([
     "ADLS_CONNECTOR", "ATLAS", "AWS_IDBROKER_EXTERNAL_ACCOUNTS", "AWS_S3",
     "CORE_SETTINGS", "CRUISE_CONTROL", "DATA_CONTEXT_CONNECTOR", "GCS", "HBASE",
-    "HDFS", "HIVE", "HUE", "ICEBERG_REPLICATION", "IMPALA", "KAFKA", "KMS",
+    "HIVE", "HUE", "ICEBERG_REPLICATION", "IMPALA", "KAFKA", "KMS",
     "KNOX", "KS_INDEXER", "KUDU", "LAKEHOUSE_OPTIMIZER", "LAKEHOUSE_UI",
     "METERINGV2", "NAVENCRYPT", "OMID", "OOZIE", "OZONE", "PHOENIX",
     "PROFILER_MANAGER", "PROFILER_SCHEDULER", "QUERY_PROCESSOR", "QUEUEMANAGER",
@@ -119,6 +124,30 @@ CONFIG_FILE_TYPE_BY_NAME = {
     "log4j.properties": "properties",
     "httpd.conf": "httpd",
     "nginx.conf": "nginx",
+}
+
+# The software a configuration file belongs to, keyed by the exact base name, for
+# the files which are the defining configuration of one piece of software. Roles
+# are handed the configuration of the services they talk to -- an HBase master
+# receives `ozone-site.xml` and `hdfs-site.xml`, a Kafka broker receives
+# `atlas-application.properties` -- and those files have to be scanned with the
+# rules of the software they configure, not with the rules of the role they were
+# found in. The values are CoGuard service names as `coguard_service_name`
+# produces them. Files which are not listed, such as `ssl-client.xml`,
+# `jaas.conf` or the log4j files, stay with the role which ships them.
+CONFIG_FILE_OWNER_BY_NAME = {
+    "core-site.xml": "hadoop",
+    "hdfs-site.xml": "hadoop",
+    "hdfs-site-refreshable.xml": "hadoop",
+    "hbase-site.xml": "hbase",
+    "hbase-site-refreshable.xml": "hbase",
+    "ozone-site.xml": "ozone",
+    "hive-site.xml": "hive",
+    "yarn-site.xml": "yarn",
+    "mapred-site.xml": "yarn",
+    "tez-site.xml": "tez",
+    "atlas-application.properties": "atlas",
+    "zoo.cfg": "zookeeper",
 }
 
 # Extensions which are never configuration files in the CoGuard sense. Cloudera
@@ -285,6 +314,19 @@ def unreviewed_service_types(
     )
 
 
+# Everything an identifier may consist of. An identifier is the name of a folder
+# of the extraction as well as a key of the manifest, and it is made of a service
+# name which whoever created the service chose freely, so anything else -- a
+# path separator, `..`, a space -- is replaced.
+IDENTIFIER_DISALLOWED_CHARACTERS = re.compile(r"[^a-z0-9_]+")
+
+
+def _identifier_part(value: Optional[str]) -> str:
+    return IDENTIFIER_DISALLOWED_CHARACTERS.sub(
+        "_", (value or "").lower()
+    ).strip("_")
+
+
 def create_cluster_service_identifier(cloudera_service_name_in_cluster: str,
                                       cloudera_role_type: str) -> str:
     """
@@ -295,11 +337,16 @@ def create_cluster_service_identifier(cloudera_service_name_in_cluster: str,
     A redundant service prefix inside the role type is stripped, since Cloudera
     role types frequently repeat the service name (`KAFKA_BROKER`), which would
     otherwise produce identifiers like `kafka_kafka_broker`.
+
+    Both parts come from Cloudera Manager, and the service name is whatever its
+    creator chose, so they are reduced to lower case letters, digits and
+    underscores: `../../etc` becomes `etc`. A pair of which nothing is left at
+    all becomes `cloudera_service`.
     """
-    service_part = (cloudera_service_name_in_cluster or "").lower()
-    role_part = (cloudera_role_type or "").lower()
+    service_part = _identifier_part(cloudera_service_name_in_cluster)
+    role_part = _identifier_part(cloudera_role_type)
     if not role_part:
-        return service_part
+        return service_part or "cloudera_service"
     if not service_part:
         return role_part
     if role_part.startswith(f"{service_part}_"):
@@ -337,6 +384,19 @@ def config_file_type(config_file_name: str) -> Optional[str]:
         logging.debug("Skipping %s: unrecognized configuration file extension.",
                       config_file_name)
     return result
+
+
+def owning_software(config_file_name: str) -> Optional[str]:
+    """
+    Returns the CoGuard service name of the software a configuration file
+    belongs to, as listed in :data:`CONFIG_FILE_OWNER_BY_NAME`, and `None` if
+    the file does not identify any software and hence belongs to whichever role
+    ships it.
+    """
+    if not config_file_name:
+        return None
+    base_name = posixpath.basename(config_file_name.replace("\\", "/"))
+    return CONFIG_FILE_OWNER_BY_NAME.get(base_name)
 
 
 def is_scannable_config_file(config_file_name: str) -> bool:

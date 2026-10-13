@@ -13,6 +13,13 @@ The endpoint flow implemented here is
 
 which retrieves the *generated* configuration files, rather than reconstructing
 the effective configuration from the service configuration JSON.
+
+In addition,
+
+    GET /api/{version}/events?query=...&maxResults=...
+
+is available for asking Cloudera Manager what has happened to a cluster, which is
+what the scheduled check uses to decide whether a scan is due.
 """
 
 import logging
@@ -37,6 +44,14 @@ API_VERSION_PATTERN = re.compile(r"^v\d+$")
 SUPPORTED_URL_SCHEMES = ("http", "https")
 # Path segments which do not address a resource but navigate the path itself.
 RELATIVE_PATH_SEGMENTS = frozenset([".", ".."])
+# The shape of a query parameter name. Cloudera Manager only ever expects plain
+# identifiers here, so anything which could introduce a second parameter or a
+# fragment is refused rather than encoded and sent.
+QUERY_PARAMETER_NAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+# The number of events asked of the events resource in one request. It is not
+# paged through: whether a cluster has changed follows from the newest events,
+# and the resource returns them newest first.
+DEFAULT_EVENT_PAGE_SIZE = 50
 
 
 class ClouderaManagerApiError(Exception):
@@ -74,22 +89,49 @@ def validate_path_segment(segment: str) -> str:
     return segment
 
 
-def build_url(base_url: str, *path_segments: str) -> str:
+def validate_query_parameter_name(name: str) -> str:
     """
-    Assembles a url from a scheme-and-authority base and the individual path
-    segments, each of which is validated and percent-encoded.
+    Validates that a string may be used as the name of a query parameter of an
+    API url, and returns it unchanged.
+    """
+    if not QUERY_PARAMETER_NAME_PATTERN.match(name or ""):
+        raise ClouderaManagerApiError(
+            f"`{name}` is not a usable query parameter name for a Cloudera "
+            "Manager API url."
+        )
+    return name
+
+
+def build_url(base_url: str,
+              *path_segments: str,
+              query_parameters: Optional[Dict[str, object]] = None) -> str:
+    """
+    Assembles a url from a scheme-and-authority base, the individual path
+    segments and the query parameters, each of which is validated and
+    percent-encoded.
 
     The url is composed field by field rather than by string concatenation, and
-    the query and the fragment are always empty, so that a value ending up in a
-    path segment can neither introduce further path elements nor a query string.
+    the fragment is always empty, so that a value ending up in a path segment can
+    neither introduce further path elements nor a query string, and a value
+    ending up in the query can neither introduce a further parameter nor a
+    fragment.
     """
     split_base = urllib.parse.urlsplit(base_url)
     path = "/" + "/".join(
         urllib.parse.quote(validate_path_segment(segment), safe="")
         for segment in path_segments
     )
+    query = urllib.parse.urlencode(
+        {
+            validate_query_parameter_name(name): str(value)
+            for name, value in (query_parameters or {}).items()
+            if value is not None
+        },
+        quote_via=urllib.parse.quote,
+        safe=""
+    )
     return urllib.parse.urlunsplit(
-        (split_base.scheme, split_base.netloc, path, "", "")
+        (split_base.scheme, split_base.netloc, path, query, "")
     )
 
 
@@ -103,7 +145,6 @@ class ClouderaManagerApi:
                  base_url: str,
                  username: str,
                  password: str,
-                 verify_tls: bool = True,
                  ca_cert: Optional[str] = None,
                  timeout: int = DEFAULT_TIMEOUT,
                  retries: int = DEFAULT_RETRIES):
@@ -112,16 +153,10 @@ class ClouderaManagerApi:
         self._api_version = None
         self._session = requests.Session()
         self._session.auth = (username, password)
-        if ca_cert:
-            self._session.verify = ca_cert
-        else:
-            self._session.verify = verify_tls
-        if not self._session.verify:
-            # The reverse proxy in front of Cloudera Manager frequently uses a
-            # self-signed certificate. Suppress the per-request noise, since the
-            # user opted into this explicitly.
-            # pylint: disable=no-member
-            requests.packages.urllib3.disable_warnings()
+        # The certificate of Cloudera Manager is always verified. A certificate
+        # authority of the cluster's own, such as the one Auto-TLS creates, is
+        # trusted by naming it, never by switching verification off.
+        self._session.verify = ca_cert or True
         retry_strategy = Retry(
             total=retries,
             backoff_factor=2,
@@ -196,7 +231,9 @@ class ClouderaManagerApi:
         logging.debug("Using Cloudera Manager API version %s", self._api_version)
         return self._api_version
 
-    def _api_url(self, *path_segments: str) -> str:
+    def _api_url(self,
+                 *path_segments: str,
+                 query_parameters: Optional[Dict[str, object]] = None) -> str:
         """
         Builds a fully qualified API url from the path segments relative to the
         versioned API root.
@@ -205,15 +242,19 @@ class ClouderaManagerApi:
             self._base_url,
             "api",
             self.get_api_version(),
-            *path_segments
+            *path_segments,
+            query_parameters=query_parameters
         )
 
-    def _get(self, *path_segments: str) -> Optional[requests.Response]:
+    def _get(self,
+             *path_segments: str,
+             query_parameters: Optional[Dict[str, object]] = None
+             ) -> Optional[requests.Response]:
         """
         Performs a GET request against the versioned API, returning `None` if
         the request could not be completed.
         """
-        url = self._api_url(*path_segments)
+        url = self._api_url(*path_segments, query_parameters=query_parameters)
         logging.debug("Requesting %s", url)
         try:
             response = self._session.get(url, timeout=self._timeout)
@@ -223,12 +264,15 @@ class ClouderaManagerApi:
             logging.debug("Request to %s failed: %s", url, err)
             return None
 
-    def _get_items(self, *path_segments: str) -> List[Dict]:
+    def _get_items(self,
+                   *path_segments: str,
+                   query_parameters: Optional[Dict[str, object]] = None
+                   ) -> List[Dict]:
         """
         Performs a GET request and returns the `items` list of the Cloudera
         Manager response envelope.
         """
-        response = self._get(*path_segments)
+        response = self._get(*path_segments, query_parameters=query_parameters)
         if response is None:
             return []
         try:
@@ -356,3 +400,145 @@ class ClouderaManagerApi:
         if response is None:
             return None
         return response.text
+
+    def _get_config(self, *path_segments: str) -> Dict[str, Dict]:
+        """
+        Retrieves a configuration resource in its `full` view, and returns its
+        parameters keyed by name. Each parameter is the record Cloudera Manager
+        returns, which carries a `value` only if the parameter is set at this
+        level, and a `default` if the descriptor defines one. The distinction is
+        what lets a value set on a role config group or on the service shine
+        through a role which merely reports the default.
+        """
+        return {
+            item["name"]: item
+            for item in self._get_items(*path_segments,
+                                        query_parameters={"view": "full"})
+            if isinstance(item, dict) and item.get("name")
+        }
+
+    def get_service_config(self,
+                           cluster_name: str,
+                           service_name: str) -> Dict[str, Dict]:
+        """
+        Returns the service-wide configuration parameters of a service.
+        """
+        return self._get_config(
+            "clusters", cluster_name,
+            "services", service_name,
+            "config"
+        )
+
+    def list_role_config_groups(self,
+                                cluster_name: str,
+                                service_name: str) -> List[Dict]:
+        """
+        Returns the role config groups of a service. A service has a base group
+        for every role type its descriptor defines, whether or not a role of that
+        type has been added to the cluster.
+        """
+        return self._get_items(
+            "clusters", cluster_name,
+            "services", service_name,
+            "roleConfigGroups"
+        )
+
+    def get_role_config_group_config(self,
+                                     cluster_name: str,
+                                     service_name: str,
+                                     role_config_group_name: str
+                                     ) -> Dict[str, Dict]:
+        """
+        Returns the configuration parameters of a role config group.
+        """
+        return self._get_config(
+            "clusters", cluster_name,
+            "services", service_name,
+            "roleConfigGroups", role_config_group_name,
+            "config"
+        )
+
+    def get_role_config(self,
+                        cluster_name: str,
+                        service_name: str,
+                        role_name: str) -> Dict[str, Dict]:
+        """
+        Returns the configuration parameters set on a role itself.
+        """
+        return self._get_config(
+            "clusters", cluster_name,
+            "services", service_name,
+            "roles", role_name,
+            "config"
+        )
+
+    def get_management_service_name(self) -> Optional[str]:
+        """
+        Returns the name of the Cloudera Management Service, i.e. the service
+        which runs the monitors of Cloudera Manager itself and belongs to no
+        cluster. `None` is returned if there is none, or it cannot be read.
+        """
+        response = self._get("cm", "service")
+        if response is None:
+            return None
+        try:
+            name = response.json().get("name")
+        except (ValueError, AttributeError):
+            return None
+        return name if isinstance(name, str) and name else None
+
+    def get_cloudera_manager_config(self) -> Dict[str, Dict]:
+        """
+        Returns the configuration of Cloudera Manager itself, which holds the
+        settings shared by all clusters, such as the Kerberos realm.
+        """
+        return self._get_config("cm", "config")
+
+    def list_events(self,
+                    query: str,
+                    max_results: int = DEFAULT_EVENT_PAGE_SIZE
+                    ) -> Optional[List[Dict]]:
+        """
+        Returns the newest events matching an event query, newest first. `None`
+        is returned if the events resource could not be queried, which is not the
+        same thing as a Cloudera Manager without matching events.
+
+        The query is the filter language of the events resource, e.g.
+        `attributes.EVENTCODE==EV_REVISION_CREATED`. It is worth knowing that
+
+        * the resource is not cluster scoped and answers for everything this
+          Cloudera Manager knows about, so the cluster an event belongs to has to
+          be read off its `CLUSTER` attribute,
+        * it is served by the Event Server role, i.e. it is unavailable while that
+          role is down, and
+        * there is no server side time filter. `timeOccurred` is not a queryable
+          attribute, and `from` and `to` parameters are accepted but ignored,
+          which is why a caller which wants only the new events has to remember
+          where it stopped.
+        """
+        response = self._get(
+            "events",
+            query_parameters={"query": query, "maxResults": max_results}
+        )
+        if response is None:
+            return None
+        try:
+            return response.json().get("items", []) or []
+        except ValueError as err:
+            logging.error("Could not decode the events matching `%s`: %s",
+                          query,
+                          err)
+            return None
+
+
+def event_attribute(event: Dict, name: str) -> Optional[str]:
+    """
+    Reads a single attribute of an event. The attributes of an event are a list
+    of name and values pairs, and every attribute this integration is interested
+    in carries exactly one value.
+    """
+    for attribute in event.get("attributes", []) or []:
+        if attribute.get("name") == name:
+            values = attribute.get("values") or []
+            return str(values[0]) if values else None
+    return None

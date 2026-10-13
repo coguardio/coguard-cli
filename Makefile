@@ -22,3 +22,21 @@ lint:
 
 build:
 	python -m build
+
+# The Cloudera custom service descriptor, which is a jar holding the descriptor
+# and the script Cloudera Manager runs. See csd/README.md for what it is for, how
+# it is validated against Cloudera's schema validator, and how it is installed.
+CSD_VERSION := 1.0
+CSD_JAR := CONFIGURATION_ASSURANCE-$(CSD_VERSION).jar
+
+# Without this, the `csd` directory is what make considers the target to be, and
+# a directory which exists is always up to date.
+.PHONY: csd
+
+csd:
+	mkdir -p dist
+	rm -f dist/$(CSD_JAR)
+# The paths inside the jar are the ones the descriptor names, so the archive is
+# built from within the CSD directory rather than from here.
+	cd csd/configuration_assurance && python3 -m zipfile -c ../../dist/$(CSD_JAR) descriptor scripts
+	@echo "Built dist/$(CSD_JAR)"

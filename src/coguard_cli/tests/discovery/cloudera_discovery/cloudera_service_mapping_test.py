@@ -4,10 +4,11 @@ Tests for the functions in the cloudera_service_mapping module
 
 import unittest
 from coguard_cli.discovery.cloudera_discovery.cloudera_service_mapping import \
-    CLOUDERA_SERVICE_TYPE_TO_SOFTWARE, KNOWN_SOFTWARE_NAMES, \
+    CLOUDERA_SERVICE_TYPE_TO_SOFTWARE, CONFIG_FILE_OWNER_BY_NAME, \
+    KNOWN_SOFTWARE_NAMES, \
     REVIEWED_CLOUDERA_SERVICE_TYPES, _without_major_version, \
     coguard_service_name, config_file_type, create_cluster_service_identifier, \
-    is_scannable_config_file, unreviewed_service_types
+    is_scannable_config_file, owning_software, unreviewed_service_types
 
 class TestClouderaServiceMapping(unittest.TestCase):
     """
@@ -277,3 +278,53 @@ class TestClouderaServiceMapping(unittest.TestCase):
         """
         self.assertTrue(is_scannable_config_file("kafka.properties"))
         self.assertFalse(is_scannable_config_file("scripts/control.sh"))
+
+    def test_owning_software(self):
+        """
+        The defining configuration file of a piece of software is attributed to
+        it, wherever it is found, while generic files are attributed to nothing.
+        """
+        self.assertEqual(owning_software("ozone-site.xml"), "ozone")
+        self.assertEqual(owning_software("hbase-conf/ozone-site.xml"), "ozone")
+        self.assertEqual(owning_software("hadoop-conf/core-site.xml"), "hadoop")
+        self.assertEqual(owning_software("hbase-site.xml"), "hbase")
+        self.assertEqual(owning_software("atlas-application.properties"),
+                         "atlas")
+        self.assertIsNone(owning_software("ssl-client.xml"))
+        self.assertIsNone(owning_software("hbase-conf/jaas.conf"))
+        self.assertIsNone(owning_software(""))
+
+    def test_owning_software_names_known_software(self):
+        """
+        Every owner is a service name the Cloudera vocabulary establishes, so
+        that the split never produces a service name nobody described.
+        """
+        for software in CONFIG_FILE_OWNER_BY_NAME.values():
+            self.assertIn(software, KNOWN_SOFTWARE_NAMES)
+
+    def test_create_cluster_service_identifier_is_a_safe_folder_name(self):
+        """
+        The service name is chosen freely in Cloudera Manager, and becomes the
+        name of a folder, so nothing in it can climb out of that folder.
+        """
+        self.assertEqual(
+            create_cluster_service_identifier("../../etc", "KAFKA_BROKER"),
+            "etc_kafka_broker"
+        )
+        self.assertEqual(
+            create_cluster_service_identifier("/tmp/x", "../MASTER"),
+            "tmp_x_master"
+        )
+        self.assertEqual(
+            create_cluster_service_identifier("Kafka Prod-1", "KAFKA_BROKER"),
+            "kafka_prod_1_kafka_broker"
+        )
+        # Digits, `0` included, are kept.
+        self.assertEqual(
+            create_cluster_service_identifier("kafka0", "KAFKA_BROKER"),
+            "kafka0_kafka_broker"
+        )
+        self.assertEqual(create_cluster_service_identifier("..", "/"),
+                         "cloudera_service")
+        self.assertEqual(create_cluster_service_identifier("..", "MASTER"),
+                         "master")

@@ -11,7 +11,8 @@ import unittest.mock
 from coguard_cli.discovery.cloudera_discovery import \
     collect_config_files_for_role, determine_cluster_name, \
     extract_cloudera_cluster_representation, group_roles_by_type, \
-    report_unreviewed_service_types
+    relocate_config_files, report_unreviewed_service_types, roles_not_running, \
+    unreadable_template, unresolved_placeholder
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
     ClouderaManagerApiError
 
@@ -213,6 +214,163 @@ class TestClouderaDiscovery(unittest.TestCase):
             []
         )
 
+    def test_collect_config_files_for_role_unreadable_template(self):
+        """
+        A file whose placeholder leaves it unreadable, and which no renderer
+        knows, is collected with the placeholder neutralized.
+        """
+        api = unittest.mock.MagicMock()
+        api.get_role_process.return_value = {
+            "configFiles": ["aux/ozone-prometheus.yml",
+                            "ozone-conf/log4j.properties"]
+        }
+        api.get_config_file.side_effect = lambda *args: (
+            "scrape_interval: {{SCRAPE_INTERVAL}}"
+            if args[-1].endswith(".yml")
+            else "log4j.appender.file={{CMF_CONF_DIR}}/out.log"
+        )
+        temp_dir = tempfile.mkdtemp(prefix="coguard-cloudera-template-test")
+        try:
+            result = collect_config_files_for_role(
+                api, "cluster", "ozone", {"name": "role"}, temp_dir
+            )
+            self.assertEqual(
+                [entry["fileName"] for entry in result],
+                ["ozone-prometheus.yml", "log4j.properties"]
+            )
+            with open(os.path.join(temp_dir, "aux", "ozone-prometheus.yml"),
+                      encoding='utf-8') as template_file:
+                self.assertEqual(template_file.read(),
+                                 'scrape_interval: "{{SCRAPE_INTERVAL}}"')
+            # A placeholder which does not break the syntax is left alone.
+            with open(os.path.join(temp_dir, "ozone-conf", "log4j.properties"),
+                      encoding='utf-8') as properties_file:
+                self.assertEqual(properties_file.read(),
+                                 "log4j.appender.file={{CMF_CONF_DIR}}/out.log")
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_collect_config_files_for_role_still_unreadable_template(self):
+        """
+        A template which is unreadable even with neutral values in place of its
+        placeholders is not collected.
+        """
+        api = unittest.mock.MagicMock()
+        api.get_role_process.return_value = {"configFiles": ["aux/broken.json"]}
+        api.get_config_file.return_value = '{"a": {{VALUE}} "b": 1}'
+        temp_dir = tempfile.mkdtemp(prefix="coguard-cloudera-template-test")
+        try:
+            result = collect_config_files_for_role(
+                api, "cluster", "knox", {"name": "role"}, temp_dir
+            )
+            self.assertEqual(result, [])
+            self.assertFalse(
+                os.path.exists(os.path.join(temp_dir, "aux", "broken.json"))
+            )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_collect_config_files_for_role_renders_known_template(self):
+        """
+        A template a renderer knows is rendered from the configuration of the
+        role, which may draw on a file listed after the template.
+        """
+        api = unittest.mock.MagicMock()
+        api.get_role_process.return_value = {"configFiles": [
+            "aux/ozone-prometheus.yml",
+            "ozone-conf/ozone-om.properties"
+        ]}
+        api.get_config_file.side_effect = lambda *args: (
+            "scrape_interval: {{SCRAPE_INTERVAL}}\n"
+            "scheme: {{SCHEME}}\n"
+            "targets:\n{{TARGETS}}"
+            if args[-1].endswith(".yml")
+            else "om-1.example.com:ozone.om.http-port=9874"
+        )
+        api.list_role_config_groups.return_value = [
+            {"name": "ozone-OZONE_PROMETHEUS-BASE",
+             "roleType": "OZONE_PROMETHEUS",
+             "base": True}
+        ]
+        api.get_role_config_group_config.return_value = {
+            "ozone.prometheus.scrape.interval": {"default": "15s"},
+            "ssl_enabled": {"value": "false", "default": "false"}
+        }
+        api.get_service_config.return_value = {}
+        temp_dir = tempfile.mkdtemp(prefix="coguard-cloudera-template-test")
+        try:
+            result = collect_config_files_for_role(
+                api, "cluster", "ozone", {"name": "role"}, temp_dir, "OZONE"
+            )
+            self.assertEqual(len(result), 2)
+            with open(os.path.join(temp_dir, "aux", "ozone-prometheus.yml"),
+                      encoding='utf-8') as template_file:
+                self.assertEqual(
+                    template_file.read(),
+                    'scrape_interval: 15s\nscheme: http\ntargets:\n'
+                    '        - "om-1.example.com:9874"\n'
+                )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_unresolved_placeholder_forms(self):
+        """
+        Both the mustache form and the bare token form are recognized, quoted or
+        not, and an ordinary word is not.
+        """
+        self.assertEqual(
+            unresolved_placeholder("scrape_interval: {{SCRAPE_INTERVAL}}"),
+            "{{SCRAPE_INTERVAL}}"
+        )
+        self.assertEqual(
+            unresolved_placeholder('  "a": "b",\n  PROXYUSER_BLOCK,\n'),
+            "PROXYUSER_BLOCK"
+        )
+        self.assertEqual(
+            unresolved_placeholder('  "PROXYUSER_BLOCK",\n'),
+            "PROXYUSER_BLOCK"
+        )
+        self.assertEqual(
+            unresolved_placeholder("  CUSTOMIZABLE_AZURE_CAB_CONTENT\n"),
+            "CUSTOMIZABLE_AZURE_CAB_CONTENT"
+        )
+        self.assertIsNone(unresolved_placeholder("broker.id=1"))
+        self.assertIsNone(unresolved_placeholder("  EOF\n"))
+        self.assertIsNone(unresolved_placeholder("{{lowercase}}"))
+
+    def test_unreadable_template_needs_both_conditions(self):
+        """
+        A placeholder inside the value of a file which still parses is what
+        Cloudera leaves in the configuration it really deployed, and is kept. Only
+        a placeholder which destroys the syntax marks a template.
+        """
+        self.assertIsNone(unreadable_template(
+            '<property><value>{{CMF_CONF_DIR}}/x.jks</value></property>', "xml"
+        ))
+        self.assertIsNone(unreadable_template(
+            'log4j.appender.file={{CMF_CONF_DIR}}/out.log', "properties"
+        ))
+        self.assertIsNone(unreadable_template(
+            '{"path": "{{CMF_CONF_DIR}}/x"}', "json"
+        ))
+        self.assertEqual(
+            unreadable_template("scrape_interval: {{SCRAPE_INTERVAL}}", "yaml"),
+            "{{SCRAPE_INTERVAL}}"
+        )
+        self.assertEqual(
+            unreadable_template('{"a": "b",\n PROXYUSER_BLOCK,\n "c": "d"}',
+                                "json"),
+            "PROXYUSER_BLOCK"
+        )
+
+    def test_unreadable_template_keeps_a_broken_deployed_file(self):
+        """
+        A file which is malformed for a reason other than a placeholder is still
+        collected, so that the parse error is reported rather than hidden.
+        """
+        self.assertIsNone(unreadable_template('{"a": ', "json"))
+        self.assertIsNone(unreadable_template("a:\n- b\n  c: d\n", "yaml"))
+
     def test_report_unreviewed_service_types(self):
         """
         A service type the integration has no knowledge of is pointed out.
@@ -287,6 +445,226 @@ class TestClouderaDiscovery(unittest.TestCase):
                 self.assertEqual(json.load(manifest_stream), manifest)
             self.assertTrue(os.path.exists(os.path.join(
                 folder, "clusterServices", "kafka_broker", "some.properties"
+            )))
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def test_extract_cloudera_cluster_representation_splits_foreign_files(self):
+        """
+        The configuration files of other software a role is handed are listed
+        as cluster services of that software, rather than of the role.
+        """
+        api = unittest.mock.MagicMock()
+        api.list_clusters.return_value = [{"name": "cluster"}]
+        api.list_services.return_value = [{"name": "hbase", "type": "HBASE"}]
+        api.list_roles.return_value = [
+            {"name": "hbase-MASTER-a", "type": "MASTER"}
+        ]
+        api.get_role_process.return_value = {"configFiles": [
+            "hbase-site.xml",
+            "ssl-client.xml",
+            "ozone-site.xml",
+            "core-site.xml",
+            "hadoop-conf/core-site.xml",
+            "hadoop-conf/ozone-site.xml"
+        ]}
+        api.get_config_file.return_value = "<configuration/>"
+        result = extract_cloudera_cluster_representation(api, "customer")
+        self.assertIsNotNone(result)
+        folder, manifest = result
+        try:
+            services = manifest["clusterServices"]
+            self.assertEqual(
+                sorted(services.keys()),
+                ["hbase_master", "hbase_master_hadoop", "hbase_master_ozone"]
+            )
+            self.assertEqual(services["hbase_master"]["serviceName"], "hbase")
+            self.assertEqual(
+                services["hbase_master_hadoop"]["serviceName"], "hadoop"
+            )
+            self.assertEqual(
+                services["hbase_master_ozone"]["serviceName"], "ozone"
+            )
+            self.assertEqual(
+                sorted(entry["fileName"]
+                       for entry in services["hbase_master"]["configFileList"]),
+                ["hbase-site.xml", "ssl-client.xml"]
+            )
+            self.assertEqual(
+                sorted((entry["subPath"], entry["fileName"])
+                       for entry
+                       in services["hbase_master_ozone"]["configFileList"]),
+                [(".", "ozone-site.xml"), ("./hadoop-conf", "ozone-site.xml")]
+            )
+            for identifier, service in services.items():
+                for entry in service["configFileList"]:
+                    self.assertTrue(os.path.exists(os.path.join(
+                        folder, "clusterServices", identifier,
+                        entry["subPath"], entry["fileName"]
+                    )))
+            # Nothing is left behind in the folder of the role.
+            self.assertFalse(os.path.exists(os.path.join(
+                folder, "clusterServices", "hbase_master", "hadoop-conf"
+            )))
+            self.assertFalse(os.path.exists(os.path.join(
+                folder, "clusterServices", "hbase_master", "ozone-site.xml"
+            )))
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def test_extract_cloudera_cluster_representation_only_foreign_files(self):
+        """
+        A role which only carries the configuration of other software does not
+        produce an empty cluster service of its own.
+        """
+        api = unittest.mock.MagicMock()
+        api.list_clusters.return_value = [{"name": "cluster"}]
+        api.list_services.return_value = [{"name": "kafka", "type": "KAFKA"}]
+        api.list_roles.return_value = [
+            {"name": "kafka-GATEWAY-a", "type": "GATEWAY"}
+        ]
+        api.get_role_process.return_value = {
+            "configFiles": ["atlas-application.properties"]
+        }
+        api.get_config_file.return_value = "a=b"
+        result = extract_cloudera_cluster_representation(api, "customer")
+        self.assertIsNotNone(result)
+        folder, manifest = result
+        try:
+            self.assertEqual(
+                list(manifest["clusterServices"].keys()),
+                ["kafka_gateway_atlas"]
+            )
+            self.assertEqual(
+                manifest["clusterServices"]["kafka_gateway_atlas"]["serviceName"],
+                "atlas"
+            )
+            self.assertFalse(os.path.exists(os.path.join(
+                folder, "clusterServices", "kafka_gateway"
+            )))
+            self.assertTrue(os.path.exists(os.path.join(
+                folder, "clusterServices", "kafka_gateway_atlas",
+                "atlas-application.properties"
+            )))
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def test_roles_not_running(self):
+        """
+        Every stopped instance of a daemon counts, while a role which does not
+        run a process by design, or one in a transitional state, does not.
+        """
+        roles = [
+            {"name": "hdfs-DATANODE-b", "type": "DATANODE", "roleState": "STOPPED"},
+            {"name": "hdfs-DATANODE-a", "type": "DATANODE", "roleState": "STARTED"},
+            {"name": "hdfs-DATANODE-c", "type": "DATANODE", "roleState": "UNKNOWN"},
+            {"name": "hdfs-BALANCER-a", "type": "BALANCER", "roleState": "NA"},
+            {"name": "hdfs-GATEWAY-a", "type": "GATEWAY", "roleState": "NA"},
+            {"name": "hdfs-NAMENODE-a", "type": "NAMENODE", "roleState": "STARTING"},
+            {"type": "NAMENODE", "roleState": "STOPPED"},
+        ]
+        self.assertEqual(roles_not_running(roles),
+                         ["hdfs-DATANODE-b", "hdfs-DATANODE-c"])
+
+    def test_extract_cloudera_cluster_representation_roles_not_running(self):
+        """
+        A daemon which is not running is reported via the failed_rules.json in
+        the root of the extraction, while a gateway without a process is not.
+        """
+        api = unittest.mock.MagicMock()
+        api.list_clusters.return_value = [{"name": "cluster"}]
+        api.list_services.return_value = [{"name": "hdfs", "type": "HDFS"}]
+        api.list_roles.return_value = [
+            {"name": "hdfs-NAMENODE-a", "type": "NAMENODE", "roleState": "STARTED"},
+            {"name": "hdfs-DATANODE-a", "type": "DATANODE", "roleState": "STOPPED"},
+            {"name": "hdfs-GATEWAY-a", "type": "GATEWAY", "roleState": "NA"}
+        ]
+        api.get_role_process.side_effect = lambda cluster, service, role: \
+            None if "GATEWAY" in role else {"configFiles": ["hdfs-site.xml"]}
+        api.get_config_file.return_value = "<configuration/>"
+        result = extract_cloudera_cluster_representation(api, "customer")
+        self.assertIsNotNone(result)
+        folder, manifest = result
+        try:
+            self.assertEqual(sorted(manifest["clusterServices"]),
+                             ["hdfs_datanode", "hdfs_namenode"])
+            with open(os.path.join(folder, "failed_rules.json"),
+                      encoding='utf-8') as failed_rules_file:
+                self.assertEqual(json.load(failed_rules_file),
+                                 ["cluster_cloudera_roles_not_running"])
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+        # With every daemon running, the gateway alone does not fail the rule.
+        api.list_roles.return_value = [
+            {"name": "hdfs-NAMENODE-a", "type": "NAMENODE", "roleState": "STARTED"},
+            {"name": "hdfs-GATEWAY-a", "type": "GATEWAY", "roleState": "NA"}
+        ]
+        folder, _ = extract_cloudera_cluster_representation(api, "customer")
+        try:
+            self.assertFalse(
+                os.path.exists(os.path.join(folder, "failed_rules.json"))
+            )
+        finally:
+            shutil.rmtree(folder, ignore_errors=True)
+
+    def test_relocate_config_files_stays_inside(self):
+        """
+        An entry whose sub path leaves the folder it is moved from, or the one
+        it is moved to, is not moved.
+        """
+        temp_dir = tempfile.mkdtemp(prefix="coguard-cloudera-relocate-test")
+        try:
+            source = os.path.join(temp_dir, "source")
+            destination = os.path.join(temp_dir, "destination")
+            os.makedirs(os.path.join(source, "conf"))
+            with open(os.path.join(source, "conf", "ozone-site.xml"), "w",
+                      encoding='utf-8') as config_file:
+                config_file.write("<configuration/>")
+            with open(os.path.join(temp_dir, "outside.xml"), "w",
+                      encoding='utf-8') as outside_file:
+                outside_file.write("<configuration/>")
+            moved = relocate_config_files(
+                [{"fileName": "ozone-site.xml", "subPath": "./conf"},
+                 {"fileName": "outside.xml", "subPath": "./.."},
+                 {"fileName": "passwd", "subPath": "/etc"}],
+                source,
+                destination
+            )
+            self.assertEqual([entry["fileName"] for entry in moved],
+                             ["ozone-site.xml"])
+            self.assertTrue(os.path.exists(
+                os.path.join(destination, "conf", "ozone-site.xml")
+            ))
+            self.assertTrue(os.path.exists(os.path.join(temp_dir, "outside.xml")))
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_extract_cloudera_cluster_representation_hostile_service_name(self):
+        """
+        A service name which describes a path does not lead the extraction out
+        of its folder.
+        """
+        api = unittest.mock.MagicMock()
+        api.list_clusters.return_value = [{"name": "cluster"}]
+        api.list_services.return_value = [
+            {"name": "../../coguard-cloudera-escape-test", "type": "KAFKA"}
+        ]
+        api.list_roles.return_value = [
+            {"name": "role", "type": "KAFKA_BROKER", "roleState": "STARTED"}
+        ]
+        api.get_role_process.return_value = {"configFiles": ["kafka.properties"]}
+        api.get_config_file.return_value = "a=b"
+        folder, manifest = extract_cloudera_cluster_representation(api, "c")
+        try:
+            self.assertEqual(list(manifest["clusterServices"]),
+                             ["coguard_cloudera_escape_test_kafka_broker"])
+            self.assertTrue(os.path.exists(os.path.join(
+                folder, "clusterServices",
+                "coguard_cloudera_escape_test_kafka_broker", "kafka.properties"
+            )))
+            self.assertFalse(os.path.exists(os.path.join(
+                os.path.dirname(folder),
+                "coguard-cloudera-escape-test_kafka_broker"
             )))
         finally:
             shutil.rmtree(folder, ignore_errors=True)

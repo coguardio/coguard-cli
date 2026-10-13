@@ -29,6 +29,8 @@ representation:
 - A Cloudera Manager instance reachable from the machine running the CLI.
 - A Cloudera Manager user with read access to the cluster.
 - A CoGuard account.
+- Only for `coguard-cloudera-banner`: a second Cloudera Manager user with the
+  Full Administrator role, which is what writing the header banner requires.
 
 ## Usage
 
@@ -47,12 +49,11 @@ coguard cloud cloudera \
 | --cloudera-manager-user          | CLOUDERA_MANAGER_USER       | The Cloudera Manager user to authenticate as.                                           |
 | N/A                              | CLOUDERA_MANAGER_PASSWORD   | The password. Prompted for interactively if the variable is unset and a terminal exists. |
 | --cloudera-manager-ca-cert       | CLOUDERA_MANAGER_CA_CERT    | A CA certificate bundle to trust for the TLS connection.                                 |
-| --cloudera-manager-no-verify-tls | CLOUDERA_MANAGER_VERIFY_TLS | Skip TLS verification, e.g. for a self-signed certificate behind a reverse proxy.        |
 | --cloudera-cluster               | CLOUDERA_CLUSTER            | The cluster to scan. Only needed if Cloudera Manager manages more than one cluster.     |
 
 The values can also be placed into a JSON or YAML file, passed via
 `--credentials-file`, using the keys `url`, `username`, `password`,
-`ca_cert`, `verify_tls` and `cluster`:
+`ca_cert` and `cluster`:
 
 ```yaml
 url: https://cm.example.com
@@ -66,6 +67,423 @@ turn takes precedence over the environment variables.
 
 The password is deliberately not available as a command line option, so
 that it does not end up in the shell history or the process list.
+
+## Scheduled scanning
+
+A cluster is not scanned once. `coguard-cloudera-check`, installed along
+with the CLI, performs one check per invocation: it asks Cloudera Manager
+whether the configuration of the cluster has changed, and runs `coguard
+cloud cloudera` if it has.
+
+```shell
+export CLOUDERA_MANAGER_PASSWORD='<the password>'
+coguard-cloudera-check \
+    --cloudera-manager-url https://cm.example.com \
+    --cloudera-manager-user coguard
+```
+
+The same description lives next to the code, in
+[`src/coguard_cli/cloudera_integration/README.md`](../../src/coguard_cli/cloudera_integration/README.md).
+
+It accepts the connection options listed above, including
+`--credentials-file`, and does not take a password on the command line. The
+scan it runs is the ordinary one, with the same rule sets, the same output
+and the same portal results — the only thing added is the decision whether
+to run it at all.
+
+**When** and **how often** the check runs is deliberately not this
+program's business. A systemd timer or a cron job already knows how to
+catch up after downtime, spread a fleet out over an interval, restart on
+failure and log where an operator looks, and re-implementing that inside a
+scanner would be worse at all four. What cannot be moved out to a
+scheduler is how far the event feed of Cloudera Manager has already been
+read, which is what the state file holds.
+
+### What counts as a change
+
+The check asks Cloudera Manager's event feed what has happened:
+
+```shell
+GET /api/{version}/events?query=attributes.EVENTCODE==EV_REVISION_CREATED
+```
+
+An `EV_REVISION_CREATED` event *is* the configuration change, and says which
+parameter was set to what, by whom, in which service and role config group:
+
+```json
+{
+  "content": "User admin created a new revision. Message was: Setting the value of ozone_security_enabled to true.",
+  "timeOccurred": "2026-09-04T16:20:37.738Z",
+  "attributes": [
+    {"name": "EVENTCODE", "values": ["EV_REVISION_CREATED"]},
+    {"name": "USER", "values": ["admin"]},
+    {"name": "SERVICE", "values": ["ozone"]},
+    {"name": "ROLE_CONFIG_GROUP", "values": ["ozone-OZONE_MANAGER-BASE"]},
+    {"name": "REVISION", "values": ["1546338003"]}
+  ]
+}
+```
+
+One query is issued per watched event code:
+
+| Event code                                                     | What it means for the configuration                  |
+|----------------------------------------------------------------|------------------------------------------------------|
+| `EV_REVISION_CREATED`                                          | A configuration parameter was set to a new value.     |
+| `EV_CLUSTER_RESTARTED`, `EV_SERVICE_RESTARTED`, `EV_ROLE_RESTARTED` | A change reached the running processes, i.e. the generated configuration files are now the ones in force. |
+| `EV_SERVICE_STARTED`, `EV_ROLE_STARTED`                        | A process came up, with whatever configuration was changed while it was down. |
+| `EV_SERVICE_STOPPED`, `EV_ROLE_STOPPED`                        | A process went down, so its configuration is out of reach of the scan, and [`cluster_cloudera_roles_not_running`](#which-files-are-collected) changes. |
+| `EV_SERVICE_CREATED`, `EV_SERVICE_DELETED`, `EV_ROLE_CREATED`, `EV_ROLE_DELETED`, `EV_HOST_TEMPLATE_APPLIED` | The cluster has a service or role it did not have before, or lost one. |
+| `EV_PARCEL_ACTIVATE`                                           | A new software version, whose generated configuration files are new as well. |
+
+`--event-code` replaces that list, so a Cloudera Manager which reports a
+change through a code not named here can be followed without a new release.
+A code Cloudera Manager does not know is not an error — the query simply
+matches nothing.
+
+All of these codes were observed on Cloudera Manager 7.13 with Runtime 7.3.2:
+in the event history of a fresh deployment, and by changing a parameter,
+restarting, stopping and starting a role, stopping a service, and deleting a
+role and a service on it. Starting, stopping and restarting produce two events
+each, one when the command is issued and one when it succeeds; a deletion
+produces one, and deleting a service produces an `EV_ROLE_DELETED` for each of
+its roles as well. An event reaches the feed a few seconds after the change (3
+to 13 seconds were measured); a check which runs in between sees it at its next
+run.
+
+An event which names a cluster is only a reason to scan that cluster. Events of
+a service do not always name one, though: the creation of a service of the
+cluster carries a `SERVICE` but no `CLUSTER` attribute. Those are kept, with one
+exception: the starts and restarts of the Cloudera Management Service, which
+belongs to no cluster and would otherwise trigger a scan whenever the monitors of
+Cloudera Manager are restarted. The check asks Cloudera Manager for the name of
+that service (`GET /cm/service`, usually `mgmt`) and drops its events.
+
+A revision which names no cluster at all is a change to the configuration of
+Cloudera Manager *itself*, and is ignored: its banner, its header colour or the
+address it sends alerts from cannot change the generated configuration files of
+any role. Such an event carries no `CLUSTER` and no `SERVICE` attribute, and its
+content is `User admin created a new revision. Message was: null.` — the
+parameter is not named, so the absence of the cluster is the only thing there is
+to go by. Ignoring it is also what keeps the integration from chasing its own
+tail, since writing the banner is such a change, and reacting to it would scan,
+which would write the banner again.
+
+The audit feed, `GET /audits`, is deliberately *not* what is asked. It
+records **operations** — logins, commands, the creation of services, roles
+and host templates — and not the values of configuration parameters. Across
+563 audit entries of a live cluster, spanning its entire deployment and 100
+distinct operation kinds, not one described a configuration parameter
+change. The per-service audit and configuration revision resources
+(`.../config/revisions`, `/cm/config/revisions`) answer `404` on API v58,
+i.e. Cloudera Manager's "History and Rollback" view is not exposed.
+
+| Option                    | Default | Description                                                                       |
+|---------------------------|---------|-----------------------------------------------------------------------------------|
+| `--event-code`            | see above | An event code to treat as a configuration change. May be repeated, and replaces the default set. |
+| `--minimum-scan-interval` | 900     | Lower bound on the distance between two scans.                                     |
+| `--maximum-scan-age`      | 86400   | Scan after this many seconds even if no event reported a change.                    |
+| `--state-file`            | `~/.config/coguard-cli/cloudera_check_state.json` | Where the position in the event feed and the outcome of the last scan are kept. |
+
+The state file is needed because the events resource has **no server-side
+time filter**: `timeOccurred` is not a queryable attribute (`400 Missing
+comparator`), and `from` and `to` parameters are accepted and ignored. The
+check therefore remembers the timestamp of the newest event it has seen and
+treats everything newer than that as new. That watermark is the whole of the
+state; a check whose state file is missing scans and starts a new one.
+
+`--minimum-scan-interval` exists because a rolling restart produces one
+event after another. Without a lower bound, such a restart would result in a
+scan per service; a change which is postponed by it stays a change, because
+the watermark is only advanced once a scan has actually run.
+
+`--maximum-scan-age` is what makes this safe to rely on. The event feed is a
+change *hint*, not a guarantee: events are retained for a finite time
+(`AUDIT_RECORDS_LIFE_TIME`, 720 hours by default), the feed is served by the
+Event Server role and is unavailable while that role is down, and CoGuard
+adds rules over time. The periodic scan bounds how long the report can be
+out of date, and is also what picks up findings from new rules.
+
+### Exit codes
+
+| Exit code | Meaning                                                                        |
+|-----------|--------------------------------------------------------------------------------|
+| 0         | No scan was due, or the scan ran and found nothing at or above the fail level.   |
+| 1         | The scan ran and found something at or above the fail level.                     |
+| 2         | The check itself failed: Cloudera Manager could not be read, or `coguard` could not be run. |
+
+`0` and `1` come from `coguard` itself when a scan ran, so the check behaves
+in a pipeline exactly like a manual scan does. `--minimum-fail-level` is
+passed through unchanged; the CLI's default of `1` — any finding fails —
+applies unless it is given.
+
+Note that a scan which fails *inside* the CLI, e.g. because the CoGuard API
+was unreachable, also exits `1` and is therefore not distinguishable from
+findings by the exit code alone. Its output says which of the two happened.
+Exit code `2` is reserved for the failures the check detects itself, and in
+that case nothing is recorded as scanned, so the next check retries.
+
+### As a systemd timer
+
+A oneshot service, triggered by a timer:
+
+```ini
+# /etc/systemd/system/coguard-cloudera-check.service
+[Unit]
+Description=CoGuard configuration scan of the Cloudera cluster
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=coguard
+# 0600, owned by root, holding CLOUDERA_MANAGER_PASSWORD and the CoGuard
+# account as COGUARD_USER_NAME and COGUARD_PASSWORD.
+EnvironmentFile=/etc/coguard/cloudera.env
+StateDirectory=coguard
+ExecStart=/usr/local/bin/coguard-cloudera-check \
+    --cloudera-manager-url https://cm.example.com \
+    --cloudera-manager-user coguard \
+    --state-file /var/lib/coguard/cloudera_check_state.json
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+```
+
+```ini
+# /etc/systemd/system/coguard-cloudera-check.timer
+[Unit]
+Description=Check the Cloudera cluster configuration regularly
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+# Run a missed check after downtime instead of waiting for the next slot.
+Persistent=true
+# Keep a fleet of clusters from checking in at the same second.
+RandomizedDelaySec=2min
+
+[Install]
+WantedBy=timers.target
+```
+
+```shell
+systemctl enable --now coguard-cloudera-check.timer
+```
+
+Three notes on the unit:
+
+- The CoGuard account comes from exactly one of two places, never a mix of
+  both:
+  - **The environment**, if both `COGUARD_USER_NAME` and `COGUARD_PASSWORD`
+    are set. `~/.config/coguard-cli/coguard_conf` is then not read at all,
+    which is why `ProtectHome=true` works here. That includes the CoGuard
+    URLs a login may have stored in the file, so a unit scanning against
+    anything other than `portal.coguard.io` passes `--coguard-api-url` and
+    `--coguard-auth-url` instead.
+  - **The file** `~/.config/coguard-cli/coguard_conf`, which the CLI writes
+    on the first login, otherwise. A single one of the two variables is
+    ignored rather than combined with the file. In this case drop
+    `ProtectHome`, and keep the state file in the home directory as well.
+- **If the account belongs to more than one CoGuard organization, set
+  `COGUARD_ORGANIZATION`**, the environment counterpart of `coguard
+  --organization`. Interactively the CLI asks which organization a scan
+  belongs to; a unit has nobody to ask, and without the variable the
+  scan stops and logs which organizations the account has. An organization
+  name is not a secret, so `Environment=COGUARD_ORGANIZATION=...` in the
+  unit does as well as a line in the environment file.
+- `--state-file` is pointed at `StateDirectory=`, i.e. `/var/lib/coguard`,
+  so that the state survives and is not looked for in a home directory the
+  unit cannot see.
+
+For cron instead of systemd, the equivalent is a single line, with the
+caveats that the environment is not the one from a login shell and that a
+missed run is simply missed:
+
+```cron
+*/15 * * * * . /etc/coguard/cloudera.env && /usr/local/bin/coguard-cloudera-check --cloudera-manager-url https://cm.example.com --cloudera-manager-user coguard --state-file /var/lib/coguard/cloudera_check_state.json
+```
+
+## Showing the result in Cloudera Manager
+
+A report which has to be looked for is a report which is not looked at. The
+command `coguard-cloudera-banner`, installed along with the CLI, takes the
+`result.json` of a scan and puts a summary of it into the header of Cloudera
+Manager, where the people who administer the cluster already are:
+
+```shell
+export CLOUDERA_MANAGER_PASSWORD='<the password>'
+coguard --output-format json cloud cloudera \
+    --cloudera-manager-url https://cm.example.com \
+    --cloudera-manager-user coguard
+coguard-cloudera-banner \
+    --cloudera-manager-url https://cm.example.com \
+    --cloudera-manager-user coguard-admin \
+    --report-url https://portal.coguard.io/dashboard
+```
+
+The parameter written is `CUSTOM_BANNER_HTML` of the Cloudera Manager service
+configuration, which Cloudera provides for exactly this purpose.
+
+**What goes in is plain text, in spite of the name of the parameter.** Cloudera
+Manager 7.13 escapes the value and shows it verbatim, so a `<span>` put around
+the text appears in the header as a `<span>` — Cloudera's own validation calls
+it "the Custom Banner Text parameter". Plain text is in any case the only form
+which survives both behaviours, so the summary carries no markup, the address of
+the report is written out rather than linked, and the severity is carried by the
+wording instead of a colour. Values taken from the scan result have `<` and `>`
+removed, so that a service name cannot become markup on a version which does
+render the value.
+
+The region written runs from the text `CoGuard:` to the end of the value, i.e.
+this command writes last. A banner which is already in use is therefore
+preserved, and running the command twice leaves one summary rather than two;
+`--clear` removes the region and the separator in front of it again. The
+trade-off of a delimiter which is not visible in an escaped banner is that text
+placed *after* the summary is not preserved. A banner written by the earlier
+version of this command, which wrapped its text in markup between
+`<!--coguard:start-->` and `<!--coguard:end-->`, is recognised by those
+delimiters and replaced rather than mistaken for text of the customer.
+
+**This is the one command of the integration which changes the cluster.**
+Writing the Cloudera Manager service configuration requires the Full
+Administrator role, unlike the read-only scan, so it is meant to be given a
+credential of its own rather than the one the scan uses. The full option list,
+and how to attach it to the timer above, are in
+[`src/coguard_cli/cloudera_integration/README.md`](../../src/coguard_cli/cloudera_integration/README.md).
+
+### Colouring the header
+
+The colour the banner text cannot have is available on the bar the banner sits in.
+`CUSTOM_HEADER_COLOR` is what Cloudera Manager tints that bar with — Cloudera
+provides it to "distinguish different instances of Cloudera Manager" — and
+`--header-color RED` makes it follow the scan instead: red while there are
+findings, back to the colour of `--header-color-clean` once there are none.
+
+```shell
+coguard-cloudera-banner \
+    --cloudera-manager-url https://cm.example.com \
+    --cloudera-manager-user coguard-admin \
+    --report-url https://portal.coguard.io/dashboard \
+    --header-color RED
+```
+
+It is off by default, and the colour is put back only while the header still has
+the one this command set, so an instance which is deliberately coloured to be told
+apart from another one is not taken over by a scan that found nothing. Such an
+instance should name its own colour as `--header-color-clean`.
+
+The values are `BLACK`, `GRAY`, `RED`, `YELLOW`, `GREEN`, `TEAL`, `BLUE`,
+`PURPLE`, `PINK` and `BROWN`. The API does not publish them — not one of the 282
+parameters of that resource comes with `validValues` — and neither does the
+documentation, so they were read off the assets the header is built from:
+Cloudera Manager ships one `favicon-<COLOUR>.png` per value, and those ten exist.
+
+The banner and the colour are written in one request, because one request is one
+configuration revision: two writes would appear in the event feed and in the audit
+trail as two changes where an operator made none.
+
+### As a service with a health test
+
+The banner is text, and even a red bar above it is a thing to look at rather than
+a thing that arrives. What Cloudera
+Manager colours red is the health of a *service*, so the way to get a red badge is
+to be a service: [`csd/configuration_assurance`](../../csd) is a custom service
+descriptor which adds a `Configuration Assurance` service to the cluster, whose
+health is the state of the configuration. When a scan finds something, that
+service goes to Bad Health, the health of the cluster follows it, and Cloudera
+Manager's own alerting fires.
+
+Two things about it are worth knowing before deciding to install it.
+
+**A CSD cannot declare a health test.** The schema has no field for one — the
+service and role descriptors have none, and Cloudera's own every-field fixtures
+contain neither a health nor a threshold key — so a CSD-based service gets the
+generic tests Cloudera Manager generates for every service and nothing more. The
+one signal it can move is whether its own role process is running, and that is
+what the descriptor uses: the role runs `coguard-cloudera-check` in a loop, stays
+up while the result is clean, and exits non-zero once a scan reports findings at
+or above the configured severity.
+
+**The red badge is on that service, not on the service which has the finding.**
+Cloudera Manager computes the health of `knox` from the health tests of `knox`, and
+nothing installed next to it can contribute to them. Which services are affected is
+in the log of the role and in the report it links to. Red also does not clear
+itself, because while the role is down nothing is scanning: restarting the role is
+the re-check.
+
+Installing it needs a jar in `/opt/cloudera/csd` and a restart of the Cloudera
+Manager *server* — the cluster keeps running, but the web interface and the API are
+away for about a minute. The steps, the parameters and how to validate the
+descriptor against Cloudera's schema validator are in
+[`csd/README.md`](../../csd/README.md).
+
+## Gating a change in a pipeline
+
+Cloudera Manager offers nothing that can block a configuration change before
+it takes effect, so a gate cannot sit inside it; it sits in the pipeline which
+produces the change. What makes that a gate is the exit code of a scan: a
+finding at or above `--minimum-fail-level` exits `1` and fails the job.
+
+```shell
+coguard pipeline github add <PATH_TO_YOUR_REPOSITORY> --cloud cloudera
+```
+
+This writes `.github/workflows/coguard_cloudera_gate.yml`, next to — not
+instead of — the `coguard_scan.yml` that `coguard pipeline github add` writes
+for the repository itself. The two scan different things: that one reads the
+infrastructure-as-code in the repository, this one reads the cluster.
+
+The workflow is callable, which is how the job that changes the cluster gates
+itself:
+
+```yaml
+jobs:
+  apply:
+    steps: [ ... whatever changes the cluster ... ]
+  gate:
+    needs: apply
+    uses: ./.github/workflows/coguard_cloudera_gate.yml
+    secrets: inherit
+```
+
+Gating *after* the change rather than before it is deliberate. What a rule is
+evaluated against is the generated configuration of a running role, and that
+only exists once Cloudera Manager has generated it. A pipeline which needs to
+avoid the window in which a bad configuration is live can apply the change to
+a staging cluster, gate on that, and promote on a green run — which is the
+same shape as gating a schema migration.
+
+Three things about the generated workflow are worth knowing.
+
+**It needs to reach Cloudera Manager.** A GitHub hosted runner usually
+cannot reach an on-premise cluster, so `runs-on` is the first thing to
+change; a self-hosted runner on a host which can reach Cloudera Manager is
+what belongs there. Nothing about the scan requires the runner to be inside
+the cluster, only to be able to make HTTPS requests to Cloudera Manager.
+
+**It uses two accounts, and one of them is read-only.** `COGUARD_USER_NAME`
+and `COGUARD_PASSWORD` are the CoGuard account; `CLOUDERA_MANAGER_USER` and
+`CLOUDERA_MANAGER_PASSWORD` are a Cloudera Manager user with no more than a
+read-only role, since scanning only ever reads. All four are handed to the
+CLI through the environment rather than the command line, so that they stay
+out of the process list of the runner. The banner account, which does need
+Full Administrator, has no business in a gate and is not part of this
+workflow.
+
+**The fail level is what makes it adoptable.** A cluster which has been
+running for a while has findings, so a gate at `--minimum-fail-level 1` is
+red on the first day, and a gate which is red on the first day gets switched
+off. The generated workflow therefore fails on severity 4 and above. The
+log of the job lists every finding regardless, the ones below the fail level
+included, so they are visible without failing anything; lower the level as
+they get addressed. The `result.json` of every run is kept as an artifact of
+the run, which is also what `coguard-cloudera-banner` takes.
+
+The findings are deliberately not published as GitHub code scanning alerts.
+The workflow does not run on pull requests, and the findings are about files
+inside the cluster, e.g. `ozone-conf/ozone-site.xml`, rather than files of the
+repository, so there is no diff and no source an alert could be attached to.
 
 ## How it works
 
@@ -85,6 +503,12 @@ Cloudera Manager REST API.
 
 The API version is negotiated via `GET /api/version`, so that both older
 and newer Cloudera Manager releases are supported.
+
+`coguard-cloudera-check` adds one more endpoint, `GET /events`, which it
+reads to decide whether a scan is due. Every request of the scan and of the
+check is a `GET`; neither modifies anything in the cluster. The one request of
+this integration which is not a `GET` is the `PUT /cm/config` of
+`coguard-cloudera-banner`, and it is only made when that command is run.
 
 ### From roles to CoGuard cluster services
 
@@ -216,9 +640,63 @@ Scripts (`.sh`, `.py`), templates (`.j2`), key material (`.jks`, `.jceks`,
 `hadoop-conf/hdfs-site.xml` are preserved as a sub-path, so that the
 directory layout of the deployed configuration is retained.
 
-Roles which have never been started have no process, and are logged and
-skipped; the same holds for services without roles, such as
-`CORE_SETTINGS`.
+Roles which do not run a process by design — gateways, which only hold the
+client configuration of a host, and the HDFS balancer, which runs as a
+command — report the role state `NA` and have no generated configuration of
+their own; they are skipped silently. The same holds for services without
+roles, such as `CORE_SETTINGS`.
+
+A role which does run as a daemon, but is `STOPPED` or in an `UNKNOWN` state,
+is a finding of its own: the configuration of a role which never ran could not
+be scanned, the one of a stopped role is the configuration it last ran with,
+and the cluster is below the redundancy it was planned with. Every instance
+counts, not only the one whose configuration is collected. The CLI lists those
+roles in its output and reports the cluster rule
+`cluster_cloudera_roles_not_running` through the `failed_rules.json` of the
+upload, the same channel through which `cluster_no_ci_cd_tool_used` is
+reported. Roles in a transitional state (`STARTING`, `STOPPING`, `BUSY`) are
+not counted.
+
+### Templates
+
+Cloudera leaves unresolved placeholders in files it has genuinely deployed:
+`{{CMF_CONF_DIR}}` appears inside the *values* of `hdfs-site.xml`,
+`ozone-site.xml`, `kafka.properties` and 145 other files of one live cluster,
+and the agent expands it when it starts the process. Such a placeholder does
+not affect the syntax of the file, and the file is collected as it is.
+
+Some files, however, are templates which a control script of the role renders
+on the host before anything reads them: the shared providers and descriptors
+of Knox, rendered by `deployTopologies.sh`, `setupKerberos.sh` and friends,
+and the Prometheus configuration of the Ozone roles, rendered by
+`prometheus_config_utils.sh`. Their placeholders often stand in for a whole
+block — Knox's bare `PROXYUSER_BLOCK,` is not JSON, and Ozone's
+`scrape_interval: {{SCRAPE_INTERVAL}}` is not YAML — and their values come from
+the environment of the control script.
+
+Cloudera Manager does not expose the rendered files nor that environment, but
+it does expose what the environment is made of: the service descriptor defines
+every environment variable of a role as a configuration parameter, e.g.
+`HADOOP_PROXYUSER_BLOCK` as `${hadoop_proxyuser_block}`. The CLI hence renders
+these templates the way the control scripts do, with the values taken from the
+role, its role config group, the service and Cloudera Manager, in that order of
+precedence (see `cloudera_templates.py`). The configuration of a role type
+without a role, such as the Ozone Prometheus, is read from the base role config
+group of that type, which exists regardless. On a Cloudera Runtime 7.3.2
+cluster, the Knox files rendered this way are identical to the ones Knox
+deploys, except for the location of the keytab, which depends on the process
+directory and is given as `{{CMF_CONF_DIR}}/knox.keytab`.
+
+A placeholder whose value is computed by a script from something Cloudera
+Manager does not expose, and the placeholders of the IDBroker descriptors
+(`cab-providers.json`, `dt.json`, the `*-cab.json` files), which the Knox gateway
+ships but never deploys, are replaced by a neutral value if, and only if, the
+file does not parse otherwise: a placeholder on a line of its own is removed, together with
+the comma it leaves dangling in JSON, and an inline one is quoted. A file
+which does not parse even then is skipped, since a parse error about a
+template is noise rather than a finding. A deployed file which is malformed for
+a reason other than a placeholder is still uploaded, and its parse error still
+reported.
 
 Cluster, service and role names as well as configuration file names end up
 both in the path of the requests and in the paths written below the temporary
@@ -229,17 +707,26 @@ skipped rather than requested.
 
 ## Scope of the current integration
 
-This integration performs a scan of the cluster at a point in time, and
-reports the findings with the affected service, role and configuration
-file. It is a reporting and feedback mechanism.
+This integration scans the cluster and reports the findings with the
+affected service, role and configuration file, either at a point in time or
+whenever the cluster changes.
 
-It deliberately does not attempt to act as a gating mechanism between a
-configuration change and its deployment or restart. Cloudera Manager
-provides the [audits](https://archive.cloudera.com/cm7/7.11.3.0/generic/jar/cm_api/apidocs/resource_AuditsResource.html)
-and events needed to *detect* a configuration change after the fact, and
-continuous monitoring based on those is a natural next step, but there is
-no documented pre-deployment hook that a third party could use to block a
-change.
+Nothing in it sits between a configuration change and its deployment or
+restart, because Cloudera Manager offers no place to sit. It provides what is
+needed to *detect* a configuration change — the
+[events](https://archive.cloudera.com/cm7/7.11.3.0/generic/jar/cm_api/apidocs/resource_EventsResource.html)
+`coguard-cloudera-check` reads, plus the staleness state of each service —
+but there is no documented pre-deployment hook that a third party could use
+to block a change; detection is after the fact in every case. A gate
+therefore has to sit upstream, in whatever pipeline produces the change,
+which is what the exit codes of a scan and the workflow described under
+[Gating a change in a pipeline](#gating-a-change-in-a-pipeline) are for.
+
+What follows from that is a property of this integration worth stating
+plainly: it can tell you that a change made the cluster worse, and it can
+fail the pipeline which made it, but it cannot keep the change from reaching
+the cluster in the first place. A cluster where that window has to be closed
+needs the change applied to a staging cluster first.
 
 ## Planned improvements
 
@@ -291,11 +778,20 @@ in the cluster.
 
 ### Does the CLI change anything in my cluster?
 
-No. Only `GET` requests are issued.
+Not while scanning. The scan and `coguard-cloudera-check` issue `GET` requests
+only. The one thing which writes is `coguard-cloudera-banner`, and all it
+writes is the `CUSTOM_BANNER_HTML` parameter of the Cloudera Manager service
+configuration — the text in the header — plus `CUSTOM_HEADER_COLOR` if
+`--header-color` asks for it. No service configuration, and nothing which
+requires a restart. It is a separate command, so a deployment which does not run
+it changes nothing at all.
 
 ### The connection fails with a certificate error. What do I do?
 
-Cloudera Manager deployments frequently sit behind a reverse proxy with a
-self-signed or internal certificate. Either pass the CA bundle via
-`--cloudera-manager-ca-cert`, or, for a test deployment, skip
-verification with `--cloudera-manager-no-verify-tls`.
+Cloudera Manager deployments frequently present a certificate of an internal
+certificate authority: the one Auto-TLS creates, whose bundle the agents carry
+as `cm-auto-global_cacerts.pem`, or the one of a reverse proxy in front of
+Cloudera Manager. Pass that authority's certificate via
+`--cloudera-manager-ca-cert`, or `CLOUDERA_MANAGER_CA_CERT`. The certificate is
+always verified; there is deliberately no option to skip the verification,
+since the connection carries the password of a Cloudera Manager user.

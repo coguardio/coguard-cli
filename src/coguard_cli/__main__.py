@@ -4,50 +4,14 @@ interface
 """
 
 import argparse
-import logging
 from importlib.metadata import version
 from coguard_cli import entrypoint, SubParserNames, validate_output_format
 from coguard_cli.util import CiCdProviderNames
-from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL
+from coguard_cli.auth.auth_config import DEFAULT_AUTH_URL, DEFAULT_COGUARD_URL, \
+    ORGANIZATION_ENVIRONMENT_VARIABLE
+from coguard_cli.logging_config import LOGGING_LEVELS, set_logging_config
 
-def set_logging_config(level):
-    """
-    Sets the chosen logging level, depending on the argument provided.
-
-    :param level: The logging level.
-    :type level: ("DEBUG"|"INFO"|"WARNING"|"ERROR"|"CRITICAL")
-    """
-    coguard_logging_format = '%(asctime)-12s [%(levelname)s] %(message)s'
-    if level == "DEBUG":
-        logging.basicConfig(
-            format=coguard_logging_format,
-            level=logging.DEBUG
-        )
-    elif level == "INFO":
-        logging.basicConfig(
-            format=coguard_logging_format,
-            level=logging.INFO
-        )
-    elif level == "WARNING":
-        logging.basicConfig(
-            format=coguard_logging_format,
-            level=logging.WARNING
-        )
-    elif level == "ERROR":
-        logging.basicConfig(
-            format=coguard_logging_format,
-            level=logging.ERROR
-        )
-    elif level == "CRITICAL":
-        logging.basicConfig(
-            format=coguard_logging_format,
-            level=logging.CRITICAL
-        )
-    else:
-        raise ValueError("Log level needs to be one of "
-                         "`DEBUG`,`INFO`,`WARNING`,`ERROR`, or `CRITICAL`")
-
-def main():
+def main():  # pylint: disable=too-many-statements
     """
     The main entrypoint where the argument parsing is happening.
     """
@@ -67,10 +31,21 @@ def main():
         help='The url of the authentication server',
     )
     parser.add_argument(
+        '--organization',
+        type=str,
+        dest='organization',
+        default=None,
+        help=("The organization to upload the scan to, if the account belongs to "
+              "more than one. Can also be provided via the "
+              f"{ORGANIZATION_ENVIRONMENT_VARIABLE} environment variable. If "
+              "neither is given, the CLI asks which one to use.")
+    )
+    parser.add_argument(
         '--logging-level',
         type=str,
         dest='logging_level',
         default='INFO',
+        choices=LOGGING_LEVELS,
         help=("The logging level of this call. Can be one of the following: "
               "DEBUG, INFO, WARNING, ERRROR, CRITICAL")
     )
@@ -291,16 +266,6 @@ def main():
               "variable.")
     )
     cloud_scanning_parser.add_argument(
-        '--cloudera-manager-no-verify-tls',
-        action='store_true',
-        dest='cloudera_manager_no_verify_tls',
-        default=False,
-        required=False,
-        help=("Only for the `cloudera` provider: do not verify the TLS "
-              "certificate of Cloudera Manager. Useful for deployments behind "
-              "a reverse proxy with a self-signed certificate.")
-    )
-    cloud_scanning_parser.add_argument(
         '--cloudera-cluster',
         type=str,
         dest='cloudera_cluster',
@@ -336,6 +301,17 @@ def main():
         type=str,
         nargs='?',
         help=("The action you would like to take.")
+    )
+    ci_cd_parser.add_argument(
+        '--cloud',
+        type=str,
+        dest='ci_cd_cloud_provider',
+        choices=["cloudera"],
+        required=False,
+        help=("Generate a pipeline which scans a deployment of this provider, "
+              "instead of one which scans the repository itself. A pipeline of "
+              "this kind is what gates a change to a Cloudera cluster, since "
+              "Cloudera Manager itself offers no hook to block one.")
     )
     account_parser = subparsers.add_parser(
         SubParserNames.ACCOUNT.value,

@@ -53,7 +53,7 @@ class TestCloudProviderCloudera(unittest.TestCase):
         self.assertEqual(credentials["url"], "https://cm.example.com")
         self.assertEqual(credentials["username"], "admin")
         self.assertEqual(credentials["password"], "secret")
-        self.assertTrue(credentials["verify_tls"])
+        self.assertNotIn("verify_tls", credentials)
 
     def test_extract_credentials_from_environment(self):
         """
@@ -163,41 +163,35 @@ class TestCloudProviderCloudera(unittest.TestCase):
                 ):
                     self.assertIsNone(provider.extract_credentials())
 
-    def test_extract_credentials_verify_tls_string_coercion(self):
+    def test_extract_credentials_legacy_verify_tls_is_ignored(self):
         """
-        A string valued verify_tls setting is interpreted as a boolean.
+        The setting with which TLS verification could once be switched off is
+        pointed out, and has no effect, whether it comes from the credentials
+        file or from the environment.
         """
         base = {
             "url": "https://cm.example.com",
             "username": "admin",
             "password": "secret"
         }
-        for value, expected in [
-                ("false", False),
-                ("FALSE", False),
-                ("0", False),
-                ("no", False),
-                ("off", False),
-                ("true", True),
-                ("1", True)
-        ]:
-            provider = CloudProviderCloudera({**base, "verify_tls": value})
-            with unittest.mock.patch("os.environ", {}):
-                credentials = provider.extract_credentials()
-            self.assertEqual(credentials["verify_tls"], expected, msg=value)
-
-    def test_extract_credentials_verify_tls_false_option(self):
-        """
-        The `--cloudera-manager-no-verify-tls` flag switches verification off.
-        """
-        provider = CloudProviderCloudera({
-            "url": "https://cm.example.com",
-            "username": "admin",
-            "password": "secret",
-            "verify_tls": False
-        })
-        with unittest.mock.patch("os.environ", {}):
-            self.assertFalse(provider.extract_credentials()["verify_tls"])
+        provider = CloudProviderCloudera()
+        with unittest.mock.patch.object(
+                CloudProviderCloudera, "_load_credentials_file",
+                return_value={**base, "verify_tls": False}
+        ), \
+        unittest.mock.patch("os.environ", {}), \
+        self.assertLogs(level="WARNING") as logs:
+            credentials = provider.extract_credentials("credentials.yaml")
+        self.assertNotIn("verify_tls", credentials)
+        self.assertIn("always verified", logs.output[0])
+        provider = CloudProviderCloudera(base)
+        with unittest.mock.patch(
+                "os.environ", {"CLOUDERA_MANAGER_VERIFY_TLS": "false"}
+        ), \
+        self.assertLogs(level="WARNING") as logs:
+            credentials = provider.extract_credentials()
+        self.assertNotIn("verify_tls", credentials)
+        self.assertIn("CLOUDERA_MANAGER_VERIFY_TLS", logs.output[0])
 
     def test_load_credentials_file_json(self):
         """

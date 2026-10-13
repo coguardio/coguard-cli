@@ -141,3 +141,110 @@ class TestCommonFunctions(unittest.TestCase):
         ):
             result = coguard_cli.clone_git_repo("foo")
             self.assertEqual(result, "/foo/bar/a")
+
+    @staticmethod
+    def ci_cd_provider(identifier="github", added="/foo/.github/workflows"):
+        """
+        A CI/CD provider which records what it was asked to add.
+        """
+        provider = unittest.mock.MagicMock()
+        provider.get_identifier.return_value = identifier
+        provider.add.return_value = added
+        provider.post_string.return_value = "remember your secrets"
+        return provider
+
+    def test_perform_ci_cd_action(self):
+        """
+        The pipeline of the repository itself is added without a cloud provider.
+        """
+        provider = self.ci_cd_provider()
+        with unittest.mock.patch(
+                'coguard_cli.ci_cd_provider_factory',
+                new_callable=lambda: lambda: iter([provider])
+        ), \
+        unittest.mock.patch(
+            'pathlib.Path.exists',
+            new_callable=lambda: lambda y: True
+        ):
+            coguard_cli.perform_ci_cd_action("github", "add", "/foo")
+            provider.add.assert_called_once_with("/foo", None)
+            provider.post_string.assert_called_once_with(None)
+
+    def test_perform_ci_cd_action_cloud_provider(self):
+        """
+        The requested deployment reaches the provider, so that the pipeline it
+        writes is the one which scans that deployment.
+        """
+        provider = self.ci_cd_provider()
+        with unittest.mock.patch(
+                'coguard_cli.ci_cd_provider_factory',
+                new_callable=lambda: lambda: iter([provider])
+        ), \
+        unittest.mock.patch(
+            'pathlib.Path.exists',
+            new_callable=lambda: lambda y: True
+        ):
+            coguard_cli.perform_ci_cd_action(
+                "github", "add", "/foo", "cloudera"
+            )
+            provider.add.assert_called_once_with("/foo", "cloudera")
+            provider.post_string.assert_called_once_with("cloudera")
+
+    def test_perform_ci_cd_action_nothing_added(self):
+        """
+        A provider which could not add the pipeline results in a non-zero exit
+        code, so that a pipeline which was meant to gate is never silently
+        absent.
+        """
+        provider = self.ci_cd_provider(added=None)
+        with unittest.mock.patch(
+                'coguard_cli.ci_cd_provider_factory',
+                new_callable=lambda: lambda: iter([provider])
+        ), \
+        unittest.mock.patch(
+            'pathlib.Path.exists',
+            new_callable=lambda: lambda y: True
+        ):
+            with self.assertRaises(SystemExit):
+                coguard_cli.perform_ci_cd_action("github", "add", "/foo")
+
+    def test_perform_ci_cd_action_unknown_provider(self):
+        """
+        A CI/CD provider which does not exist is an error.
+        """
+        with unittest.mock.patch(
+                'coguard_cli.ci_cd_provider_factory',
+                new_callable=lambda: lambda: iter([self.ci_cd_provider()])
+        ), \
+        unittest.mock.patch(
+            'pathlib.Path.exists',
+            new_callable=lambda: lambda y: True
+        ):
+            with self.assertRaises(SystemExit):
+                coguard_cli.perform_ci_cd_action("gitlab", "add", "/foo")
+
+    def test_perform_ci_cd_action_unknown_command(self):
+        """
+        A command other than `add` is an error.
+        """
+        with unittest.mock.patch(
+                'coguard_cli.ci_cd_provider_factory',
+                new_callable=lambda: lambda: iter([self.ci_cd_provider()])
+        ), \
+        unittest.mock.patch(
+            'pathlib.Path.exists',
+            new_callable=lambda: lambda y: True
+        ):
+            with self.assertRaises(SystemExit):
+                coguard_cli.perform_ci_cd_action("github", "remove", "/foo")
+
+    def test_perform_ci_cd_action_non_existent_folder(self):
+        """
+        A repository folder which does not exist is an error.
+        """
+        with unittest.mock.patch(
+                'pathlib.Path.exists',
+                new_callable=lambda: lambda y: False
+        ):
+            with self.assertRaises(SystemExit):
+                coguard_cli.perform_ci_cd_action("github", "add", "/foo")

@@ -75,7 +75,15 @@ def perform_cloud_provider_scan(
     zip_candidate = folder_scan.create_zip_to_upload_from_file_system(
         collected_config_file_tuple
     )
-    collected_location, _ = collected_config_file_tuple
+    collected_location, manifest = collected_config_file_tuple
+    # The back-end takes the name of the cluster from the manifest inside the
+    # zip, and the report is then run and retrieved by that name. The two have
+    # to be the same string. For the Infrastructure as Code path they trivially
+    # are, since the manifest name is set right here, but a provider which
+    # produces the cluster representation itself names the cluster after what
+    # its API calls it, so the manifest is the authority.
+    scan_identifier = manifest.get("name") or f"{provider_name}_extraction"
+    logging.debug("The scan identifier taken from the manifest is %s", scan_identifier)
     shutil.rmtree(collected_location, ignore_errors=True)
     if folder_name:
         shutil.rmtree(folder_name, ignore_errors=True)
@@ -91,7 +99,7 @@ def perform_cloud_provider_scan(
             deal_type,
             token,
             coguard_api_url,
-            f"{provider_name}_extraction",
+            scan_identifier,
             output_format,
             fail_level,
             organization,

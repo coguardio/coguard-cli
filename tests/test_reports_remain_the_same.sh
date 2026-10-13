@@ -136,7 +136,7 @@ timed "image mariadb:10.9.4 (nist800-53)" test_image_checksum "mariadb:10.9.4" "
 timed "image mariadb:10.9.4 (fedramp)" test_image_checksum "mariadb:10.9.4" "7292bb041c90962ccfe737ea2b8c18cf3686c894" fedramp
 timed "image mariadb:10.9.4 (iso27001)" test_image_checksum "mariadb:10.9.4" "2af133f8352ab118f5a96fb2e447dd545110723e" iso27001
 time docker image rm "mariadb:10.9.4"
-timed "image bitnamilegacy/kafka:3.3.1" test_image_checksum "bitnamilegacy/kafka:3.3.1" "a17511e39d71c202412a1118588b3e4819f5ca5d"
+timed "image bitnamilegacy/kafka:3.3.1" test_image_checksum "bitnamilegacy/kafka:3.3.1" "09756bec652aeb1b0bc1a0cbf3cb1cec05961c5a"
 time docker image rm "bitnamilegacy/kafka:3.3.1"
 timed "image httpd:2.4.54" test_image_checksum "httpd:2.4.54" "6db5cf33e439ae9bc0fe7205501c13f2efc97f8b"
 time docker image rm "httpd:2.4.54"
@@ -159,7 +159,7 @@ time docker stop demo-postgres
 # Git repository tests
 
 timed "folder remix-project" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
-timed "folder remix-project (trivy_cve_scan)" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df bf02bee757b8c0add11b6d21fa854ec9f5207586 "" trivy_cve_scan
+timed "folder remix-project (trivy_cve_scan)" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df f55fa7b52568abaaac8505abc29a726516976bdd "" trivy_cve_scan
 timed "folder jaeger-operator" test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f9b52882df586ea828c230285c773bd005ea7d7e
 timed "folder opentelemetry-collector" test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 89cfb1d435b276c308cbed275dbf38f76fca1544
 timed "folder prisma" test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a61ace3dd693cbe4e3408f943b2d94770df88f2f
