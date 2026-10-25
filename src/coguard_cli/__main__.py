@@ -79,6 +79,7 @@ def main():  # pylint: disable=too-many-statements
         type=str,
         dest='ruleset',
         choices=[
+            "eu-cra",
             "fedramp",
             "hipaa",
             "iso27001",

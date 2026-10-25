@@ -123,6 +123,7 @@ test_folder_fix() {
 timed "image nginx:1.23.2" test_image_checksum "nginx:1.23.2" "18117f00e2d81fc214bd6a9020932d24cf3a47a6"
 time docker image rm "nginx:1.23.2"
 timed "image mysql:8.0.31" test_image_checksum "mysql:8.0.31" "c736e8532a709eda8324f9374d0318862a733b0d"
+timed "image mysql:8.0.31" test_image_checksum "mysql:8.0.31" "7d607c78fdd14c35144bd81e70f9678fa27304db" eu-cra
 timed "image mysql:8.0.31 (stig)" test_image_checksum "mysql:8.0.31" "9033734e8f63cc6fc39b5ea9c5e3f1c6ce6fe32f" stig
 time docker image rm "mysql:8.0.31"
 timed "image postgres:15.1" test_image_checksum "postgres:15.1" "be855ac9c322fe1085d65df7878403f58c3d034d"
@@ -159,7 +160,7 @@ time docker stop demo-postgres
 # Git repository tests
 
 timed "folder remix-project" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
-timed "folder remix-project (trivy_cve_scan)" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df f55fa7b52568abaaac8505abc29a726516976bdd "" trivy_cve_scan
+timed "folder remix-project (trivy_cve_scan)" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 2821eb5a30001f446b9967c5bfa9ad9f316c28d5 "" trivy_cve_scan
 timed "folder jaeger-operator" test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f9b52882df586ea828c230285c773bd005ea7d7e
 timed "folder opentelemetry-collector" test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 89cfb1d435b276c308cbed275dbf38f76fca1544
 timed "folder prisma" test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a61ace3dd693cbe4e3408f943b2d94770df88f2f
