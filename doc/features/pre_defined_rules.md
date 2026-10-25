@@ -73,6 +73,16 @@ or 5, and the other rules are grouped similar to the the description of the defa
 1-3. Additional rules specific to the compliance framework have been
 added and will appear as severity 4 or 5, if violated.
 
+## EU CRA
+
+The essential cybersecurity requirements of the EU Cyber Resilience Act
+(Regulation (EU) 2024/2847) have been mapped to relevant rules in the
+CoGuard database. It can be selected via `--ruleset eu-cra`.
+
+Similar to the SOC2, any rule relevant to the EU CRA will have severity 4
+or 5, and the other rules are grouped similar to the the description of the default rule-set at the range
+1-3.
+
 ## Roadmap
 
 - ISO 27001

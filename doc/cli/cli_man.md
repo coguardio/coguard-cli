@@ -17,7 +17,7 @@ coguard [-h] [--coguard-api-url COGUARD_API_URL]
              [--coguard-auth-url COGUARD_AUTH_URL]
              [--logging-level LOGGING_LEVEL]
              [--minimum-fail-level FAIL_LEVEL]
-             [--output-format OUTPUT_FORMAT] [--ruleset {soc2,hipaa,}] [-v]
+             [--output-format OUTPUT_FORMAT] [--ruleset RULE_SET] [-v]
              {docker-image,folder,cloud,pipeline,scan} ...
 ```
 
@@ -31,9 +31,24 @@ coguard [-h] [--coguard-api-url COGUARD_API_URL]
 | --logging-level      | LOGGING_LEVEL    | The logging level of this call. Can be one of the following: DEBUG, INFO, WARNING, ERRROR, CRITICAL            |
 | --minimum-fail-level | FAIL_LEVEL       | The minimum severity level of failed checks for this program to not give a non-zero exit code.                 |
 | --output-format      | OUTPUT_FORMAT    | The format of the output. It is either `formatted` (default), i.e. human readable, or `json`.                  |
-| --ruleset            | RULE_SET         | The non-default rule-set to use. The current options are `soc2` or `hipaa`                                     |
+| --ruleset            | RULE_SET         | The non-default rule-set to use. See [Supported rule-sets](#supported-rule-sets) below.                        |
 | --dry-run            | DRY_RUN          | When set to `true`, the CLI will generate a .zip file, but not upload it to the back-end for scanning/fixing.  |
 | -v, --version        |                  | Show the CLI's version number and exit                                                                         |
+
+#### Supported rule-sets
+
+The following values are accepted by `--ruleset` (an enterprise subscription is required):
+
+- `eu-cra`
+- `fedramp`
+- `hipaa`
+- `iso27001`
+- `nist800-53`
+- `pcidss`
+- `soc2`
+- `stig`
+
+See [Pre defined rule-sets](../features/pre_defined_rules.md) for details.
 
 
 ### CLI usage
