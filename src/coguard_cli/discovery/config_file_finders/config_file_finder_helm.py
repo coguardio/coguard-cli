@@ -91,8 +91,7 @@ class ConfigFileFinderHelm(ConfigFileFinder):
                 config = [] if config_res is None else [
                     unflatten(config_part, splitter='dot') for config_part in config_res
                 ]
-                #pylint: disable=bare-except
-        except:
+        except:  # pylint: disable=bare-except
             logging.debug(
                 "Failed to load %s",
                 helm_chart_file

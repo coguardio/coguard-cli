@@ -133,16 +133,14 @@ class ConfigFileFinderCloudformation(ConfigFileFinder):
                 config_res = yaml.safe_load_all(dump_yaml(temp_dict))
                 config = [] if config_res is None else config_res
                 config = [unflatten(cfg, splitter='dot') for cfg in config]
-        # pylint: disable=bare-except
-        except:
+        except:  # pylint: disable=bare-except
             try:
                 with open(os.path.join(file_path), 'r', encoding='utf-8') as file_stream:
                     temp_dict = load_json(file_stream.read())
                 config_res = json.loads(dump_json(temp_dict))
                 config = {} if config_res is None else config_res
                 config = unflatten(config, splitter='dot')
-            # pylint: disable=bare-except
-            except:
+            except:  # pylint: disable=bare-except
                 logging.debug(
                     "Failed to load %s",
                     file_path

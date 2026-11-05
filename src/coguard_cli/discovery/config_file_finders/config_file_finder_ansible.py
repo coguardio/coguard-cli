@@ -44,8 +44,7 @@ class ConfigFileFinderAnsible(ConfigFileFinder):
                     for config_part in config_res
                     if config_part is not None
                 ]
-        #pylint: disable=bare-except
-        except:
+        except:  # pylint: disable=bare-except
             logging.debug(
                 "Failed to load %s",
                 file_path
