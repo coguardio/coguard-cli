@@ -143,7 +143,7 @@ timed "image httpd:2.4.54" test_image_checksum "httpd:2.4.54" "6db5cf33e439ae9bc
 time docker image rm "httpd:2.4.54"
 timed "image elasticsearch:8.5.0" test_image_checksum "elasticsearch:8.5.0" "96b704bc7492995fab8a1834af68cf9d97b5438d"
 time docker image rm "elasticsearch:8.5.0"
-timed "image tomcat:9.0.69-jre17" test_image_checksum "tomcat:9.0.69-jre17" "af93b8cc268f1a0e22b5438da3e40ed7a805b925"
+timed "image tomcat:9.0.69-jre17" test_image_checksum "tomcat:9.0.69-jre17" "689324e6e45c0a8ad70aee42a10e4bf1f7e72e11"
 time docker image rm "tomcat:9.0.69-jre17"
 timed "image redis:7.0.5" test_image_checksum "redis:7.0.5" "fe13e5d82996adfe8728a79ebd2df098c14ffcf9"
 time docker image rm "redis:7.0.5"
