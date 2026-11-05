@@ -262,8 +262,7 @@ class ConfigFileFinderPulumi(ConfigFileFinder):
             if stack_list_raw is None:
                 return None
             existing_stacks = json.loads(stack_list_raw)
-        # pylint: disable=broad-exception-caught
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             existing_stacks = []
 
         # If no stacks present, initialize default "dev" stack
