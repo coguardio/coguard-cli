@@ -1,8 +1,8 @@
 {
   "name" : "CONFIGURATION_ASSURANCE",
   "label" : "Configuration Assurance",
-  "description" : "Reports the state of the configuration of this cluster as CoGuard scans it. The service is healthy while the last scan found nothing at or above the severity it is configured to fail on, and unhealthy when it did, which is what makes a configuration finding visible in the cluster view of Cloudera Manager rather than only in a report.",
-  "version" : "1.0",
+  "description" : "Reports the state of the configuration of this cluster as CoGuard scans it. The service is healthy while the last scan found nothing at or above the severity it is configured to fail on -- by default the High and Critical findings -- and unhealthy while such a finding is not addressed, which is what makes a configuration finding visible in the cluster view of Cloudera Manager rather than only in a report. The CoGuard CLI comes from the COGUARD parcel, which has to be distributed and activated on the host of the Configuration Check role.",
+  "version" : "1.1",
   "runAs" : {
     "user" : "cloudera-scm",
     "group" : "cloudera-scm"
@@ -13,6 +13,10 @@
     "cdhVersion" : {
       "min" : "7"
     }
+  },
+  "parcel" : {
+    "repoUrl" : "https://github.com/coguardio/coguard-cli/releases/latest/download/",
+    "requiredTags" : [ "coguard" ]
   },
   "parameters" : [
     {
@@ -60,10 +64,10 @@
     {
       "name" : "minimum_fail_level",
       "label" : "Minimum Severity",
-      "description" : "The lowest severity of a finding which makes this service unhealthy. 1 is every finding, 4 and above are the ones the report calls High.",
+      "description" : "The lowest severity of a finding which makes this service unhealthy. Severities run from 1 to 5; 4 and 5 are the High and Critical findings, which is the default, so that this service is unhealthy while one of those is not addressed. Lower it to 1 to be told about every finding. Findings below it still appear in the report and in the banner.",
       "configName" : "minimum_fail_level",
       "type" : "long",
-      "default" : 1,
+      "default" : 4,
       "min" : 1,
       "max" : 5
     },
@@ -86,7 +90,7 @@
     {
       "name" : "check_executable",
       "label" : "Check Command",
-      "description" : "The command which decides whether the configuration has changed and scans it if it has, installed alongside the CoGuard CLI. Give an absolute path if it is not on the PATH of the user this service runs as.",
+      "description" : "The command which decides whether the configuration has changed and scans it if it has. The COGUARD parcel puts it on the PATH of this role; give an absolute path only to use another installation.",
       "configName" : "check_executable",
       "type" : "string",
       "default" : "coguard-cloudera-check",
@@ -95,7 +99,7 @@
     {
       "name" : "coguard_executable",
       "label" : "CoGuard CLI",
-      "description" : "The CoGuard CLI which performs the scan itself.",
+      "description" : "The CoGuard CLI which performs the scan itself. The COGUARD parcel puts it on the PATH of this role.",
       "configName" : "coguard_executable",
       "type" : "string",
       "default" : "coguard",
@@ -104,10 +108,10 @@
     {
       "name" : "python_executable",
       "label" : "Python Interpreter",
-      "description" : "The interpreter used to read the outcome of the last scan. It only has to be able to import the CoGuard CLI if the summary in the role log is to name the affected services; without that it still reports the counts.",
+      "description" : "The interpreter used to read the outcome of the last scan. The default is the one of the COGUARD parcel, which can import the CoGuard CLI, so that the summary in the role log names the affected services; an interpreter which cannot import it still reports the counts.",
       "configName" : "python_executable",
       "type" : "string",
-      "default" : "python3",
+      "default" : "coguard-python",
       "required" : "true"
     }
   ],

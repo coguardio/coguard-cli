@@ -24,6 +24,10 @@
 #     which fails inside the CLI is a 1 as well. What the health is read from is
 #     the outcome of the last scan, which the check records in its state file.
 #
+# The CoGuard CLI comes from the COGUARD parcel, which the descriptor requires:
+# the agent sources the parcel's meta/coguard_env.sh before starting this script,
+# which sets COGUARD_HOME and puts the parcel's bin/ on the PATH.
+#
 # Everything this needs is in the environment, put there by the startRunner of
 # the descriptor, except the passwords: those are read from the credentials file
 # named by ENVIRONMENT_FILE, so that they are not in the configuration database
@@ -70,11 +74,11 @@ read_configuration() {
     CLOUDERA_MANAGER_CA_CERT=${CLOUDERA_MANAGER_CA_CERT:-}
     CLOUDERA_CLUSTER=${CLOUDERA_CLUSTER:-}
     ENVIRONMENT_FILE=${ENVIRONMENT_FILE:-}
-    MINIMUM_FAIL_LEVEL=${MINIMUM_FAIL_LEVEL:-1}
+    MINIMUM_FAIL_LEVEL=${MINIMUM_FAIL_LEVEL:-4}
     RULESET=${RULESET:-}
     CHECK_EXECUTABLE=${CHECK_EXECUTABLE:-coguard-cloudera-check}
     COGUARD_EXECUTABLE=${COGUARD_EXECUTABLE:-coguard}
-    PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE:-python3}
+    PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE:-coguard-python}
     WORK_DIRECTORY=${WORK_DIRECTORY:-/var/lib/coguard}
     CHECK_INTERVAL_SECONDS=${CHECK_INTERVAL_SECONDS:-900}
     MINIMUM_SCAN_INTERVAL_SECONDS=${MINIMUM_SCAN_INTERVAL_SECONDS:-900}
@@ -87,12 +91,24 @@ read_configuration() {
             "is nothing to read the configuration of the cluster from."
         return 1
     fi
-    if ! command -v "${CHECK_EXECUTABLE}" > /dev/null 2>&1; then
-        log "The check command \`${CHECK_EXECUTABLE}\` was not found on the" \
-            "PATH of $(id -un). Install the CoGuard CLI on this host with" \
-            "\`pip3 install coguard-cli\`, or configure an absolute path."
-        return 1
+    # The parcel's environment script puts bin/ on the PATH already; this is for
+    # an agent which hands over COGUARD_HOME and not the PATH it was given.
+    if [ -n "${COGUARD_HOME:-}" ] && [ -d "${COGUARD_HOME}/bin" ]; then
+        PATH="${COGUARD_HOME}/bin:${PATH}"
     fi
+    local executable
+    for executable in "${CHECK_EXECUTABLE}" "${PYTHON_EXECUTABLE}"; do
+        # The interpreter is checked as well as the check command: the health
+        # of this service is read with it, and one which cannot be run would
+        # look like a scan that has not happened yet rather than like an error.
+        if ! command -v "${executable}" > /dev/null 2>&1; then
+            log "\`${executable}\` was not found on the PATH of $(id -un)." \
+                "It comes from the COGUARD parcel: check that the parcel is" \
+                "distributed and activated on this host, or configure an" \
+                "absolute path."
+            return 1
+        fi
+    done
     return 0
 }
 

@@ -1,0 +1,101 @@
+name: Build the Cloudera parcel and CSD, and publish them as a GitHub release
+
+# Run by hand, like the PyPI upload, once the version in setup.cfg is the one to
+# release. It creates the release v<version> with the COGUARD parcel, its .sha,
+# the manifest.json of a parcel repository, and the Configuration Assurance CSD.
+#
+# The release doubles as the parcel repository the CSD names in its `repoUrl`:
+#
+#   https://github.com/coguardio/coguard-cli/releases/latest/download/
+#
+# Cloudera Manager reads `<repoUrl>/manifest.json` and `<repoUrl>/<parcel>`, both
+# of which are assets of the latest release. Every release made from here on must
+# therefore carry them, or "latest" stops being a parcel repository; and a version
+# is never re-uploaded, because a rebuilt parcel has a different hash than the
+# .sha a customer already has.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: none
+  checks: read
+  contents: write
+  deployments: none
+  id-token: none
+  issues: none
+  discussions: none
+  packages: none
+  pages: none
+  pull-requests: read
+  repository-projects: none
+  security-events: none
+  statuses: read
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      with:
+          submodules: true
+
+    - name: find_version_tag
+      run: |
+        CURRENT_COGUARD_VERSION=$(sed -n 's/^version *= *//p' setup.cfg)
+        echo "CURRENT_COGUARD_VERSION=$CURRENT_COGUARD_VERSION" >> "$GITHUB_ENV"
+
+    - name: Refuse to replace an existing release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        if gh release view "v${CURRENT_COGUARD_VERSION}" > /dev/null 2>&1; then
+          echo "Release v${CURRENT_COGUARD_VERSION} exists already. Increase the version in setup.cfg." >&2
+          exit 1
+        fi
+
+    - uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c
+      with:
+        python-version: '3.13'
+
+    - name: Build the parcel and the CSD
+      run: make parcel csd
+
+    # The parcel runs on the Python of the hosts, not on the one above, so it is
+    # tried where it is going to run: unpacked as the agent unpacks it, with the
+    # environment script sourced, on RHEL 9's own Python.
+    - name: Try the parcel on RHEL 9
+      run: |
+        docker run --rm -v "$PWD/dist/parcel-repo:/repo:ro" \
+          -e VERSION="${CURRENT_COGUARD_VERSION}" \
+          registry.access.redhat.com/ubi9/ubi:latest bash -c '
+            set -euo pipefail
+            dnf -q -y install python3 tar gzip > /dev/null
+            mkdir -p /opt/cloudera/parcels && cd /opt/cloudera/parcels
+            tar xzf "/repo/COGUARD-${VERSION}-el9.parcel"
+            export PARCELS_ROOT=/opt/cloudera/parcels PARCEL_DIRNAME="COGUARD-${VERSION}"
+            . "COGUARD-${VERSION}/meta/coguard_env.sh"
+            cd /tmp
+            coguard --help > /dev/null
+            coguard-cloudera-check --help > /dev/null
+            coguard-cloudera-banner --help > /dev/null
+            coguard-python -c "import yaml, cryptography, jwt, boto3; from coguard_cli.cloudera_integration.banner import render_block"
+            echo "The parcel runs on $(python3 --version)."
+          '
+
+    - name: Create the release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "v${CURRENT_COGUARD_VERSION}" \
+          --target "${GITHUB_SHA}" \
+          --title "CoGuard CLI ${CURRENT_COGUARD_VERSION}" \
+          --latest \
+          --notes "The CoGuard CLI ${CURRENT_COGUARD_VERSION} for Cloudera: the COGUARD parcel and the Configuration Assurance CSD. Installation: doc/integrations/cloudera.md. The CLI itself is on PyPI as coguard-cli." \
+          dist/parcel-repo/COGUARD-*.parcel \
+          dist/parcel-repo/COGUARD-*.parcel.sha \
+          dist/parcel-repo/manifest.json \
+          dist/CONFIGURATION_ASSURANCE-*.jar

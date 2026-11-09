@@ -390,9 +390,17 @@ a thing that arrives. What Cloudera
 Manager colours red is the health of a *service*, so the way to get a red badge is
 to be a service: [`csd/configuration_assurance`](../../csd) is a custom service
 descriptor which adds a `Configuration Assurance` service to the cluster, whose
-health is the state of the configuration. When a scan finds something, that
-service goes to Bad Health, the health of the cluster follows it, and Cloudera
-Manager's own alerting fires.
+health is the state of the configuration. When a scan finds a High or Critical
+finding (severity 4 or 5, the default threshold), that service goes to Bad Health,
+the health of the cluster follows it, and Cloudera Manager's own alerting fires.
+Lower findings stay in the banner and the report.
+
+The CLI reaches the host of that service as a parcel: [`parcel/`](../../parcel)
+builds `COGUARD-<version>-<distro>.parcel`, which Cloudera Manager distributes and
+activates like any other, and the descriptor requires its `coguard` tag. Both the
+parcel and the descriptor's jar are assets of every GitHub release of the CLI, and
+the descriptor names the latest release as its parcel repository, so installing
+the jar is what makes the parcel show up on the *Parcels* page.
 
 Two things about it are worth knowing before deciding to install it.
 
@@ -412,11 +420,12 @@ in the log of the role and in the report it links to. Red also does not clear
 itself, because while the role is down nothing is scanning: restarting the role is
 the re-check.
 
-Installing it needs a jar in `/opt/cloudera/csd` and a restart of the Cloudera
-Manager *server* — the cluster keeps running, but the web interface and the API are
-away for about a minute. The steps, the parameters and how to validate the
-descriptor against Cloudera's schema validator are in
-[`csd/README.md`](../../csd/README.md).
+Installing it needs the parcel distributed and activated, a jar in
+`/opt/cloudera/csd`, and a restart of the Cloudera Manager *server* — the cluster
+keeps running, but the web interface and the API are away for about a minute. The
+steps, the parameters and how to validate the descriptor against Cloudera's schema
+validator are in [`csd/README.md`](../../csd/README.md), and how the parcel is
+built in [`parcel/README.md`](../../parcel/README.md).
 
 ## Gating a change in a pipeline
 
