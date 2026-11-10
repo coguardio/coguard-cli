@@ -38,7 +38,7 @@ csd:
 	rm -f dist/$(CSD_JAR)
 # The paths inside the jar are the ones the descriptor names, so the archive is
 # built from within the CSD directory rather than from here.
-	cd csd/configuration_assurance && python3 -m zipfile -c ../../dist/$(CSD_JAR) descriptor scripts
+	cd csd/configuration_assurance && python3 -m zipfile -c ../../dist/$(CSD_JAR) descriptor scripts images
 	@echo "Built dist/$(CSD_JAR)"
 
 # The COGUARD parcel, which is how the CLI gets onto the hosts of a cluster and

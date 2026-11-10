@@ -549,6 +549,10 @@ class TestClouderaCheck(unittest.TestCase):
         )
         self.assertTrue(all("secret" not in entry for entry in built))
         self.assertTrue(all("password" not in entry for entry in built))
+        # The JSON result is what tells a scan which ran from one which did
+        # not, so it is always asked for.
+        self.assertEqual(built[built.index("--output-format") + 1], "formatted,json")
+        self.assertLess(built.index("--output-format"), built.index("cloud"))
 
     def test_build_cli_arguments_minimal(self):
         """
@@ -617,7 +621,10 @@ class TestClouderaCheck(unittest.TestCase):
         with unittest.mock.patch(
                 'coguard_cli.cloudera_integration.check.run_scan',
                 new_callable=lambda: unittest.mock.MagicMock(return_value=1)
-        ) as run_scan:
+        ) as run_scan, unittest.mock.patch(
+            'coguard_cli.cloudera_integration.check.scan_produced_result',
+            new_callable=lambda: unittest.mock.MagicMock(return_value=True)
+        ):
             new_state, exit_code = check.perform_check(
                 api_with({"EV_REVISION_CREATED": [event()]}),
                 "ozone-base-cluster",
@@ -664,7 +671,10 @@ class TestClouderaCheck(unittest.TestCase):
         with unittest.mock.patch(
                 'coguard_cli.cloudera_integration.check.run_scan',
                 new_callable=lambda: unittest.mock.MagicMock(return_value=0)
-        ) as run_scan:
+        ) as run_scan, unittest.mock.patch(
+            'coguard_cli.cloudera_integration.check.scan_produced_result',
+            new_callable=lambda: unittest.mock.MagicMock(return_value=True)
+        ):
             new_state, exit_code = check.perform_check(
                 api_with({"EV_REVISION_CREATED": [event()]}),
                 "ozone-base-cluster",
@@ -676,6 +686,71 @@ class TestClouderaCheck(unittest.TestCase):
         run_scan.assert_called_once()
         self.assertIn("has not been read before", new_state["lastScanReason"])
         self.assertEqual(new_state["lastEventAt"], "2026-09-04T16:20:37.738Z")
+
+    def test_perform_check_of_a_scan_without_a_result(self):
+        """
+        A CLI which ends with 0 without having written a result -- which is what
+        it does when it cannot authenticate against CoGuard -- is a check which
+        did not happen: not a clean cluster, and the change stays pending.
+        """
+        for scan_exit_code in (0, 1, 3):
+            with self.subTest(scan_exit_code=scan_exit_code), \
+                 tempfile.TemporaryDirectory() as directory, \
+                 unittest.mock.patch(
+                     'coguard_cli.cloudera_integration.check.RESULT_FILE',
+                     os.path.join(directory, "result.json")
+                 ), unittest.mock.patch(
+                     'coguard_cli.cloudera_integration.check.run_scan',
+                     new_callable=lambda code=scan_exit_code:
+                     unittest.mock.MagicMock(return_value=code)
+                 ):
+                new_state, exit_code = check.perform_check(
+                    api_with({"EV_REVISION_CREATED": [event()]}),
+                    "ozone-base-cluster",
+                    arguments(),
+                    credentials(),
+                    {}
+                )
+            self.assertEqual(exit_code, EXIT_ERROR)
+            self.assertNotIn("lastScanExitCode", new_state)
+            self.assertNotIn("lastEventAt", new_state)
+
+    def test_perform_check_of_a_scan_with_an_unexpected_exit_code(self):
+        """
+        An exit code other than clean or findings is a failed check even if a
+        result is lying around.
+        """
+        with unittest.mock.patch(
+                'coguard_cli.cloudera_integration.check.run_scan',
+                new_callable=lambda: unittest.mock.MagicMock(return_value=3)
+        ), unittest.mock.patch(
+            'coguard_cli.cloudera_integration.check.scan_produced_result',
+            new_callable=lambda: unittest.mock.MagicMock(return_value=True)
+        ):
+            new_state, exit_code = check.perform_check(
+                api_with({"EV_REVISION_CREATED": [event()]}),
+                "ozone-base-cluster",
+                arguments(),
+                credentials(),
+                {}
+            )
+        self.assertEqual(exit_code, EXIT_ERROR)
+        self.assertNotIn("lastScanExitCode", new_state)
+
+    def test_scan_produced_result(self):
+        """
+        Only a result written after the scan started counts; a missing one, or
+        one left by an earlier scan, does not.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            result_file = pathlib.Path(directory) / "result.json"
+            started = datetime.datetime.now(datetime.timezone.utc)
+            self.assertFalse(check.scan_produced_result(result_file, started))
+            result_file.write_text("{}", encoding="utf-8")
+            self.assertTrue(check.scan_produced_result(result_file, started))
+            an_hour_ago = started.timestamp() - 3600
+            os.utime(result_file, (an_hour_ago, an_hour_ago))
+            self.assertFalse(check.scan_produced_result(result_file, started))
 
     def test_perform_check_postpones_a_scan(self):
         """

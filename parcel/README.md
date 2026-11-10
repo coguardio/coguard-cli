@@ -18,6 +18,7 @@ unhealthy while a High or Critical finding is not addressed; see
 ```shell
 make parcel                                   # from the repository root
 make parcel PARCEL_OPTIONS="--distro el8 --python-version 3.11"
+make parcel PARCEL_OPTIONS="--version 0.3.17.1"    # a test build of an installed version
 ```
 
 This writes a parcel repository into `dist/parcel-repo/`:

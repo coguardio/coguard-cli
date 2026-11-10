@@ -3,6 +3,8 @@
   "label" : "Configuration Assurance",
   "description" : "Reports the state of the configuration of this cluster as CoGuard scans it. The service is healthy while the last scan found nothing at or above the severity it is configured to fail on -- by default the High and Critical findings -- and unhealthy while such a finding is not addressed, which is what makes a configuration finding visible in the cluster view of Cloudera Manager rather than only in a report. The CoGuard CLI comes from the COGUARD parcel, which has to be distributed and activated on the host of the Configuration Check role.",
   "version" : "1.1",
+  "icon" : "images/icon.png",
+  "svgIcon" : "images/icon.svg",
   "runAs" : {
     "user" : "cloudera-scm",
     "group" : "cloudera-scm"
@@ -30,20 +32,75 @@
     {
       "name" : "cloudera_manager_user",
       "label" : "Cloudera Manager User",
-      "description" : "The Cloudera Manager user the scan authenticates as. Read-Only is enough: the scan issues GET requests only. The password of this user is not a parameter here; it is read from the credentials file below.",
+      "description" : "The Cloudera Manager user the scan authenticates as. Read-Only is enough: the scan issues GET requests only.",
       "configName" : "cloudera_manager_user",
       "type" : "string",
       "default" : "coguard",
       "required" : "true"
     },
     {
+      "name" : "cloudera_manager_password",
+      "label" : "Cloudera Manager Password",
+      "description" : "The password of the Cloudera Manager user above. It is stored as a password: the API, the web interface and exports of the configuration show it redacted.",
+      "configName" : "cloudera_manager_password",
+      "type" : "password",
+      "required" : "false"
+    },
+    {
+      "name" : "coguard_user_name",
+      "label" : "CoGuard User",
+      "description" : "The CoGuard account the scans are made with, i.e. the user name it logs in to the CoGuard portal with.",
+      "configName" : "coguard_user_name",
+      "type" : "string",
+      "default" : ""
+    },
+    {
+      "name" : "coguard_password",
+      "label" : "CoGuard Password",
+      "description" : "The password of the CoGuard account above. It is stored as a password: the API, the web interface and exports of the configuration show it redacted.",
+      "configName" : "coguard_password",
+      "type" : "password",
+      "required" : "false"
+    },
+    {
+      "name" : "coguard_organization",
+      "label" : "CoGuard Organization",
+      "description" : "The CoGuard organization the scans belong to, as it appears in the address of the CoGuard portal (https://portal.coguard.io/orgs/<organization>/...). The scans go into it, and the CoGuard Report link of the role points into it.",
+      "configName" : "coguard_organization",
+      "type" : "string",
+      "required" : "true"
+    },
+    {
+      "name" : "coguard_cluster_name",
+      "label" : "CoGuard Cluster Name",
+      "description" : "The name of this cluster in the CoGuard portal, which is the name of the cluster in Cloudera Manager with every character other than a letter or a digit replaced by an underscore: ozone-base-cluster is ozone_base_cluster. It completes the CoGuard Report link of the role. The role checks it against the name the scan actually uses, and says in its log what to set if the two differ.",
+      "configName" : "coguard_cluster_name",
+      "type" : "string",
+      "required" : "true"
+    },
+    {
+      "name" : "coguard_api_url",
+      "label" : "CoGuard API URL",
+      "description" : "The API of the CoGuard instance the scans go to, e.g. https://coguard.example.com/server. Leave empty for CoGuard's public instance (https://portal.coguard.io/server). For a CoGuard instance of your own, set the CoGuard Authentication URL and the CoGuard Portal Address to that instance as well.",
+      "configName" : "coguard_api_url",
+      "type" : "string",
+      "default" : ""
+    },
+    {
+      "name" : "coguard_auth_url",
+      "label" : "CoGuard Authentication URL",
+      "description" : "The authentication server of the CoGuard instance, which the CoGuard User and Password log in to, e.g. https://coguard.example.com/auth. Leave empty for CoGuard's public instance (https://portal.coguard.io/auth).",
+      "configName" : "coguard_auth_url",
+      "type" : "string",
+      "default" : ""
+    },
+    {
       "name" : "environment_file",
       "label" : "Credentials File",
-      "description" : "A file on the host of the Configuration Check role holding CLOUDERA_MANAGER_PASSWORD, and COGUARD_USER_NAME and COGUARD_PASSWORD for the CoGuard account, in KEY=value form. If that account has more than one CoGuard organization, add COGUARD_ORGANIZATION to say which one the scans belong to, since there is nobody here to ask. It is read by the role process, so it has to be readable by the user this service runs as and by nobody else. A password given here rather than as a service parameter stays out of the Cloudera Manager database, out of its API and out of its audit log.",
+      "description" : "Optional. A file on the host of the Configuration Check role with any of CLOUDERA_MANAGER_PASSWORD, COGUARD_USER_NAME, COGUARD_PASSWORD and COGUARD_ORGANIZATION as KEY=value lines, for credentials which are delivered to the host by other means, such as a configuration management tool or a secrets agent. A value in the file takes precedence over the parameter of the same meaning. It has to be readable by the user this service runs as. Leave empty to use the parameters above only.",
       "configName" : "environment_file",
       "type" : "string",
-      "default" : "/etc/coguard/cloudera.env",
-      "required" : "true"
+      "default" : ""
     },
     {
       "name" : "cloudera_manager_ca_cert",
@@ -81,8 +138,8 @@
     },
     {
       "name" : "report_url",
-      "label" : "Report Address",
-      "description" : "Where the findings are shown in full. It becomes the link of this service in Cloudera Manager, since the health test itself can only say that there are findings, not which.",
+      "label" : "CoGuard Portal Address",
+      "description" : "The address of the CoGuard portal, without a trailing slash; for a CoGuard instance of your own, the address of its portal. The CoGuard Report link of the role is this address followed by /orgs/<CoGuard Organization>/<CoGuard Cluster Name>, i.e. the report of this cluster, since the health test itself can only say that there are findings, not which.",
       "configName" : "report_url",
       "type" : "uri",
       "default" : "https://portal.coguard.io"
@@ -118,8 +175,8 @@
   "roles" : [
     {
       "name" : "CONFIGURATION_CHECK",
-      "label" : "Configuration Check",
-      "pluralLabel" : "Configuration Checks",
+      "label" : "CoGuard Configuration Check",
+      "pluralLabel" : "CoGuard Configuration Checks",
       "startRunner" : {
         "program" : "scripts/control.sh",
         "args" : [ "start" ],
@@ -129,6 +186,15 @@
           "CLOUDERA_MANAGER_CA_CERT" : "${cloudera_manager_ca_cert}",
           "CLOUDERA_CLUSTER" : "${cloudera_cluster}",
           "ENVIRONMENT_FILE" : "${environment_file}",
+          "CLOUDERA_MANAGER_PASSWORD" : "${cloudera_manager_password}",
+          "COGUARD_USER_NAME" : "${coguard_user_name}",
+          "COGUARD_PASSWORD" : "${coguard_password}",
+          "COGUARD_ORGANIZATION" : "${coguard_organization}",
+          "COGUARD_CLUSTER_NAME" : "${coguard_cluster_name}",
+          "REPORT_URL" : "${report_url}",
+          "LOG_DIR" : "${log_dir}",
+          "COGUARD_API_URL" : "${coguard_api_url}",
+          "COGUARD_AUTH_URL" : "${coguard_auth_url}",
           "MINIMUM_FAIL_LEVEL" : "${minimum_fail_level}",
           "RULESET" : "${ruleset}",
           "CHECK_EXECUTABLE" : "${check_executable}",
@@ -145,16 +211,19 @@
         "minInstances" : 1,
         "maxInstances" : 1
       },
+      "healthAggregation" : {
+        "type" : "singleton"
+      },
       "logging" : {
         "dir" : "/var/log/configuration-assurance",
-        "filename" : "configuration-check.log",
+        "filename" : "coguard-report.md",
         "configName" : "log_dir",
         "loggingType" : "other"
       },
       "externalLink" : {
         "name" : "configuration_report",
-        "label" : "Configuration Report",
-        "url" : "${report_url}"
+        "label" : "CoGuard Report",
+        "url" : "${report_url}/orgs/${coguard_organization}/${coguard_cluster_name}"
       },
       "parameters" : [
         {

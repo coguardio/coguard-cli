@@ -29,9 +29,9 @@
 # which sets COGUARD_HOME and puts the parcel's bin/ on the PATH.
 #
 # Everything this needs is in the environment, put there by the startRunner of
-# the descriptor, except the passwords: those are read from the credentials file
-# named by ENVIRONMENT_FILE, so that they are not in the configuration database
-# of Cloudera Manager, in its API or in its audit log.
+# the descriptor, the passwords included: they are password parameters, which
+# Cloudera Manager redacts in its API, its web interface and its exports. A
+# credentials file named by ENVIRONMENT_FILE can supply them instead.
 
 set -u
 
@@ -112,31 +112,78 @@ read_configuration() {
     return 0
 }
 
+# Reads a file of KEY=value lines into the environment, taking every value
+# verbatim. The file is deliberately not sourced: it holds passwords, and a
+# password is not shell syntax -- a space, a `;` or a `$` in one would have the
+# shell run the rest of it as a command and print it, part of the password
+# included, into the log of this role, which Cloudera Manager shows to anybody
+# who can read the logs of the service. Empty lines and lines beginning with `#`
+# are skipped, and one pair of quotes around a whole value is removed, for a file
+# written for `source` or for systemd. A line which is not KEY=value is reported
+# by its number only, never by its content.
+read_environment_file() {
+    local file=$1 line key value number=0
+    while IFS= read -r line || [ -n "${line}" ]; do
+        number=$((number + 1))
+        line=${line%$'\r'}
+        case "${line}" in
+            ''|'#'*) continue ;;
+        esac
+        key=${line%%=*}
+        value=${line#*=}
+        key=${key#export }
+        if [ "${key}" = "${line}" ] || ! [[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            log "Line ${number} of ${file} is not of the form KEY=value."
+            return 1
+        fi
+        if [ "${#value}" -ge 2 ]; then
+            case "${value}" in
+                \"*\") value=${value:1:${#value}-2} ;;
+                \'*\') value=${value:1:${#value}-2} ;;
+            esac
+        fi
+        export "${key}=${value}"
+    done < "${file}"
+}
+
+# The credentials come from the parameters of the service, which Cloudera
+# Manager stores as passwords and hands to this process in its environment, and
+# optionally from a credentials file, whose values take precedence. A parameter
+# which was left empty arrives as an empty variable, and is treated as not set,
+# so that it neither hides a value from the file nor reaches the CLI as an empty
+# organization or user name.
+CREDENTIAL_VARIABLES=(CLOUDERA_MANAGER_PASSWORD COGUARD_USER_NAME COGUARD_PASSWORD COGUARD_ORGANIZATION)
+
 read_credentials() {
-    if [ -z "${ENVIRONMENT_FILE}" ]; then
-        log "No credentials file is configured. The password of" \
-            "${CLOUDERA_MANAGER_USER} has to come from the environment of" \
-            "this process, which Cloudera Manager does not provide."
-    elif [ ! -r "${ENVIRONMENT_FILE}" ]; then
-        log "The credentials file ${ENVIRONMENT_FILE} does not exist or" \
-            "cannot be read by $(id -un)."
-        return 1
-    else
-        # Exported, because the check hands the password on to the scan through
-        # the environment as well, and the CoGuard account is taken from
-        # COGUARD_USER_NAME and COGUARD_PASSWORD when both are set -- as is
-        # COGUARD_ORGANIZATION, which an account with several organizations
-        # needs because there is nobody here to ask which one to scan into.
-        set -a
-        # shellcheck disable=SC1090
-        . "${ENVIRONMENT_FILE}"
-        set +a
+    local variable
+    for variable in "${CREDENTIAL_VARIABLES[@]}"; do
+        if [ -z "${!variable:-}" ]; then
+            unset "${variable}"
+        fi
+    done
+    if [ -n "${ENVIRONMENT_FILE}" ]; then
+        if [ ! -r "${ENVIRONMENT_FILE}" ]; then
+            log "The credentials file ${ENVIRONMENT_FILE} does not exist or" \
+                "cannot be read by $(id -un). Leave the Credentials File" \
+                "parameter empty to use the credential parameters of the" \
+                "service instead."
+            return 1
+        fi
+        # Exported, because the check hands the password on to the scan
+        # through the environment, and the CLI takes the CoGuard account from
+        # COGUARD_USER_NAME and COGUARD_PASSWORD, and the organization from
+        # COGUARD_ORGANIZATION.
+        read_environment_file "${ENVIRONMENT_FILE}" || return 1
     fi
     if [ -z "${CLOUDERA_MANAGER_PASSWORD:-}" ]; then
-        log "CLOUDERA_MANAGER_PASSWORD is not set, so there is no way to" \
-            "authenticate against Cloudera Manager. It belongs in the" \
-            "credentials file, which is readable by $(id -un) and by nobody" \
-            "else."
+        log "There is no password for ${CLOUDERA_MANAGER_USER}, so there is" \
+            "no way to authenticate against Cloudera Manager. Set the" \
+            "Cloudera Manager Password parameter of this service."
+        return 1
+    fi
+    if [ -z "${COGUARD_USER_NAME:-}" ] || [ -z "${COGUARD_PASSWORD:-}" ]; then
+        log "There is no CoGuard account to scan with. Set the CoGuard User" \
+            "and CoGuard Password parameters of this service."
         return 1
     fi
     return 0
@@ -199,6 +246,96 @@ else:
 ' "${RESULT_FILE}" "${MINIMUM_FAIL_LEVEL}" "${CLOUDERA_CLUSTER}" 2>/dev/null
 }
 
+# The name the last check found the cluster under in CoGuard: the name of the
+# cluster in Cloudera Manager, as the check recorded it in the state file, put
+# through the same function the scan names the cluster with. Empty if it cannot
+# be determined, e.g. before the first check, or with an interpreter which cannot
+# import the CLI.
+coguard_cluster_name_of_last_check() {
+    "${PYTHON_EXECUTABLE}" -c '
+import json
+import sys
+
+try:
+    from coguard_cli.check_common_util import replace_special_chars_with_underscore
+    with open(sys.argv[1], "r", encoding="utf-8") as state_file:
+        cluster = json.load(state_file).get("cluster")
+except (ImportError, OSError, ValueError):
+    sys.exit(0)
+if cluster:
+    print(replace_special_chars_with_underscore(cluster))
+' "${STATE_FILE}" 2>/dev/null
+}
+
+# The CoGuard Report link of the role is put together by Cloudera Manager from
+# parameters, and cannot be checked by it: a cluster name typed with a dash
+# rather than an underscore is a link to a page which does not exist. This says
+# so, with the value to set, rather than leaving it to the first click. It is a
+# log line and not a failure, since the scan itself does not depend on it.
+check_report_link() {
+    local expected
+    expected=$(coguard_cluster_name_of_last_check)
+    if [ -z "${expected}" ]; then
+        return 0
+    fi
+    if [ "${COGUARD_CLUSTER_NAME:-}" != "${expected}" ]; then
+        log "The CoGuard Report link of this role points at the cluster" \
+            "\"${COGUARD_CLUSTER_NAME:-}\", but the scan names this cluster" \
+            "\"${expected}\" in CoGuard. Set the CoGuard Cluster Name" \
+            "parameter of this service to ${expected} for the link to lead" \
+            "to its report."
+    else
+        log "The report of this cluster is at" \
+            "${REPORT_URL:-https://portal.coguard.io}/orgs/${COGUARD_ORGANIZATION:-}/${expected}"
+    fi
+}
+
+# Writes the findings of the last scan at or above the minimum severity, as the
+# CLI's markdown report, and prints it, so that it is at the end of the stdout of
+# this role -- *Processes -> stdout* in Cloudera Manager, the one log of a CSD
+# role its web interface links to -- just before the line saying what the health
+# of the service is. The same report is the role log file declared by the
+# descriptor, written anew for every scan, to a temporary name first and then
+# moved over the old one, so that nobody reads half a report.
+write_report() {
+    local report_file="${LOG_DIR:-/var/log/configuration-assurance}/coguard-report.md"
+    if ! "${PYTHON_EXECUTABLE}" -c '
+import json
+import pathlib
+import sys
+
+from coguard_cli.output_generators.output_generator_markdown import (
+    translate_result_to_markdown
+)
+
+result_file, report_file, minimum_severity, name, report_url = sys.argv[1:6]
+with open(result_file, "r", encoding="utf-8") as result_stream:
+    result = json.load(result_stream)
+result["failed"] = [
+    entry for entry in result.get("failed", []) or []
+    if isinstance(entry, dict)
+    and int((entry.get("rule") or {}).get("severity", 0)) >= int(minimum_severity)
+]
+translate_result_to_markdown(result, name, pathlib.Path(report_file))
+with open(report_file, "a", encoding="utf-8") as report:
+    if not result["failed"]:
+        report.write(f"\nNo findings of severity {minimum_severity} or higher.\n")
+    report.write(f"\nShown are the findings of severity {minimum_severity} or higher. "
+                 f"The full report: {report_url}\n")
+' "${RESULT_FILE}" "${report_file}.tmp" "${MINIMUM_FAIL_LEVEL}" \
+        "${COGUARD_CLUSTER_NAME:-${CLOUDERA_CLUSTER:-this cluster}}" \
+        "${REPORT_URL:-https://portal.coguard.io}/orgs/${COGUARD_ORGANIZATION:-}/${COGUARD_CLUSTER_NAME:-}" \
+        2>/dev/null; then
+        log "The report of the last scan could not be written to ${report_file}."
+        rm -f "${report_file}.tmp"
+        return 0
+    fi
+    mv -f "${report_file}.tmp" "${report_file}"
+    printf '\n%s\n' "======== CoGuard report of the last scan ========"
+    cat "${report_file}"
+    printf '%s\n\n' "======== End of the CoGuard report ========"
+}
+
 check_options() {
     local minimum_scan_interval=$1
     CHECK_ARGUMENTS=(
@@ -219,11 +356,20 @@ check_options() {
     if [ -n "${RULESET}" ]; then
         CHECK_ARGUMENTS+=(--ruleset "${RULESET}")
     fi
+    # A CoGuard instance other than the public one. Empty means the defaults of
+    # the CLI, i.e. https://portal.coguard.io.
+    if [ -n "${COGUARD_API_URL:-}" ]; then
+        CHECK_ARGUMENTS+=(--coguard-api-url "${COGUARD_API_URL}")
+    fi
+    if [ -n "${COGUARD_AUTH_URL:-}" ]; then
+        CHECK_ARGUMENTS+=(--coguard-auth-url "${COGUARD_AUTH_URL}")
+    fi
 }
 
 start() {
     local consecutive_errors=0
     local first_check="yes"
+    local report_link_checked="no"
     local minimum_scan_interval status scan_exit_code
     log "Checking the configuration of ${CLOUDERA_CLUSTER:-this cluster}" \
         "through ${CLOUDERA_MANAGER_URL} every ${CHECK_INTERVAL_SECONDS}" \
@@ -255,13 +401,20 @@ start() {
             continue
         fi
         consecutive_errors=0
+        if [ "${report_link_checked}" = "no" ]; then
+            check_report_link
+            report_link_checked="yes"
+        fi
         scan_exit_code=$(last_scan_exit_code)
+        if [ -n "${scan_exit_code}" ] && [ "${RESULT_FILE}" -nt "${LOG_DIR:-/var/log/configuration-assurance}/coguard-report.md" ]; then
+            write_report
+        fi
         if [ "${scan_exit_code}" = "${EXIT_FINDINGS}" ]; then
             log "$(finding_summary)"
             log "Ending with a failure, so that Cloudera Manager reports this" \
                 "service as unhealthy. Fix the configuration and restart this" \
-                "role to check again; the findings themselves are in the" \
-                "report this role links to."
+                "role to check again. The findings are in the CoGuard report" \
+                "above, and in full in the CoGuard Report this role links to."
             exit "${EXIT_FINDINGS}"
         fi
         if [ -z "${scan_exit_code}" ]; then

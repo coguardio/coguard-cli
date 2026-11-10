@@ -266,6 +266,13 @@ def parse_arguments(argv):
                         help=("The Python of the hosts the parcel is for, as "
                               "major.minor. Defaults to 3.9, the system Python "
                               "of RHEL 9."))
+    parser.add_argument("--version",
+                        help=("The version of the parcel. Defaults to the "
+                              "version of the CLI in setup.cfg; a different one "
+                              "is for a test or a rebuild of an installed version, "
+                              "e.g. 0.3.17.1, since Cloudera Manager does not "
+                              "redistribute a version which is already "
+                              "activated. Must not contain a dash."))
     parser.add_argument("--wheel", type=Path,
                         help=("A wheel of the CLI to put into the parcel. "
                               "Defaults to building one from this checkout."))
@@ -279,8 +286,12 @@ def main(argv=None) -> int:
     """Builds the parcel and writes it into the parcel repository directory."""
     args = parse_arguments(argv)
     distros = args.distros or ["el9"]
-    version = cli_version()
-    if args.wheel and f"-{version}-" not in args.wheel.name:
+    version = args.version or cli_version()
+    if "-" in version:
+        print(f"The version {version} contains a dash, which would make the name "
+              "of the parcel ambiguous.", file=sys.stderr)
+        return 1
+    if args.wheel and not args.version and f"-{version}-" not in args.wheel.name:
         print(f"The wheel {args.wheel.name} is not version {version} of the CLI, "
               "which is the version the parcel is named by.", file=sys.stderr)
         return 1

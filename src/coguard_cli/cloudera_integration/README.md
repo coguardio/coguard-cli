@@ -159,7 +159,12 @@ of date.
 in a pipeline exactly like a manual scan. A scan which fails *inside* the CLI
 also exits `1` and is therefore not distinguishable from findings by the exit
 code alone; its output says which of the two happened. `2` is reserved for
-the failures the check detects itself, and in that case nothing is recorded
+the failures the check detects itself, which include a scan that did not
+happen: the check asks the scan for `--output-format formatted,json`, and a
+scan which ends without having written `result.json` into the current
+directory -- the CLI exits `0` when it cannot log in to CoGuard, for instance --
+or with an exit code other than `0` or `1` is a failed check, not a clean
+cluster. In those cases, as for every `2`, and in that case nothing is recorded
 as scanned, so the next check retries.
 
 ## `coguard-cloudera-banner`
@@ -328,6 +333,12 @@ missed:
 ```cron
 */15 * * * * . /etc/coguard/cloudera.env && /usr/local/bin/coguard-cloudera-check --cloudera-manager-url https://cm.example.com --cloudera-manager-user coguard --state-file /var/lib/coguard/cloudera_check_state.json
 ```
+
+The `.` makes the shell execute the credentials file, so every value in it has
+to be single-quoted there (`COGUARD_PASSWORD='...'`); a password with a space,
+a `;` or a `$` in it is otherwise partly run as a command, and partly printed
+into the mail cron sends. The Configuration Check role of the CSD reads the file
+without executing it, and accepts it quoted or unquoted.
 
 ### Updating the banner along with it
 

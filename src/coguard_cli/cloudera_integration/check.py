@@ -120,6 +120,17 @@ DEFAULT_STATE_FILE = str(pathlib.Path.home().joinpath(
 # takes minutes. Without a lower bound on the distance between two scans, a
 # restart of the cluster would result in a scan per service.
 DEFAULT_MINIMUM_SCAN_INTERVAL = 900
+# Where the scan writes its result: the CLI writes `result.json` into the current
+# directory when asked for the `json` output format, which is also where
+# `coguard-cloudera-banner` looks for it by default.
+RESULT_FILE = "result.json"
+# The output formats the scan is asked for: the human readable one for the log of
+# whoever runs the check, and the JSON one, which is the evidence that a scan
+# actually took place and what the banner and the role summary are made from.
+SCAN_OUTPUT_FORMAT = "formatted,json"
+# The exit code of the CLI for a scan which found something at or above the
+# minimum fail level.
+SCAN_EXIT_FINDINGS = 1
 DEFAULT_MAXIMUM_SCAN_AGE = 86400
 # How many events are named in the log line stating why a scan is being run. A
 # configuration change of a service commonly produces one event per parameter.
@@ -478,6 +489,7 @@ def build_cli_arguments(args: argparse.Namespace,
         args.coguard_cli,
         "--logging-level", str(args.logging_level)
     ]
+    arguments.extend(["--output-format", SCAN_OUTPUT_FORMAT])
     for option, value in (("--minimum-fail-level", args.fail_level),
                           ("--ruleset", args.ruleset),
                           ("--coguard-api-url", args.coguard_api_url),
@@ -513,6 +525,25 @@ def run_scan(arguments: List[str],
         check=False
     )
     return completed.returncode
+
+
+def scan_produced_result(result_file: pathlib.Path,
+                         started: datetime.datetime) -> bool:
+    """
+    Whether a scan which started at `started` wrote its result.
+
+    The exit code of the CLI alone does not say that a scan took place: the CLI
+    ends with 0 when it could not authenticate against CoGuard, for instance,
+    which would otherwise be indistinguishable from a cluster without findings.
+    A result written after the scan started is what a scan which ran leaves
+    behind. The modification time is compared with a second of slack, since some
+    file systems store it at that resolution.
+    """
+    try:
+        modified = result_file.stat().st_mtime
+    except OSError:
+        return False
+    return modified >= started.timestamp() - 1
 
 
 def perform_check(api: ClouderaManagerApi,
@@ -556,6 +587,7 @@ def perform_check(api: ClouderaManagerApi,
         return (state, EXIT_CLEAN)
     print(f"{COLOR_CYAN}Scanning {cluster_name}, because "
           f"{COLOR_TERMINATION}{reason}")
+    started = datetime.datetime.now(datetime.timezone.utc)
     exit_code = run_scan(
         build_cli_arguments(args, credentials, cluster_name),
         {"CLOUDERA_MANAGER_PASSWORD": credentials.get("password", "")}
@@ -563,6 +595,18 @@ def perform_check(api: ClouderaManagerApi,
     if exit_code is None:
         # No scan happened, so the watermark is not advanced either and the
         # change is still pending at the next check.
+        return (state, EXIT_ERROR)
+    if exit_code not in (EXIT_CLEAN, SCAN_EXIT_FINDINGS) \
+       or not scan_produced_result(pathlib.Path(RESULT_FILE), started):
+        # Something ended the CLI before it had a result -- a failed login to
+        # CoGuard is the common case. That is not a clean cluster, and it is
+        # not a cluster with findings either; it is a check which did not
+        # happen, and the change stays pending, exactly as above.
+        print(f"{COLOR_RED}The scan of {cluster_name} ended (exit code "
+              f"{exit_code}) without writing a result to {RESULT_FILE}, so "
+              f"no scan took place. The output of the CLI above says why; a "
+              f"failed login to CoGuard is the common reason."
+              f"{COLOR_TERMINATION}")
         return (state, EXIT_ERROR)
     state["lastEventAt"] = poll_result["newest"]
     state["lastScanAt"] = now()

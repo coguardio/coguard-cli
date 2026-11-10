@@ -404,14 +404,14 @@ the jar is what makes the parcel show up on the *Parcels* page.
 
 Two things about it are worth knowing before deciding to install it.
 
-**A CSD cannot declare a health test.** The schema has no field for one — the
-service and role descriptors have none, and Cloudera's own every-field fixtures
-contain neither a health nor a threshold key — so a CSD-based service gets the
-generic tests Cloudera Manager generates for every service and nothing more. The
-one signal it can move is whether its own role process is running, and that is
-what the descriptor uses: the role runs `coguard-cloudera-check` in a loop, stays
-up while the result is clean, and exits non-zero once a scan reports findings at
-or above the configured severity.
+**The signal is the role process.** The role runs `coguard-cloudera-check` in a
+loop, stays up while the result is clean, and exits non-zero once a scan reports
+findings at or above the configured severity. Cloudera Manager's Process Status
+test then turns the role red, and the descriptor's `healthAggregation` makes that
+the health of the service. Cloudera Manager 7 also accepts `healthTests` on
+metrics a role reports, which is not in the public CSD schema and would allow a
+health test of the integration's own wording; the details are in
+[`csd/README.md`](../../csd/README.md).
 
 **The red badge is on that service, not on the service which has the finding.**
 Cloudera Manager computes the health of `knox` from the health tests of `knox`, and
