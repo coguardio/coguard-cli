@@ -91,9 +91,13 @@ export PYTHONPATH="${{here}}/../lib/python${{PYTHONPATH:+:${{PYTHONPATH}}}}"
 {command}
 """
 
+# `python -c` puts the current directory first on the module path, ahead of
+# PYTHONPATH, so a `coguard_cli` directory wherever the command is run from would
+# be imported instead of the parcel's. The first entry is therefore dropped
+# before anything is imported; `-P` would do the same, but only from Python 3.11.
 ENTRY_POINT_COMMAND = (
     'exec "${{COGUARD_PYTHON:-python{python_version}}}" -c '
-    "'import sys; sys.argv[0] = sys.argv.pop(1); "
+    "'import sys; sys.path.pop(0); sys.argv[0] = sys.argv.pop(1); "
     "from {module} import {function}; sys.exit({function}())' "
     '{name} "$@"'
 )

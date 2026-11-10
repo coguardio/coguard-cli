@@ -294,6 +294,12 @@ bar in front of everybody who opens Cloudera Manager.
 
 ## Working on it
 
+The unit tests are in `src/coguard_cli/tests/cloudera_integration/`:
+`csd_test.py` checks the descriptor against itself, `control.sh`, the Makefile
+and the icons, and runs `control.sh` under bash against a stand-in for the
+check; `build_parcel_test.py` covers the parcel build, with pip replaced. They
+run with the rest of the suite (`cd src && pytest`).
+
 `scripts/control.sh` is checked with `bash -n` and `shellcheck`, and can be
 exercised without a cluster by putting a fake check command on the `PATH`:
 
