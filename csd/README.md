@@ -186,19 +186,31 @@ of the CLI: the CSD `CONFIGURATION_ASSURANCE-<version>.jar`, and the parcel
    repository instead, from a machine which has access:
 
    ```shell
-   base=https://github.com/coguardio/coguard-cli/releases/latest/download
-   curl -fL -O "$base/COGUARD-0.3.18-el9.parcel" -O "$base/COGUARD-0.3.18-el9.parcel.sha"
-   scp COGUARD-0.3.18-el9.parcel* cm-host:/opt/cloudera/parcel-repo/
-   ssh cm-host chown cloudera-scm:cloudera-scm '/opt/cloudera/parcel-repo/COGUARD-*'
+   # The version to install: the latest is the top of
+   # https://github.com/coguardio/coguard-cli/releases
+   version=0.3.19
+   base=https://github.com/coguardio/coguard-cli/releases/download/v${version}
+   parcel=COGUARD-${version}-el9.parcel
+   curl -fL -O "$base/$parcel" -O "$base/$parcel.sha"
+   # The .sha holds the SHA-1 alone; Cloudera Manager checks the parcel against it.
+   echo "$(cat "$parcel.sha")  $parcel" | sha1sum -c -
+   scp "$parcel" "$parcel.sha" cm-host:/tmp/
+   ssh cm-host sudo install -m 0644 -o cloudera-scm -g cloudera-scm \
+       "/tmp/$parcel" "/tmp/$parcel.sha" /opt/cloudera/parcel-repo/
    ```
 
-   and then *Parcels → Check for New Parcels*. An organization which mirrors
+   Then *Parcels → Check for New Parcels*: COGUARD shows as *Downloaded*, and is
+   distributed and activated as above. The versioned address is used here
+   rather than `latest/download/`, which only serves the files of the newest
+   release, so a fixed version behind it stops working with the next one.
+
+   An organization which mirrors
    `archive.cloudera.com` can mirror the release the same way: the parcel, the
    `.sha` and `manifest.json` are a complete parcel repository.
 
    The `latest` address only offers the newest version. To keep an older one
    available, add its own release, e.g.
-   `https://github.com/coguardio/coguard-cli/releases/download/v0.3.18/`, under
+   `https://github.com/coguardio/coguard-cli/releases/download/v<version>/`, under
    *Parcel Repository & Network Settings*.
 
 3. **Have the credentials ready** for the *Add Service* wizard in step 5. They
