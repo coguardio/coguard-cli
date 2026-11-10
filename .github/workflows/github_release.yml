@@ -78,12 +78,18 @@ jobs:
             tar xzf "/repo/COGUARD-${VERSION}-el9.parcel"
             export PARCELS_ROOT=/opt/cloudera/parcels PARCEL_DIRNAME="COGUARD-${VERSION}"
             . "COGUARD-${VERSION}/meta/coguard_env.sh"
-            cd /tmp
+            # A decoy package in the working directory, which the commands must
+            # not import instead of the parcel'\''s own.
+            mkdir -p /tmp/work/coguard_cli && cd /tmp/work
+            printf "raise SystemExit(\"imported the decoy\")\n" > coguard_cli/__init__.py
             coguard --help > /dev/null
             coguard-cloudera-check --help > /dev/null
             coguard-cloudera-banner --help > /dev/null
-            coguard-python -c "import yaml, cryptography, jwt, boto3; from coguard_cli.cloudera_integration.banner import render_block"
-            echo "The parcel runs on $(python3 --version)."
+            # The compiled dependencies load into the host'\''s interpreter, with
+            # the module path the commands use.
+            cd /
+            PYTHONPATH="${COGUARD_HOME}/lib/python" python3.9 -c "import yaml, cryptography, jwt, boto3; from yaml import CLoader; from coguard_cli.cloudera_integration.banner import render_block"
+            echo "The parcel runs on $(python3.9 --version)."
           '
 
     - name: Create the release
