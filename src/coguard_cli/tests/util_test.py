@@ -898,3 +898,24 @@ class TestUtilRoot(unittest.TestCase):
             assert "externalResults" not in collected_tuple[1]
             mock_file.assert_not_called()
             mock_json_dump.assert_not_called()
+
+    def test_retrieve_coguard_ignore_values_strips_lines(self):
+        """
+        Test that ignore patterns are returned stripped, so they can be
+        matched with fnmatch (which never matches a trailing newline).
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ignore_path = pathlib.Path(tmpdir).joinpath(".coguardignore")
+            with ignore_path.open("w", encoding="utf-8") as ignore_file:
+                ignore_file.write("*.txt\n\n# a comment\n  secrets/*.key  \n")
+            result = util.retrieve_coguard_ignore_values(tmpdir)
+            assert result == ["*.txt", "secrets/*.key"]
+
+    def test_retrieve_coguard_ignore_values_missing_file(self):
+        """
+        Test that a missing .coguardignore file yields an empty list.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            assert util.retrieve_coguard_ignore_values(tmpdir) == []

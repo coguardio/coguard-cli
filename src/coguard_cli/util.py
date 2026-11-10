@@ -179,8 +179,8 @@ def retrieve_coguard_ignore_values(
         return []
     result = []
     with coguard_ignore_path.open(encoding='utf-8') as ignore_stream:
-        result = ignore_stream.readlines()
-    return [elem for elem in result if elem.strip() and not elem.startswith("#")]
+        result = [elem.strip() for elem in ignore_stream.readlines()]
+    return [elem for elem in result if elem and not elem.startswith("#")]
 
 def dry_run_outp(zip_candidate: Tuple[str, Dict]):
     """
