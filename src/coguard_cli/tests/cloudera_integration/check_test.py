@@ -3,6 +3,7 @@ Tests for the `coguard-cloudera-check` entry point.
 """
 
 import datetime
+import json
 import os
 import pathlib
 import tempfile
@@ -549,6 +550,10 @@ class TestClouderaCheck(unittest.TestCase):
         )
         self.assertTrue(all("secret" not in entry for entry in built))
         self.assertTrue(all("password" not in entry for entry in built))
+        # The JSON result is what tells a scan which ran from one which did
+        # not, so it is always asked for.
+        self.assertEqual(built[built.index("--output-format") + 1], "formatted,json")
+        self.assertLess(built.index("--output-format"), built.index("cloud"))
 
     def test_build_cli_arguments_minimal(self):
         """
@@ -617,7 +622,10 @@ class TestClouderaCheck(unittest.TestCase):
         with unittest.mock.patch(
                 'coguard_cli.cloudera_integration.check.run_scan',
                 new_callable=lambda: unittest.mock.MagicMock(return_value=1)
-        ) as run_scan:
+        ) as run_scan, unittest.mock.patch(
+            'coguard_cli.cloudera_integration.check.scan_produced_result',
+            new_callable=lambda: unittest.mock.MagicMock(return_value=True)
+        ):
             new_state, exit_code = check.perform_check(
                 api_with({"EV_REVISION_CREATED": [event()]}),
                 "ozone-base-cluster",
@@ -664,7 +672,10 @@ class TestClouderaCheck(unittest.TestCase):
         with unittest.mock.patch(
                 'coguard_cli.cloudera_integration.check.run_scan',
                 new_callable=lambda: unittest.mock.MagicMock(return_value=0)
-        ) as run_scan:
+        ) as run_scan, unittest.mock.patch(
+            'coguard_cli.cloudera_integration.check.scan_produced_result',
+            new_callable=lambda: unittest.mock.MagicMock(return_value=True)
+        ):
             new_state, exit_code = check.perform_check(
                 api_with({"EV_REVISION_CREATED": [event()]}),
                 "ozone-base-cluster",
@@ -676,6 +687,71 @@ class TestClouderaCheck(unittest.TestCase):
         run_scan.assert_called_once()
         self.assertIn("has not been read before", new_state["lastScanReason"])
         self.assertEqual(new_state["lastEventAt"], "2026-09-04T16:20:37.738Z")
+
+    def test_perform_check_of_a_scan_without_a_result(self):
+        """
+        A CLI which ends with 0 without having written a result -- which is what
+        it does when it cannot authenticate against CoGuard -- is a check which
+        did not happen: not a clean cluster, and the change stays pending.
+        """
+        for scan_exit_code in (0, 1, 3):
+            with self.subTest(scan_exit_code=scan_exit_code), \
+                 tempfile.TemporaryDirectory() as directory, \
+                 unittest.mock.patch(
+                     'coguard_cli.cloudera_integration.check.RESULT_FILE',
+                     os.path.join(directory, "result.json")
+                 ), unittest.mock.patch(
+                     'coguard_cli.cloudera_integration.check.run_scan',
+                     new_callable=lambda code=scan_exit_code:
+                     unittest.mock.MagicMock(return_value=code)
+                 ):
+                new_state, exit_code = check.perform_check(
+                    api_with({"EV_REVISION_CREATED": [event()]}),
+                    "ozone-base-cluster",
+                    arguments(),
+                    credentials(),
+                    {}
+                )
+            self.assertEqual(exit_code, EXIT_ERROR)
+            self.assertNotIn("lastScanExitCode", new_state)
+            self.assertNotIn("lastEventAt", new_state)
+
+    def test_perform_check_of_a_scan_with_an_unexpected_exit_code(self):
+        """
+        An exit code other than clean or findings is a failed check even if a
+        result is lying around.
+        """
+        with unittest.mock.patch(
+                'coguard_cli.cloudera_integration.check.run_scan',
+                new_callable=lambda: unittest.mock.MagicMock(return_value=3)
+        ), unittest.mock.patch(
+            'coguard_cli.cloudera_integration.check.scan_produced_result',
+            new_callable=lambda: unittest.mock.MagicMock(return_value=True)
+        ):
+            new_state, exit_code = check.perform_check(
+                api_with({"EV_REVISION_CREATED": [event()]}),
+                "ozone-base-cluster",
+                arguments(),
+                credentials(),
+                {}
+            )
+        self.assertEqual(exit_code, EXIT_ERROR)
+        self.assertNotIn("lastScanExitCode", new_state)
+
+    def test_scan_produced_result(self):
+        """
+        Only a result written after the scan started counts; a missing one, or
+        one left by an earlier scan, does not.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            result_file = pathlib.Path(directory) / "result.json"
+            started = datetime.datetime.now(datetime.timezone.utc)
+            self.assertFalse(check.scan_produced_result(result_file, started))
+            result_file.write_text("{}", encoding="utf-8")
+            self.assertTrue(check.scan_produced_result(result_file, started))
+            an_hour_ago = started.timestamp() - 3600
+            os.utime(result_file, (an_hour_ago, an_hour_ago))
+            self.assertFalse(check.scan_produced_result(result_file, started))
 
     def test_perform_check_postpones_a_scan(self):
         """
@@ -898,3 +974,159 @@ class TestClouderaCheck(unittest.TestCase):
         for code in ("EV_ROLE_STARTED", "EV_ROLE_STOPPED",
                      "EV_SERVICE_STARTED", "EV_SERVICE_STOPPED"):
             self.assertIn(code, check.WATCHED_EVENT_CODES)
+
+
+def scan_result():
+    """
+    A helper producing a scan result with one High and one Low finding.
+    """
+    return {"failed": [
+        {"service": "knox_KNOX_GATEWAY",
+         "rule": {"name": "knox_acl_open", "severity": 5,
+                  "documentation": {"documentation": "The ACL is open.",
+                                    "remediation": "Close it.",
+                                    "sources": ["https://knox.apache.org"]}},
+         "config_file": {"fileName": "gateway-site.xml", "subPath": "."},
+         "fromLine": 1, "toLine": 2},
+        {"service": "hdfs_NAMENODE",
+         "rule": {"name": "minor_thing", "severity": 2,
+                  "documentation": {"documentation": "Minor.",
+                                    "remediation": "Meh.", "sources": []}}}
+    ]}
+
+
+class TestClouderaCheckOutcome(unittest.TestCase):
+    """
+    What a check prints and writes about its outcome, and the exit code with
+    `--exit-with-last-scan`.
+    """
+
+    def test_write_report(self):
+        """
+        The report holds the findings at or above the severity only, ends with
+        the address of the full report, and no temporary file is left behind.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            report_file = pathlib.Path(directory) / "coguard-report.md"
+            check.write_report(scan_result(), 4, "ozone_base_cluster",
+                               "https://portal.example.com/orgs/o/c", report_file)
+            report = report_file.read_text(encoding="utf-8")
+            self.assertEqual(os.listdir(directory), ["coguard-report.md"])
+        self.assertIn("ozone_base_cluster", report)
+        self.assertIn("knox_acl_open", report)
+        self.assertIn("Close it.", report)
+        self.assertNotIn("minor_thing", report)
+        self.assertIn("The full report: https://portal.example.com/orgs/o/c", report)
+
+    def test_write_report_without_findings(self):
+        """
+        A clean scan is a report which says so.
+        """
+        with tempfile.TemporaryDirectory() as directory:
+            report_file = pathlib.Path(directory) / "coguard-report.md"
+            check.write_report({"failed": []}, 4, "c", None, report_file)
+            self.assertIn("No findings of severity 4 or higher.",
+                          report_file.read_text(encoding="utf-8"))
+
+    def test_report_link_message(self):
+        """
+        The name of a cluster in CoGuard is its Cloudera Manager name with the
+        special characters replaced, and a link configured with another one is
+        reported, with the value to set.
+        """
+        self.assertIn("is at https://portal.example.com/orgs/o/ozone_base_cluster",
+                      check.report_link_message(
+                          "ozone-base-cluster", "ozone_base_cluster",
+                          "https://portal.example.com/orgs/o/ozone_base_cluster"))
+        wrong = check.report_link_message("ozone-base-cluster", "ozone-base-cluster",
+                                          "https://portal.example.com/x")
+        self.assertIn("Set the CoGuard cluster name to ozone_base_cluster", wrong)
+
+    def _present(self, exit_code, scanned, extra=None):
+        with tempfile.TemporaryDirectory() as directory:
+            result_file = pathlib.Path(directory) / "result.json"
+            result_file.write_text(json.dumps(scan_result()), encoding="utf-8")
+            report_file = pathlib.Path(directory) / "coguard-report.md"
+            args = arguments(["--minimum-fail-level", "4",
+                              "--report-file", str(report_file),
+                              "--report-url", "https://portal.example.com/orgs/o/c"]
+                             + (extra or []))
+            with unittest.mock.patch(
+                    'coguard_cli.cloudera_integration.check.RESULT_FILE',
+                    str(result_file)
+            ), unittest.mock.patch('builtins.print') as printed:
+                check.present_outcome(args, "ozone-base-cluster", scanned, exit_code)
+            output = "\n".join(str(call.args[0]) for call in printed.call_args_list
+                               if call.args)
+            return output, report_file.exists()
+
+    def test_present_outcome_with_findings(self):
+        """
+        A check which ends with findings prints the summary and the report.
+        """
+        output, report_written = self._present(1, scanned=True)
+        self.assertTrue(report_written)
+        self.assertIn("CoGuard: 1 configuration finding", output)
+        self.assertIn("CoGuard report of the last scan", output)
+        self.assertIn("knox_acl_open", output)
+
+    def test_present_outcome_clean(self):
+        """
+        A clean scan writes the report, and does not print it.
+        """
+        output, report_written = self._present(0, scanned=True)
+        self.assertTrue(report_written)
+        self.assertNotIn("CoGuard report of the last scan", output)
+
+    def test_present_outcome_after_a_failed_check(self):
+        """
+        A check which failed neither writes nor prints anything about a result.
+        """
+        output, report_written = self._present(EXIT_ERROR, scanned=False)
+        self.assertFalse(report_written)
+        self.assertEqual(output, "")
+
+    def test_present_outcome_checks_the_report_link_after_a_scan(self):
+        """
+        After a scan the configured cluster name is checked against the one the
+        scan uses.
+        """
+        output, _ = self._present(1, scanned=True,
+                                  extra=["--coguard-cluster-name", "ozone-base-cluster"])
+        self.assertIn("Set the CoGuard cluster name to ozone_base_cluster", output)
+
+    def _main_with(self, check_outcome, state_before, extra):
+        new_state, exit_code = check_outcome
+        with tempfile.TemporaryDirectory() as directory, \
+             unittest.mock.patch('coguard_cli.cloudera_integration.check.resolve_credentials',
+                                 new_callable=lambda: unittest.mock.MagicMock(
+                                     return_value=credentials())), \
+             unittest.mock.patch('coguard_cli.cloudera_integration.check.connect'), \
+             unittest.mock.patch('coguard_cli.cloudera_integration.check.determine_cluster_name',
+                                 new_callable=lambda: unittest.mock.MagicMock(
+                                     return_value="ozone-base-cluster")), \
+             unittest.mock.patch('coguard_cli.cloudera_integration.check.perform_check',
+                                 new_callable=lambda: unittest.mock.MagicMock(
+                                     return_value=(new_state, exit_code))), \
+             unittest.mock.patch('coguard_cli.cloudera_integration.check.present_outcome'):
+            state_file = pathlib.Path(directory) / "state.json"
+            state_file.write_text(json.dumps(state_before), encoding="utf-8")
+            return check.main(["--cloudera-manager-url", "https://cm.example.com",
+                               "--state-file", str(state_file)] + extra)
+
+    def test_exit_with_last_scan(self):
+        """
+        With --exit-with-last-scan, a check with no scan due exits with the
+        outcome of the last scan; without it, with 0 as before.
+        """
+        state = {"cluster": "ozone-base-cluster", "lastScanAt": "2026-11-09T20:00:00+00:00",
+                 "lastScanExitCode": 1}
+        self.assertEqual(self._main_with((dict(state), EXIT_CLEAN), state,
+                                         ["--exit-with-last-scan"]), 1)
+        self.assertEqual(self._main_with((dict(state), EXIT_CLEAN), state, []), EXIT_CLEAN)
+        clean = dict(state, lastScanExitCode=0)
+        self.assertEqual(self._main_with((dict(clean), EXIT_CLEAN), clean,
+                                         ["--exit-with-last-scan"]), EXIT_CLEAN)
+        # A failed check stays a failed check.
+        self.assertEqual(self._main_with((dict(state), EXIT_ERROR), state,
+                                         ["--exit-with-last-scan"]), EXIT_ERROR)

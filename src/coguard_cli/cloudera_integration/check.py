@@ -58,6 +58,11 @@ from typing import Dict, List, Optional, Tuple
 
 from coguard_cli.cloudera_integration import EXIT_CLEAN, EXIT_ERROR, \
     add_cloudera_manager_arguments, connect, resolve_credentials
+from coguard_cli.cloudera_integration.banner import failed_findings, \
+    render_block
+from coguard_cli.check_common_util import replace_special_chars_with_underscore
+from coguard_cli.output_generators.output_generator_markdown import \
+    translate_result_to_markdown
 from coguard_cli.discovery.cloudera_discovery import determine_cluster_name
 from coguard_cli.logging_config import set_logging_config
 from coguard_cli.discovery.cloudera_discovery.cloudera_manager_api import \
@@ -120,6 +125,17 @@ DEFAULT_STATE_FILE = str(pathlib.Path.home().joinpath(
 # takes minutes. Without a lower bound on the distance between two scans, a
 # restart of the cluster would result in a scan per service.
 DEFAULT_MINIMUM_SCAN_INTERVAL = 900
+# Where the scan writes its result: the CLI writes `result.json` into the current
+# directory when asked for the `json` output format, which is also where
+# `coguard-cloudera-banner` looks for it by default.
+RESULT_FILE = "result.json"
+# The output formats the scan is asked for: the human readable one for the log of
+# whoever runs the check, and the JSON one, which is the evidence that a scan
+# actually took place and what the banner and the role summary are made from.
+SCAN_OUTPUT_FORMAT = "formatted,json"
+# The exit code of the CLI for a scan which found something at or above the
+# minimum fail level.
+SCAN_EXIT_FINDINGS = 1
 DEFAULT_MAXIMUM_SCAN_AGE = 86400
 # How many events are named in the log line stating why a scan is being run. A
 # configuration change of a service commonly produces one event per parameter.
@@ -185,6 +201,40 @@ def argument_parser() -> argparse.ArgumentParser:
         help=("The minimum severity of a finding for the scan to exit with a "
               "non-zero exit code. Passed on to `coguard`, which defaults to 1, "
               "i.e. any finding.")
+    )
+    parser.add_argument(
+        '--exit-with-last-scan',
+        dest='exit_with_last_scan',
+        action='store_true',
+        help=("When no scan is due, exit with the outcome of the last recorded "
+              "scan rather than with 0, so that the exit code is always the "
+              "state of the configuration as last seen. This is what a "
+              "supervisor which reports the exit code as health wants.")
+    )
+    parser.add_argument(
+        '--report-file',
+        type=str,
+        dest='report_file',
+        required=False,
+        help=("Write the findings of the last scan at or above the minimum "
+              "fail level to this file, as the markdown report of the CLI, "
+              "and print it when the check ends with findings.")
+    )
+    parser.add_argument(
+        '--report-url',
+        type=str,
+        dest='report_url',
+        required=False,
+        help="The address of the report of this cluster, for the output."
+    )
+    parser.add_argument(
+        '--coguard-cluster-name',
+        type=str,
+        dest='coguard_cluster_name',
+        required=False,
+        help=("The name of this cluster in CoGuard, as it was configured "
+              "elsewhere, e.g. in a link to its report. After a scan the "
+              "check says whether it is the name the scan uses.")
     )
     parser.add_argument(
         '--coguard-cli',
@@ -478,6 +528,7 @@ def build_cli_arguments(args: argparse.Namespace,
         args.coguard_cli,
         "--logging-level", str(args.logging_level)
     ]
+    arguments.extend(["--output-format", SCAN_OUTPUT_FORMAT])
     for option, value in (("--minimum-fail-level", args.fail_level),
                           ("--ruleset", args.ruleset),
                           ("--coguard-api-url", args.coguard_api_url),
@@ -513,6 +564,123 @@ def run_scan(arguments: List[str],
         check=False
     )
     return completed.returncode
+
+
+def scan_produced_result(result_file: pathlib.Path,
+                         started: datetime.datetime) -> bool:
+    """
+    Whether a scan which started at `started` wrote its result.
+
+    The exit code of the CLI alone does not say that a scan took place: the CLI
+    ends with 0 when it could not authenticate against CoGuard, for instance,
+    which would otherwise be indistinguishable from a cluster without findings.
+    A result written after the scan started is what a scan which ran leaves
+    behind. The modification time is compared with a second of slack, since some
+    file systems store it at that resolution.
+    """
+    try:
+        modified = result_file.stat().st_mtime
+    except OSError:
+        return False
+    return modified >= started.timestamp() - 1
+
+
+def read_result(result_file: pathlib.Path) -> Optional[Dict]:
+    """The result JSON of the last scan, or None if there is none to read."""
+    try:
+        with result_file.open('r', encoding='utf-8') as result_stream:
+            result = json.load(result_stream)
+    except (OSError, ValueError):
+        return None
+    return result if isinstance(result, dict) else None
+
+
+def write_report(result: Dict,
+                 minimum_severity: int,
+                 scan_identifier: str,
+                 report_url: Optional[str],
+                 report_file: pathlib.Path) -> None:
+    """
+    Writes the findings of `result` at or above `minimum_severity` to
+    `report_file`, as the markdown report of the CLI. The report is written to a
+    temporary name next to it and then moved over it, so that whoever reads it
+    never reads half a report.
+    """
+    filtered = dict(result)
+    filtered["failed"] = failed_findings(result, minimum_severity)
+    temporary = report_file.with_name(report_file.name + ".tmp")
+    translate_result_to_markdown(filtered, scan_identifier, temporary)
+    with temporary.open('a', encoding='utf-8') as report:
+        if not filtered["failed"]:
+            report.write(f"\nNo findings of severity {minimum_severity} or "
+                         f"higher.\n")
+        report.write(f"\nShown are the findings of severity {minimum_severity} "
+                     f"or higher.")
+        report.write(f" The full report: {report_url}\n" if report_url else "\n")
+    os.replace(temporary, report_file)
+
+
+def report_link_message(cluster_name: str,
+                        configured_name: str,
+                        report_url: Optional[str]) -> str:
+    """
+    Says whether the name a link to the report of this cluster was configured
+    with is the name the scan gives the cluster in CoGuard, and what to set if
+    it is not. A link put together from a hand-typed name cannot be checked by
+    whoever renders it, and leads nowhere if the name is off by a dash.
+    """
+    expected = replace_special_chars_with_underscore(cluster_name)
+    if configured_name != expected:
+        return (f"{COLOR_YELLOW}The report link points at the cluster "
+                f"\"{configured_name}\", but the scan names this cluster "
+                f"\"{expected}\" in CoGuard. Set the CoGuard cluster name to "
+                f"{expected} for the link to lead to its report."
+                f"{COLOR_TERMINATION}")
+    return f"The report of this cluster is at {report_url or expected}"
+
+
+def present_outcome(args: argparse.Namespace,
+                    cluster_name: str,
+                    scanned: bool,
+                    exit_code: int) -> None:
+    """
+    What a check prints and writes about its outcome, besides the output of the
+    scan itself: whether the report link is right, the report file, and, for a
+    check which ends with findings, a summary line and the report.
+    """
+    if exit_code == EXIT_ERROR:
+        return
+    result = read_result(pathlib.Path(RESULT_FILE))
+    if result is None:
+        return
+    minimum_severity = args.fail_level or 1
+    report_file = pathlib.Path(args.report_file) if args.report_file else None
+    if scanned and args.coguard_cluster_name:
+        print(report_link_message(cluster_name,
+                                  args.coguard_cluster_name,
+                                  args.report_url))
+    if report_file and (scanned or not report_file.exists()):
+        try:
+            write_report(result,
+                         minimum_severity,
+                         args.coguard_cluster_name
+                         or replace_special_chars_with_underscore(cluster_name),
+                         args.report_url,
+                         report_file)
+        except OSError as err:
+            print(f"{COLOR_RED}The report could not be written to "
+                  f"{report_file}: {err}{COLOR_TERMINATION}")
+            report_file = None
+    if exit_code != SCAN_EXIT_FINDINGS:
+        return
+    print(render_block(failed_findings(result, minimum_severity),
+                       cluster_name,
+                       args.report_url,
+                       5))
+    if report_file and report_file.exists():
+        print("\n======== CoGuard report of the last scan ========")
+        print(report_file.read_text(encoding='utf-8'))
+        print("======== End of the CoGuard report ========\n")
 
 
 def perform_check(api: ClouderaManagerApi,
@@ -556,6 +724,7 @@ def perform_check(api: ClouderaManagerApi,
         return (state, EXIT_CLEAN)
     print(f"{COLOR_CYAN}Scanning {cluster_name}, because "
           f"{COLOR_TERMINATION}{reason}")
+    started = datetime.datetime.now(datetime.timezone.utc)
     exit_code = run_scan(
         build_cli_arguments(args, credentials, cluster_name),
         {"CLOUDERA_MANAGER_PASSWORD": credentials.get("password", "")}
@@ -563,6 +732,18 @@ def perform_check(api: ClouderaManagerApi,
     if exit_code is None:
         # No scan happened, so the watermark is not advanced either and the
         # change is still pending at the next check.
+        return (state, EXIT_ERROR)
+    if exit_code not in (EXIT_CLEAN, SCAN_EXIT_FINDINGS) \
+       or not scan_produced_result(pathlib.Path(RESULT_FILE), started):
+        # Something ended the CLI before it had a result -- a failed login to
+        # CoGuard is the common case. That is not a clean cluster, and it is
+        # not a cluster with findings either; it is a check which did not
+        # happen, and the change stays pending, exactly as above.
+        print(f"{COLOR_RED}The scan of {cluster_name} ended (exit code "
+              f"{exit_code}) without writing a result to {RESULT_FILE}, so "
+              f"no scan took place. The output of the CLI above says why; a "
+              f"failed login to CoGuard is the common reason."
+              f"{COLOR_TERMINATION}")
         return (state, EXIT_ERROR)
     state["lastEventAt"] = poll_result["newest"]
     state["lastScanAt"] = now()
@@ -593,8 +774,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         logging.info("The state file describes the cluster %s. Starting over "
                      "for %s.", state.get("cluster"), cluster_name)
         state = {}
+    last_scan_at = state.get("lastScanAt")
     state, exit_code = perform_check(
         api, cluster_name, args, credentials, state
     )
     write_state(args.state_file, state)
+    scanned = state.get("lastScanAt") != last_scan_at
+    if exit_code == EXIT_CLEAN and not scanned and args.exit_with_last_scan \
+       and state.get("lastScanExitCode") == SCAN_EXIT_FINDINGS:
+        exit_code = SCAN_EXIT_FINDINGS
+    present_outcome(args, cluster_name, scanned, exit_code)
     return exit_code
