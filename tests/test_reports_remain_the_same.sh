@@ -143,7 +143,7 @@ timed "image httpd:2.4.54" test_image_checksum "httpd:2.4.54" "6db5cf33e439ae9bc
 time docker image rm "httpd:2.4.54"
 timed "image elasticsearch:8.5.0" test_image_checksum "elasticsearch:8.5.0" "96b704bc7492995fab8a1834af68cf9d97b5438d"
 time docker image rm "elasticsearch:8.5.0"
-timed "image tomcat:9.0.69-jre17" test_image_checksum "tomcat:9.0.69-jre17" "af93b8cc268f1a0e22b5438da3e40ed7a805b925"
+timed "image tomcat:9.0.69-jre17" test_image_checksum "tomcat:9.0.69-jre17" "689324e6e45c0a8ad70aee42a10e4bf1f7e72e11"
 time docker image rm "tomcat:9.0.69-jre17"
 timed "image redis:7.0.5" test_image_checksum "redis:7.0.5" "fe13e5d82996adfe8728a79ebd2df098c14ffcf9"
 time docker image rm "redis:7.0.5"
@@ -160,12 +160,12 @@ time docker stop demo-postgres
 # Git repository tests
 
 timed "folder remix-project" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
-timed "folder remix-project (trivy_cve_scan)" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 2821eb5a30001f446b9967c5bfa9ad9f316c28d5 "" trivy_cve_scan
+timed "folder remix-project (trivy_cve_scan)" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 5d56d6585c2d9451f46918c4b7cd1bebc12ae456 "" trivy_cve_scan
 timed "folder jaeger-operator" test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f9b52882df586ea828c230285c773bd005ea7d7e
 timed "folder opentelemetry-collector" test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 89cfb1d435b276c308cbed275dbf38f76fca1544
 timed "folder prisma" test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a61ace3dd693cbe4e3408f943b2d94770df88f2f
 timed "folder zabbix" test_folder_checksum https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244 4dbf1a5ebeeb397660d1bd57a2b694a938561d69
-timed "folder yii2 (phpstan_sast_scan)" test_folder_checksum https://github.com/yiisoft/yii2.git 778d708c4f028c6997ff42ee2e1aead86cce3a64 2a5c859a74a205d6d93db4ae4f3a4c50598ea713 "" phpstan_sast_scan
+timed "folder yii2 (phpstan_sast_scan)" test_folder_checksum https://github.com/yiisoft/yii2.git 778d708c4f028c6997ff42ee2e1aead86cce3a64 a1a29bb3949cd479652ad81189a5af22303486d5 "" phpstan_sast_scan
 timed "folder zabbix (fix)" test_folder_fix https://github.com/zabbix/zabbix.git 3cbf261947d2b4148dd6a29dfcf5b1a15a857244
 
 # Test with a weird name

@@ -82,8 +82,7 @@ class CloudProviderAWS(CloudProvider):
                 "aws_access_key_id": credentials.access_key,
                 "aws_secret_access_key": credentials.secret_key
             }
-        #pylint: disable=broad-exception-caught
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-exception-caught
             logging.error("Error while trying to retrieve access credentials: %s",
                           err)
             return None
@@ -155,8 +154,7 @@ class CloudProviderAWS(CloudProvider):
             client = boto3.client("ec2")
             regions = [region['RegionName'] for region in client.describe_regions()['Regions']]
             return regions
-        #pylint: disable=bare-except
-        except:
+        except:  # pylint: disable=bare-except
             logging.debug("Could not extract activated regions. Using default")
         return default
 
