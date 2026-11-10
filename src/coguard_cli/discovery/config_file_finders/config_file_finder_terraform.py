@@ -33,8 +33,7 @@ class ConfigFileFinderTerraform(ConfigFileFinder):
         with open(file_path, 'r', encoding='utf-8') as file_stream:
             try:
                 hcl2.load(file_stream)
-            #pylint: disable=bare-except
-            except:
+            except:  # pylint: disable=bare-except
                 logging.debug(
                     "Failed to load potential terraform file %s",
                     file_path

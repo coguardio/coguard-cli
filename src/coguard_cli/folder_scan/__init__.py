@@ -255,8 +255,7 @@ def _find_and_extract_docker_images_from_config_files(
                 ]
                 logging.debug("The unflattened config is %s", config)
             result.extend([(image, file_path) for image in _find_images_recursively(config)])
-        #pylint: disable=broad-exception-caught
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-exception-caught
             logging.debug(
                 "Failed to load %s: %s",
                 os.path.join(path_to_file_system, file_path),
@@ -377,8 +376,7 @@ def _find_and_extract_cdk_json(folder_name: str):
                 result.returncode,
                 result.stderr.strip(),
             )
-    #pylint: disable=broad-exception-caught
-    except Exception as ex:
+    except Exception as ex:  # pylint: disable=broad-exception-caught
         logging.error("Unexpected errorrunning cdk synth: %s", ex)
 
 def perform_folder_scan(

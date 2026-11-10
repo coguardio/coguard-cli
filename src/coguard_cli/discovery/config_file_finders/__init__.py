@@ -664,8 +664,7 @@ def does_config_yaml_contain_required_keys(file_path: str, required_fields: List
                 for config_part in config_res
                 if config_part is not None
             ]
-    #pylint: disable=bare-except
-    except:
+    except:  # pylint: disable=bare-except
         logging.debug(
             "Failed to load %s",
             file_path
@@ -688,8 +687,7 @@ def does_config_json_contain_required_keys(file_path: str, required_fields: List
             config_res = json.load(file_stream)
             config = {} if config_res is None else config_res
         config = unflatten(config, splitter='dot')
-    #pylint: disable=bare-except
-    except:
+    except:  # pylint: disable=bare-except
         logging.debug(
             "Failed to load %s",
             file_path
