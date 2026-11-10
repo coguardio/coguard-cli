@@ -282,7 +282,6 @@ The ones which are specific to running as a Cloudera service:
 | `Check Interval`           | `900`                       | How long the role waits between two checks. A check without a change does not scan.                  |
 | `Minimum Severity`         | `4`                         | The lowest severity which makes the service unhealthy: High and Critical by default. Lower it to `1` to be told about every finding. |
 | `Tolerated Consecutive Failures` | `3`                   | How often the check may fail to run at all before an unknown state is reported as bad health.         |
-| `Python Interpreter`       | `coguard-python`            | Used to read the outcome of the last scan. The default is the parcel's, which can import the CLI, so the role log names the affected services. |
 | `CoGuard Portal Address`   | `https://portal.coguard.io` | With the organization and the cluster name, becomes the `CoGuard Report` link of the role, `<address>/orgs/<organization>/<cluster name>`, since the health test cannot carry the detail.   |
 
 The banner and the colour of the header are **not** written by this role.
@@ -302,22 +301,13 @@ exercised without a cluster by putting a fake check command on the `PATH`:
 work=$(mktemp -d)
 printf 'CLOUDERA_MANAGER_PASSWORD=whatever\nCOGUARD_USER_NAME=someone\nCOGUARD_PASSWORD=whatever\n' > "$work/cloudera.env"
 chmod 0400 "$work/cloudera.env"
-# Stands in for `coguard-cloudera-check`: records the outcome of a scan in the
-# state file it was given, and exits the way the check would.
-cat > "$work/fake-check" <<'EOF'
-#!/usr/bin/env bash
-while [ "$#" -gt 0 ]; do
-  [ "$1" = "--state-file" ] && state_file=$2
-  shift
-done
-python3 -c 'import json, sys; json.dump({"lastScanExitCode": int(sys.argv[2])}, open(sys.argv[1], "w"))' \
-    "$state_file" "${FAKE_SCAN_EXIT:-0}"
-exit "${FAKE_CHECK_EXIT:-0}"
-EOF
+# Stands in for `coguard-cloudera-check`, and exits the way the check does with
+# --exit-with-last-scan: 0 clean, 1 findings, 2 the check could not be performed.
+printf '#!/usr/bin/env bash\nexit "${FAKE_CHECK_EXIT:-0}"\n' > "$work/fake-check"
 chmod +x "$work/fake-check"
 env CLOUDERA_MANAGER_URL=https://cm.example.com CHECK_EXECUTABLE="$work/fake-check" \
-    ENVIRONMENT_FILE="$work/cloudera.env" WORK_DIRECTORY="$work" \
-    PYTHON_EXECUTABLE=python3 CHECK_INTERVAL_SECONDS=1 FAKE_SCAN_EXIT=1 \
+    COGUARD_EXECUTABLE=true ENVIRONMENT_FILE="$work/cloudera.env" WORK_DIRECTORY="$work" \
+    CHECK_INTERVAL_SECONDS=1 FAKE_CHECK_EXIT=1 \
     bash csd/configuration_assurance/scripts/control.sh start
 echo "exit code: $?"   # 1, i.e. what Cloudera Manager reports as bad health
 ```

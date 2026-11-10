@@ -20,6 +20,18 @@ into the interpreter they were built for. The wheels are fetched for that
 platform by pip, so the parcel can be built on any machine with network access,
 without a container of the target distribution.
 
+Why this is Python and not a shell script: the build cannot do without Python
+anyway, because the parcel is made of wheels which pip fetches for the hosts'
+platform and interpreter. What it does besides calling pip is what a shell
+script does badly or not portably. It reads the version and the multi-line
+dependency list from setup.cfg (configparser, rather than grepping an INI
+value). It writes two JSON files, meta/parcel.json and manifest.json (json,
+rather than hand-escaped heredocs or a dependency on jq). It packs a tar whose
+files belong to root whoever builds it (tarfile, the same everywhere, where
+GNU tar's --owner/--group is not accepted by the bsdtar of macOS). And it
+hashes the result. Everything else in this repository is Python, linted and
+tested the same way.
+
 What is in it:
 
     COGUARD-<version>/
@@ -29,7 +41,6 @@ What is in it:
         bin/coguard              the entry points, as wrappers which run the
         bin/coguard-cloudera-check   host's python3.<minor> with lib/python on
         bin/coguard-cloudera-banner  the module path
-        bin/coguard-python       that interpreter with that path, for the CSD
 """
 
 import argparse
@@ -86,8 +97,6 @@ ENTRY_POINT_COMMAND = (
     "from {module} import {function}; sys.exit({function}())' "
     '{name} "$@"'
 )
-
-INTERPRETER_COMMAND = 'exec "${{COGUARD_PYTHON:-python{python_version}}}" "$@"'
 
 
 def cli_version() -> str:
@@ -158,7 +167,7 @@ def build_wheel(output: Path) -> Path:
 
 
 def write_wrappers(bin_directory: Path, python_version: str) -> None:
-    """Writes the entry points and the interpreter wrapper into `bin/`."""
+    """Writes the entry points into `bin/`."""
     bin_directory.mkdir(parents=True)
     commands = {
         name: ENTRY_POINT_COMMAND.format(
@@ -169,7 +178,6 @@ def write_wrappers(bin_directory: Path, python_version: str) -> None:
         )
         for name, target in ENTRY_POINTS.items()
     }
-    commands["coguard-python"] = INTERPRETER_COMMAND.format(python_version=python_version)
     for name, command in commands.items():
         wrapper = bin_directory / name
         wrapper.write_text(WRAPPER_TEMPLATE.format(name=name,

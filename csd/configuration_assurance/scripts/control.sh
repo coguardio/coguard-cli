@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 #
-# The process Cloudera Manager supervises for the Configuration Check role.
+# The process Cloudera Manager supervises for the CoGuard Configuration Check
+# role.
 #
-# A custom service descriptor cannot declare a health test. There is no such
-# field in the schema -- neither the service nor the role descriptor has one, and
-# the metric definitions of an MDL have no thresholds -- so the one health signal
-# a CSD can move is whether its own role process is running. This script
-# therefore *is* the signal: it stays alive while the scans of the cluster come
-# back clean, and exits non-zero once one reports findings at or above the
-# configured severity. Cloudera Manager reports that as a role which exited
-# unexpectedly, which is what turns the badge of this service red and the health
-# of the cluster bad.
+# The health signal of this service is whether this process is running: it
+# stays alive while the scans of the cluster come back clean, and exits non-zero
+# once one reports findings at or above the configured severity. Cloudera
+# Manager reports that as a role whose process exited, which -- with the
+# descriptor's healthAggregation -- turns the service red. (Cloudera Manager 7
+# also reads metric health tests from a descriptor, which would allow a health
+# test of our own; see ../README.md.)
 #
 # Two consequences of that mechanism, both of them also in ../README.md:
 #
@@ -19,10 +18,12 @@
 #     green by itself once the configuration is fixed; restarting the role is
 #     what re-checks. The first check after a start therefore ignores the
 #     minimum scan interval -- a restart is somebody asking for a fresh look.
-#   * The exit code of the check command is not the health of the cluster. It is
-#     0 both for "scanned, nothing found" and for "no scan was due", and a scan
-#     which fails inside the CLI is a 1 as well. What the health is read from is
-#     the outcome of the last scan, which the check records in its state file.
+#   * The health is the outcome of the last scan, not of the last check: a check
+#     with no scan due would exit 0. The check is therefore run with
+#     --exit-with-last-scan, which makes its exit code the state of the
+#     configuration as last scanned -- 0 clean, 1 findings, 2 no answer -- and
+#     this script needs nothing else. The summary and the report of the
+#     findings are printed by the check.
 #
 # The CoGuard CLI comes from the COGUARD parcel, which the descriptor requires:
 # the agent sources the parcel's meta/coguard_env.sh before starting this script,
@@ -76,16 +77,18 @@ read_configuration() {
     ENVIRONMENT_FILE=${ENVIRONMENT_FILE:-}
     MINIMUM_FAIL_LEVEL=${MINIMUM_FAIL_LEVEL:-4}
     RULESET=${RULESET:-}
+    # The commands of the COGUARD parcel. The variables are not parameters of
+    # the service; they are only there to run this script against a stand-in
+    # for the check, see "Working on it" in ../README.md.
     CHECK_EXECUTABLE=${CHECK_EXECUTABLE:-coguard-cloudera-check}
     COGUARD_EXECUTABLE=${COGUARD_EXECUTABLE:-coguard}
-    PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE:-coguard-python}
     WORK_DIRECTORY=${WORK_DIRECTORY:-/var/lib/coguard}
     CHECK_INTERVAL_SECONDS=${CHECK_INTERVAL_SECONDS:-900}
     MINIMUM_SCAN_INTERVAL_SECONDS=${MINIMUM_SCAN_INTERVAL_SECONDS:-900}
     MAXIMUM_SCAN_AGE_SECONDS=${MAXIMUM_SCAN_AGE_SECONDS:-86400}
     ERROR_TOLERANCE=${ERROR_TOLERANCE:-3}
     STATE_FILE="${WORK_DIRECTORY}/cloudera_check_state.json"
-    RESULT_FILE="${WORK_DIRECTORY}/result.json"
+    REPORT_FILE="${LOG_DIR:-/var/log/configuration-assurance}/coguard-report.md"
     if [ -z "${CLOUDERA_MANAGER_URL}" ]; then
         log "No Cloudera Manager URL is configured for this service, so there" \
             "is nothing to read the configuration of the cluster from."
@@ -97,10 +100,7 @@ read_configuration() {
         PATH="${COGUARD_HOME}/bin:${PATH}"
     fi
     local executable
-    for executable in "${CHECK_EXECUTABLE}" "${PYTHON_EXECUTABLE}"; do
-        # The interpreter is checked as well as the check command: the health
-        # of this service is read with it, and one which cannot be run would
-        # look like a scan that has not happened yet rather than like an error.
+    for executable in "${CHECK_EXECUTABLE}" "${COGUARD_EXECUTABLE}"; do
         if ! command -v "${executable}" > /dev/null 2>&1; then
             log "\`${executable}\` was not found on the PATH of $(id -un)." \
                 "It comes from the COGUARD parcel: check that the parcel is" \
@@ -189,156 +189,14 @@ read_credentials() {
     return 0
 }
 
-# The exit code of the last scan, as the check recorded it in the state file: 0
-# for a scan which found nothing, 1 for one which found something. An empty
-# answer means that no scan has been recorded yet, which is not the same thing
-# as a clean one.
-last_scan_exit_code() {
-    "${PYTHON_EXECUTABLE}" -c '
-import json
-import sys
-
-try:
-    with open(sys.argv[1], "r", encoding="utf-8") as state_file:
-        state = json.load(state_file)
-except (OSError, ValueError):
-    sys.exit(0)
-print(state.get("lastScanExitCode", ""))
-' "${STATE_FILE}" 2>/dev/null
-}
-
-# One line saying what the last scan found, for the log of this role. The health
-# test cannot carry it: what Cloudera Manager shows there is its own sentence
-# about a process which exited.
-#
-# The summary is the one the banner command renders, so that the role log, the
-# header of Cloudera Manager and the report do not each phrase the same result
-# differently. An installation whose Python cannot import the CLI -- a CLI in a
-# virtual environment, with `python3` outside it -- still gets the counts.
-finding_summary() {
-    "${PYTHON_EXECUTABLE}" -c '
-import json
-import sys
-
-result_file, minimum_severity, cluster = sys.argv[1], int(sys.argv[2]), sys.argv[3]
-try:
-    with open(result_file, "r", encoding="utf-8") as result_stream:
-        result = json.load(result_stream)
-except (OSError, ValueError) as err:
-    print(f"The scan result at {result_file} could not be read: {err}")
-    sys.exit(0)
-try:
-    from coguard_cli.cloudera_integration.banner import (
-        failed_findings, render_block
-    )
-except ImportError:
-    findings = [
-        entry for entry in result.get("failed", []) or []
-        if isinstance(entry, dict)
-        and int((entry.get("rule") or {}).get("severity", 0)) >= minimum_severity
-    ]
-    print(f"{len(findings)} finding(s) of severity {minimum_severity} or higher.")
-else:
-    print(render_block(failed_findings(result, minimum_severity),
-                       cluster or None,
-                       None,
-                       5))
-' "${RESULT_FILE}" "${MINIMUM_FAIL_LEVEL}" "${CLOUDERA_CLUSTER}" 2>/dev/null
-}
-
-# The name the last check found the cluster under in CoGuard: the name of the
-# cluster in Cloudera Manager, as the check recorded it in the state file, put
-# through the same function the scan names the cluster with. Empty if it cannot
-# be determined, e.g. before the first check, or with an interpreter which cannot
-# import the CLI.
-coguard_cluster_name_of_last_check() {
-    "${PYTHON_EXECUTABLE}" -c '
-import json
-import sys
-
-try:
-    from coguard_cli.check_common_util import replace_special_chars_with_underscore
-    with open(sys.argv[1], "r", encoding="utf-8") as state_file:
-        cluster = json.load(state_file).get("cluster")
-except (ImportError, OSError, ValueError):
-    sys.exit(0)
-if cluster:
-    print(replace_special_chars_with_underscore(cluster))
-' "${STATE_FILE}" 2>/dev/null
-}
-
-# The CoGuard Report link of the role is put together by Cloudera Manager from
-# parameters, and cannot be checked by it: a cluster name typed with a dash
-# rather than an underscore is a link to a page which does not exist. This says
-# so, with the value to set, rather than leaving it to the first click. It is a
-# log line and not a failure, since the scan itself does not depend on it.
-check_report_link() {
-    local expected
-    expected=$(coguard_cluster_name_of_last_check)
-    if [ -z "${expected}" ]; then
-        return 0
-    fi
-    if [ "${COGUARD_CLUSTER_NAME:-}" != "${expected}" ]; then
-        log "The CoGuard Report link of this role points at the cluster" \
-            "\"${COGUARD_CLUSTER_NAME:-}\", but the scan names this cluster" \
-            "\"${expected}\" in CoGuard. Set the CoGuard Cluster Name" \
-            "parameter of this service to ${expected} for the link to lead" \
-            "to its report."
-    else
-        log "The report of this cluster is at" \
-            "${REPORT_URL:-https://portal.coguard.io}/orgs/${COGUARD_ORGANIZATION:-}/${expected}"
-    fi
-}
-
-# Writes the findings of the last scan at or above the minimum severity, as the
-# CLI's markdown report, and prints it, so that it is at the end of the stdout of
-# this role -- *Processes -> stdout* in Cloudera Manager, the one log of a CSD
-# role its web interface links to -- just before the line saying what the health
-# of the service is. The same report is the role log file declared by the
-# descriptor, written anew for every scan, to a temporary name first and then
-# moved over the old one, so that nobody reads half a report.
-write_report() {
-    local report_file="${LOG_DIR:-/var/log/configuration-assurance}/coguard-report.md"
-    if ! "${PYTHON_EXECUTABLE}" -c '
-import json
-import pathlib
-import sys
-
-from coguard_cli.output_generators.output_generator_markdown import (
-    translate_result_to_markdown
-)
-
-result_file, report_file, minimum_severity, name, report_url = sys.argv[1:6]
-with open(result_file, "r", encoding="utf-8") as result_stream:
-    result = json.load(result_stream)
-result["failed"] = [
-    entry for entry in result.get("failed", []) or []
-    if isinstance(entry, dict)
-    and int((entry.get("rule") or {}).get("severity", 0)) >= int(minimum_severity)
-]
-translate_result_to_markdown(result, name, pathlib.Path(report_file))
-with open(report_file, "a", encoding="utf-8") as report:
-    if not result["failed"]:
-        report.write(f"\nNo findings of severity {minimum_severity} or higher.\n")
-    report.write(f"\nShown are the findings of severity {minimum_severity} or higher. "
-                 f"The full report: {report_url}\n")
-' "${RESULT_FILE}" "${report_file}.tmp" "${MINIMUM_FAIL_LEVEL}" \
-        "${COGUARD_CLUSTER_NAME:-${CLOUDERA_CLUSTER:-this cluster}}" \
-        "${REPORT_URL:-https://portal.coguard.io}/orgs/${COGUARD_ORGANIZATION:-}/${COGUARD_CLUSTER_NAME:-}" \
-        2>/dev/null; then
-        log "The report of the last scan could not be written to ${report_file}."
-        rm -f "${report_file}.tmp"
-        return 0
-    fi
-    mv -f "${report_file}.tmp" "${report_file}"
-    printf '\n%s\n' "======== CoGuard report of the last scan ========"
-    cat "${report_file}"
-    printf '%s\n\n' "======== End of the CoGuard report ========"
-}
-
 check_options() {
     local minimum_scan_interval=$1
+    # --exit-with-last-scan makes the exit code the state of the configuration
+    # as last scanned even when no scan is due, which is the one thing this
+    # script needs to know; the check prints the summary and the report itself.
     CHECK_ARGUMENTS=(
+        --exit-with-last-scan
+        --report-file "${REPORT_FILE}"
         --cloudera-manager-url "${CLOUDERA_MANAGER_URL}"
         --cloudera-manager-user "${CLOUDERA_MANAGER_USER}"
         --coguard-cli "${COGUARD_EXECUTABLE}"
@@ -358,6 +216,12 @@ check_options() {
     fi
     # A CoGuard instance other than the public one. Empty means the defaults of
     # the CLI, i.e. https://portal.coguard.io.
+    if [ -n "${COGUARD_ORGANIZATION:-}" ] && [ -n "${COGUARD_CLUSTER_NAME:-}" ]; then
+        CHECK_ARGUMENTS+=(
+            --coguard-cluster-name "${COGUARD_CLUSTER_NAME}"
+            --report-url "${REPORT_URL:-https://portal.coguard.io}/orgs/${COGUARD_ORGANIZATION}/${COGUARD_CLUSTER_NAME}"
+        )
+    fi
     if [ -n "${COGUARD_API_URL:-}" ]; then
         CHECK_ARGUMENTS+=(--coguard-api-url "${COGUARD_API_URL}")
     fi
@@ -369,8 +233,7 @@ check_options() {
 start() {
     local consecutive_errors=0
     local first_check="yes"
-    local report_link_checked="no"
-    local minimum_scan_interval status scan_exit_code
+    local minimum_scan_interval status
     log "Checking the configuration of ${CLOUDERA_CLUSTER:-this cluster}" \
         "through ${CLOUDERA_MANAGER_URL} every ${CHECK_INTERVAL_SECONDS}" \
         "seconds, and reporting a finding of severity ${MINIMUM_FAIL_LEVEL}" \
@@ -401,24 +264,12 @@ start() {
             continue
         fi
         consecutive_errors=0
-        if [ "${report_link_checked}" = "no" ]; then
-            check_report_link
-            report_link_checked="yes"
-        fi
-        scan_exit_code=$(last_scan_exit_code)
-        if [ -n "${scan_exit_code}" ] && [ "${RESULT_FILE}" -nt "${LOG_DIR:-/var/log/configuration-assurance}/coguard-report.md" ]; then
-            write_report
-        fi
-        if [ "${scan_exit_code}" = "${EXIT_FINDINGS}" ]; then
-            log "$(finding_summary)"
+        if [ "${status}" -eq "${EXIT_FINDINGS}" ]; then
             log "Ending with a failure, so that Cloudera Manager reports this" \
                 "service as unhealthy. Fix the configuration and restart this" \
                 "role to check again. The findings are in the CoGuard report" \
                 "above, and in full in the CoGuard Report this role links to."
             exit "${EXIT_FINDINGS}"
-        fi
-        if [ -z "${scan_exit_code}" ]; then
-            log "No scan has been recorded yet. Waiting for one."
         fi
         interruptible_sleep "${CHECK_INTERVAL_SECONDS}"
     done

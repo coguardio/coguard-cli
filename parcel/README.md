@@ -53,7 +53,6 @@ COGUARD-<version>/
     bin/coguard               \
     bin/coguard-cloudera-check  > the entry points of the CLI
     bin/coguard-cloudera-banner/
-    bin/coguard-python        the interpreter, with lib/python on its path
 ```
 
 Each script in `bin/` runs `python3.<minor>` of the host with `lib/python` on

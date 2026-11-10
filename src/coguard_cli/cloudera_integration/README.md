@@ -135,6 +135,10 @@ through its environment, never on its command line.
 | `--minimum-fail-level`    | the CLI's own default of `1`                       | Passed through to `coguard`.                                                 |
 | `--ruleset`               | —                                                  | Passed through to `coguard`, e.g. `nist800-53`.                              |
 | `--coguard-api-url`, `--coguard-auth-url` | —                                  | Passed through to `coguard`.                                                 |
+| `--exit-with-last-scan`   | off                                                | When no scan is due, exit with the outcome of the last recorded scan instead of `0`. For a supervisor which reports the exit code as health, like the CSD. |
+| `--report-file`           | —                                                  | Write the findings at or above `--minimum-fail-level` as the CLI's markdown report to this file after each scan, and print it when ending with findings. |
+| `--report-url`            | —                                                  | The address of the cluster's report, used in the summary line and the report. |
+| `--coguard-cluster-name`  | —                                                  | The cluster's name in CoGuard as configured elsewhere, e.g. in a link; after a scan the check says whether it is the name the scan uses. |
 
 `--minimum-scan-interval` exists because a rolling restart produces one event
 after another, and a scan takes minutes; without a lower bound, a restart of
@@ -152,7 +156,7 @@ of date.
 | Exit code | Meaning                                                                                       |
 |-----------|-----------------------------------------------------------------------------------------------|
 | `0`       | No scan was due, or the scan ran and found nothing at or above the fail level.                  |
-| `1`       | The scan ran and found something at or above the fail level.                                   |
+| `1`       | The scan ran and found something at or above the fail level; with `--exit-with-last-scan` also when no scan was due and the last one did. The check then also prints a one-line summary. |
 | `2`       | The check itself failed: Cloudera Manager could not be read, or `coguard` could not be run.     |
 
 `0` and `1` come from `coguard` itself when a scan ran, so the check behaves

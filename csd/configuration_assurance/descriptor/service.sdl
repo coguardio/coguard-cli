@@ -143,33 +143,6 @@
       "configName" : "report_url",
       "type" : "uri",
       "default" : "https://portal.coguard.io"
-    },
-    {
-      "name" : "check_executable",
-      "label" : "Check Command",
-      "description" : "The command which decides whether the configuration has changed and scans it if it has. The COGUARD parcel puts it on the PATH of this role; give an absolute path only to use another installation.",
-      "configName" : "check_executable",
-      "type" : "string",
-      "default" : "coguard-cloudera-check",
-      "required" : "true"
-    },
-    {
-      "name" : "coguard_executable",
-      "label" : "CoGuard CLI",
-      "description" : "The CoGuard CLI which performs the scan itself. The COGUARD parcel puts it on the PATH of this role.",
-      "configName" : "coguard_executable",
-      "type" : "string",
-      "default" : "coguard",
-      "required" : "true"
-    },
-    {
-      "name" : "python_executable",
-      "label" : "Python Interpreter",
-      "description" : "The interpreter used to read the outcome of the last scan. The default is the one of the COGUARD parcel, which can import the CoGuard CLI, so that the summary in the role log names the affected services; an interpreter which cannot import it still reports the counts.",
-      "configName" : "python_executable",
-      "type" : "string",
-      "default" : "coguard-python",
-      "required" : "true"
     }
   ],
   "roles" : [
@@ -197,9 +170,6 @@
           "COGUARD_AUTH_URL" : "${coguard_auth_url}",
           "MINIMUM_FAIL_LEVEL" : "${minimum_fail_level}",
           "RULESET" : "${ruleset}",
-          "CHECK_EXECUTABLE" : "${check_executable}",
-          "COGUARD_EXECUTABLE" : "${coguard_executable}",
-          "PYTHON_EXECUTABLE" : "${python_executable}",
           "WORK_DIRECTORY" : "${work_directory}",
           "CHECK_INTERVAL_SECONDS" : "${check_interval_seconds}",
           "MINIMUM_SCAN_INTERVAL_SECONDS" : "${minimum_scan_interval_seconds}",
