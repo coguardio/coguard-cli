@@ -109,6 +109,62 @@ test_folder_checksum() {
     rm -rf "$TEMP_DIR/folder_check.txt";
 }
 
+# Tests a folder scan with the Trivy CVE integration enabled.
+# The CVE findings depend on Trivy's live vulnerability DB, so they are not part of
+# the checksum. Instead, the checksum covers only the non-CVE findings (which must stay
+# stable), and the CVE findings are validated structurally (count >= MIN_CVES, expected
+# format, optional anchor CVE IDs that must be present).
+test_folder_trivy() {
+    GIT_REPO="$1";
+    GIT_HASH="$2";
+    EXPECTED_CHECKSUM="$3";
+    MIN_CVES=${4:-1}
+    ANCHOR_CVES=${5:-""}
+    git clone "$GIT_REPO" "$TEMP_DIR"/tmp_repo_dir;
+    git -C "$TEMP_DIR"/tmp_repo_dir checkout "$GIT_HASH";
+    # result.json is written to the CWD, so run from a dedicated directory.
+    mkdir -p "$TEMP_DIR/trivy_run"
+    # --minimum-fail-level 6: severities go up to 5, so findings alone never cause a
+    # non-zero exit; a non-zero exit therefore means a real error (auth, API, crash).
+    local cli_status=0
+    (cd "$TEMP_DIR/trivy_run" && PYTHONPATH="$SCRIPTPATH/../src" python3 -m coguard_cli --minimum-fail-level 6 --additional-scan-result=trivy_cve_scan --output-format json --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/tmp_repo_dir) > "$TEMP_DIR/folder_check.txt" 2>&1 || cli_status=$?
+    if [ "$cli_status" -ne 0 ] || [ ! -s "$TEMP_DIR/trivy_run/result.json" ]
+    then
+        echo "CoGuard CLI run with trivy_cve_scan failed (exit code $cli_status) or produced no result.json. CLI output:";
+        cat "$TEMP_DIR/folder_check.txt";
+        exit 1;
+    fi
+    local check_output check_status=0
+    check_output=$(python3 -I "$SCRIPTPATH/check_cve_scan_result.py" --min-cves "$MIN_CVES" --anchor-cves "$ANCHOR_CVES" "$TEMP_DIR/trivy_run/result.json") || check_status=$?
+    ACTUAL_CHECKSUM=$(echo "$check_output" | awk '{print $1}')
+    CVE_COUNT=$(echo "$check_output" | awk '{print $2}')
+    echo "Trivy integration reported $CVE_COUNT HIGH/CRITICAL CVE findings for $GIT_REPO";
+    if [ "$IS_TEST" == "true" ]
+    then
+        echo "ACTUAL: $ACTUAL_CHECKSUM";
+        echo "EXPECTED: $EXPECTED_CHECKSUM"
+    else
+        if [ "$check_status" -ne 0 ]
+        then
+            echo "Trivy CVE findings failed structural validation for $GIT_REPO (see errors above).";
+            cat "$TEMP_DIR/folder_check.txt";
+            exit 1;
+        fi
+        if [ "$ACTUAL_CHECKSUM" == "$EXPECTED_CHECKSUM" ]
+        then
+            echo "ACTUAL non-CVE checksum matched EXPECTED checksum for $GIT_REPO";
+        else
+            echo "ACTUAL: $ACTUAL_CHECKSUM";
+            echo "EXPECTED: $EXPECTED_CHECKSUM";
+            echo "ACTUAL OUTPUT:";
+            cat "$TEMP_DIR/trivy_run/result.json";
+            exit 1;
+        fi
+    fi
+    rm -rf "${TEMP_DIR:-?}/tmp_repo_dir" "${TEMP_DIR:-?}/trivy_run";
+    rm -rf "$TEMP_DIR/folder_check.txt";
+}
+
 test_folder_fix() {
     GIT_REPO="$1";
     GIT_HASH="$2";
@@ -160,7 +216,8 @@ time docker stop demo-postgres
 # Git repository tests
 
 timed "folder remix-project" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 20d681fa865190cab59fad652952e21cf24bcd9a
-timed "folder remix-project (trivy_cve_scan)" test_folder_checksum https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df 5d56d6585c2d9451f46918c4b7cd1bebc12ae456 "" trivy_cve_scan
+# NOTE: the checksum below covers only the non-CVE findings; regenerate with IS_TEST=true.
+timed "folder remix-project (trivy_cve_scan)" test_folder_trivy https://github.com/ethereum/remix-project.git 56a08b2d913355002087492781d008286b1348df "eddc6c5ba3464954ba4f833f4daf160f0270a06f" 1
 timed "folder jaeger-operator" test_folder_checksum https://github.com/jaegertracing/jaeger-operator.git 7e668d84b948b8366b46eaf5dfe0c0a849e943e4 f9b52882df586ea828c230285c773bd005ea7d7e
 timed "folder opentelemetry-collector" test_folder_checksum https://github.com/open-telemetry/opentelemetry-collector.git 7318c14f1a2b5a91d02171a0649be430cb27da94 89cfb1d435b276c308cbed275dbf38f76fca1544
 timed "folder prisma" test_folder_checksum https://github.com/prisma/prisma.git 98eb6ed30dd41d2978142f704b8caa4a0ed412f6 a61ace3dd693cbe4e3408f943b2d94770df88f2f
