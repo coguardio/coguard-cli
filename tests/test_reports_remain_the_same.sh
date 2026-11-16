@@ -124,7 +124,16 @@ test_folder_trivy() {
     git -C "$TEMP_DIR"/tmp_repo_dir checkout "$GIT_HASH";
     # result.json is written to the CWD, so run from a dedicated directory.
     mkdir -p "$TEMP_DIR/trivy_run"
-    (cd "$TEMP_DIR/trivy_run" && PYTHONPATH="$SCRIPTPATH/../src" python3 -m coguard_cli --additional-scan-result=trivy_cve_scan --output-format json --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/tmp_repo_dir) > "$TEMP_DIR/folder_check.txt";
+    # --minimum-fail-level 6: severities go up to 5, so findings alone never cause a
+    # non-zero exit; a non-zero exit therefore means a real error (auth, API, crash).
+    local cli_status=0
+    (cd "$TEMP_DIR/trivy_run" && PYTHONPATH="$SCRIPTPATH/../src" python3 -m coguard_cli --minimum-fail-level 6 --additional-scan-result=trivy_cve_scan --output-format json --coguard-api-url https://test.coguard.io/server --coguard-auth-url https://test.coguard.io/auth folder "${TEMP_DIR:-?}"/tmp_repo_dir) > "$TEMP_DIR/folder_check.txt" 2>&1 || cli_status=$?
+    if [ "$cli_status" -ne 0 ] || [ ! -s "$TEMP_DIR/trivy_run/result.json" ]
+    then
+        echo "CoGuard CLI run with trivy_cve_scan failed (exit code $cli_status) or produced no result.json. CLI output:";
+        cat "$TEMP_DIR/folder_check.txt";
+        exit 1;
+    fi
     local check_output check_status=0
     check_output=$(python3 -I "$SCRIPTPATH/check_cve_scan_result.py" --min-cves "$MIN_CVES" --anchor-cves "$ANCHOR_CVES" "$TEMP_DIR/trivy_run/result.json") || check_status=$?
     ACTUAL_CHECKSUM=$(echo "$check_output" | awk '{print $1}')
